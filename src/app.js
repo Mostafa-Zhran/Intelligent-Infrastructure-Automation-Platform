@@ -13,6 +13,19 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors(corsOptions));
 
+app.get('/', (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: 'Intelligent Infrastructure Automation Platform API is running',
+        version: '1.0.0',
+        endpoints: {
+            health: '/health',
+            auth: '/api/v1/auth',
+            frontend: process.env.FRONTEND_URL || 'http://localhost:5173',
+        },
+    });
+});
+
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'ok',
