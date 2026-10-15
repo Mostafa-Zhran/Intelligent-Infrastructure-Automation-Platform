@@ -12,10 +12,8 @@ export interface UserProfile {
   email: string;
   avatarInitials: string;
   isVerified: boolean;
-  role: 'viewer' | 'operator' | 'admin';
-  title: string;
-  organization: string;
-  timezone: string;
+  role: 'USER' | 'ADMIN' | string;
+  status?: string;
 }
 
 export interface ToastNotification {

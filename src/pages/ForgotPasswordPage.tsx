@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { KeyRound, Mail, ArrowLeft, CheckCircle2, ArrowRight } from 'lucide-react';
+import { KeyRound, Mail, ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { InputField } from '../components/ui/InputField';
 import { Button } from '../components/ui/Button';
 import { PageId } from '../types';
+
+import { authApi } from '../services/api';
 
 interface ForgotPasswordPageProps {
   onNavigate: (page: PageId) => void;
@@ -17,7 +19,7 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
       setError('Please provide your corporate email address.');
@@ -28,12 +30,17 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({
       return;
     }
 
+    setError(undefined);
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await authApi.forgotPassword({ email });
       setIsSubmitted(true);
-    }, 1200);
+    } catch (err: any) {
+      setError(err.message || 'Unable to request password reset. Please retry.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -41,6 +48,18 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({
       <GlassCard glow="violet" size="lg" className="p-6 sm:p-8">
         {!isSubmitted ? (
           <>
+            {/* Top Quick Back Action */}
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={() => onNavigate('signin')}
+                className="inline-flex items-center gap-1.5 text-xs text-[#A1A1B5] hover:text-white transition-all group focus:outline-none"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
+                <span>Return to sign in</span>
+              </button>
+            </div>
+
             {/* Header */}
             <div className="text-center mb-6">
               <div className="mx-auto w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-500 p-[1px] shadow-lg shadow-violet-900/40 mb-3 flex items-center justify-center">
@@ -52,7 +71,7 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({
                 Forgot password?
               </h2>
               <p className="text-sm text-[#A1A1B5] mt-1.5 max-w-xs mx-auto">
-                Enter your email and we will send you a reset link.
+                Enter your registered email and we will send you a reset link.
               </p>
             </div>
 
@@ -85,29 +104,32 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({
             </form>
 
             <div className="mt-6 pt-5 border-t border-white/10 text-center">
-              <button
-                type="button"
-                onClick={() => onNavigate('signin')}
-                className="text-xs text-[#A1A1B5] hover:text-white transition-colors inline-flex items-center gap-1.5 focus:outline-none focus:underline"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to sign in</span>
-              </button>
+              <p className="text-xs text-[#A1A1B5]">
+                Remember your password?{' '}
+                <button
+                  type="button"
+                  onClick={() => onNavigate('signin')}
+                  className="font-medium text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1 group focus:outline-none focus:underline"
+                >
+                  <span>Return to Sign in</span>
+                  <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </p>
             </div>
           </>
         ) : (
-          /* Replaced form with specified success state */
-          <div className="text-center py-4 space-y-4 animate-fadeIn">
-            <div className="w-14 h-14 bg-emerald-950/60 border border-emerald-500/40 rounded-full flex items-center justify-center mx-auto text-emerald-400 shadow-lg shadow-emerald-950/50">
-              <CheckCircle2 className="w-8 h-8" />
+          /* Success state: symmetric with ResetPasswordPage */
+          <div className="text-center py-6 space-y-5 animate-fadeIn">
+            <div className="w-16 h-16 bg-emerald-950/60 border border-emerald-500/40 rounded-full flex items-center justify-center mx-auto text-emerald-400 shadow-xl shadow-emerald-950/60">
+              <CheckCircle2 className="w-10 h-10" />
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-white">
-                If this email exists, a reset link has been sent.
+              <h3 className="text-2xl font-bold text-white">
+                Reset link dispatched
               </h3>
               <p className="text-xs text-[#A1A1B5] max-w-xs mx-auto leading-relaxed pt-1">
-                Check your inbox and spam folder for instructions.
+                If an account exists for this email, reset instructions have been sent to your inbox.
               </p>
             </div>
 
@@ -116,23 +138,26 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({
               <p className="font-mono text-cyan-300 truncate">{email || 'user@organization.io'}</p>
             </div>
 
-            <div className="space-y-2 pt-2">
+            <div className="pt-3 space-y-3">
               <Button
                 variant="primary"
-                className="w-full"
-                onClick={() => onNavigate('reset-password')}
+                className="w-full group shadow-lg shadow-indigo-950/50 hover:shadow-cyan-500/20"
+                onClick={() => onNavigate('signin')}
+                icon={<ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />}
               >
-                <span>Simulate Token Click (Set new password)</span>
-                <ArrowRight className="w-4 h-4 ml-1" />
+                <span>Return to Sign in</span>
               </Button>
 
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => onNavigate('signin')}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSubmitted(false);
+                  setError(undefined);
+                }}
+                className="text-xs text-[#A1A1B5] hover:text-cyan-300 transition-colors block mx-auto pt-1 focus:outline-none focus:underline"
               >
-                Return to Sign in
-              </Button>
+                Didn't receive the email? Try another address
+              </button>
             </div>
           </div>
         )}

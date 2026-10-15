@@ -10,10 +10,24 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { NoAccessPage } from './pages/NoAccessPage';
 import { PageId, UserProfile, ToastNotification } from './types';
+import { authApi } from './services/api';
 
 export const App: React.FC = () => {
-  // Navigation state (initial screen is 'signin')
-  const [currentPage, setCurrentPage] = useState<PageId>('signin');
+  // Navigation state (automatically routes real email reset links)
+  const [currentPage, setCurrentPage] = useState<PageId>(() => {
+    const path = window.location.pathname.replace(/^\//, '').toLowerCase();
+    const params = new URLSearchParams(window.location.search);
+    if (path === 'reset-password' || params.has('token')) {
+      return 'reset-password';
+    }
+    if (path === 'signup') {
+      return 'signup';
+    }
+    if (path === 'forgot-password') {
+      return 'forgot-password';
+    }
+    return 'signin';
+  });
 
   // Authenticated state: false by default until user signs in or signs up
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -27,6 +41,37 @@ export const App: React.FC = () => {
     setToast({ id, type, title, message });
   };
 
+  // Check existing session on load
+  useEffect(() => {
+    authApi
+      .getProfile()
+      .then((res) => {
+        if (res?.user) {
+          const u = res.user;
+          const initials = (u.name || u.email.split('@')[0])
+            .split(' ')
+            .map((n) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2) || 'AM';
+
+          setUser({
+            id: u.id,
+            fullName: u.name,
+            email: u.email,
+            avatarInitials: initials,
+            isVerified: true,
+            role: u.platform_role || 'USER',
+            status: u.status || 'ACTIVE',
+          });
+          setIsAuthenticated(true);
+        }
+      })
+      .catch(() => {
+        // Not authenticated
+      });
+  }, []);
+
   // Auto-dismiss toast after 4 seconds
   useEffect(() => {
     if (toast) {
@@ -37,66 +82,80 @@ export const App: React.FC = () => {
     }
   }, [toast]);
 
+  // Sync browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.replace(/^\//, '').toLowerCase();
+      const params = new URLSearchParams(window.location.search);
+      if (path === 'reset-password' || params.has('token')) {
+        setCurrentPage('reset-password');
+      } else if (path === 'signup') {
+        setCurrentPage('signup');
+      } else if (path === 'forgot-password') {
+        setCurrentPage('forgot-password');
+      } else if (path === 'profile') {
+        setCurrentPage('profile');
+      } else {
+        setCurrentPage('signin');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Guarded navigation
   const handleNavigate = (page: PageId) => {
     // Prevent navigating to profile without an active account session
     if (page === 'profile' && (!isAuthenticated || !user)) {
       showToast('error', 'Authentication Required', 'Please sign in or create an account to view your account profile.');
       setCurrentPage('signin');
+      window.history.pushState({}, document.title, '/');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+
+    const newPath = page === 'signin' ? '/' : `/${page}`;
+    window.history.pushState({}, document.title, newPath);
 
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSignInSuccess = (email: string) => {
-    const authenticatedUser: UserProfile = {
-      id: 'dev-8842',
-      fullName: 'Alex Morgan',
-      email: email || 'alex.morgan@enterprise.dev',
-      avatarInitials: 'AM',
-      isVerified: true,
-      role: 'viewer',
-      title: 'Lead Cloud Infrastructure SRE',
-      organization: 'AutoDeployers Global Corp',
-      timezone: 'UTC-05:00 (Eastern Time)',
-    };
-    setUser(authenticatedUser);
-    setIsAuthenticated(true);
-    showToast('success', 'Session Established', 'Welcome back to Intelligent Infrastructure Platform');
-    setCurrentPage('profile');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleSignUpSuccess = (data: { name: string; email: string }) => {
-    const initials = data.name
+  const handleSignInSuccess = (userData: { id?: string; name?: string; email: string; role?: string; status?: string }) => {
+    const displayName = userData.name || userData.email.split('@')[0];
+    const initials = displayName
       .split(' ')
       .map((n) => n[0])
       .join('')
       .toUpperCase()
       .slice(0, 2) || 'AM';
 
-    const newUser: UserProfile = {
-      id: `dev-${Math.floor(1000 + Math.random() * 9000)}`,
-      fullName: data.name,
-      email: data.email,
+    const authenticatedUser: UserProfile = {
+      id: userData.id || 'dev-8842',
+      fullName: displayName,
+      email: userData.email,
       avatarInitials: initials,
       isVerified: true,
-      role: 'viewer',
-      title: 'DevOps Engineer',
-      organization: 'AutoDeployers Global Corp',
-      timezone: 'UTC-05:00 (Eastern Time)',
+      role: userData.role || 'USER',
+      status: userData.status || 'ACTIVE',
     };
-    setUser(newUser);
+    setUser(authenticatedUser);
     setIsAuthenticated(true);
-    showToast('success', 'Account Registered', 'Workspace credentials provisioned successfully');
+    showToast('success', 'Session Established', `Welcome back, ${displayName}!`);
     setCurrentPage('profile');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSignOut = () => {
+  const handleSignUpSuccess = (data: { id?: string; name: string; email: string; role?: string }) => {
+    handleSignInSuccess(data);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await authApi.signOut();
+    } catch {
+      // ignore
+    }
     setIsAuthenticated(false);
     setUser(null);
     showToast('info', 'Signed Out', 'Your platform session has been cleanly terminated');
@@ -115,10 +174,8 @@ export const App: React.FC = () => {
     email: 'guest@workspace.dev',
     avatarInitials: 'GU',
     isVerified: false,
-    role: 'viewer',
-    title: 'Unauthenticated Session',
-    organization: 'Guest Access',
-    timezone: 'UTC',
+    role: 'USER',
+    status: 'GUEST',
   };
 
   return (

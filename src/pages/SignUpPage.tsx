@@ -1,15 +1,23 @@
 import React, { useState } from 'react';
-import { UserPlus, User, Mail, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { UserPlus, User, Mail, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { InputField } from '../components/ui/InputField';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { Button } from '../components/ui/Button';
 import { PasswordStrengthMeter } from '../components/ui/PasswordStrengthMeter';
 import { PageId } from '../types';
+import { authApi } from '../services/api';
 
 interface SignUpPageProps {
   onNavigate: (page: PageId) => void;
-  onSignUpSuccess: (userData: { name: string; email: string }) => void;
+  onSignUpSuccess: (userData: { id?: string; name: string; email: string; role?: string }) => void;
+}
+
+interface FormErrors {
+  fullName?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
 }
 
 export const SignUpPage: React.FC<SignUpPageProps> = ({
@@ -20,14 +28,10 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [errors, setErrors] = useState<{
-    fullName?: string;
-    email?: string;
-    password?: string;
-    confirmPassword?: string;
-  }>({});
+  const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const validate = () => {
     const newErrors: {
@@ -69,19 +73,34 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
     if (!validate()) return;
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const result = await authApi.signUp({
+        name: fullName,
+        email,
+        password,
+        confirmPassword,
+      });
       setIsSuccess(true);
       setTimeout(() => {
-        onSignUpSuccess({ name: fullName, email });
-      }, 1400);
-    }, 1500);
+        onSignUpSuccess({
+          id: result.user?.id,
+          name: result.user?.name || fullName,
+          email: result.user?.email || email,
+          role: result.user?.platform_role,
+        });
+      }, 1200);
+    } catch (err: any) {
+      setSubmitError(err.message || 'Registration failed. Please check your data and retry.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -116,13 +135,19 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
           </div>
         ) : (
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            {submitError && (
+              <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/30 flex items-start gap-3 text-rose-300 text-xs animate-fadeIn">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <span>{submitError}</span>
+              </div>
+            )}
             <InputField
               label="Full Name"
               placeholder="e.g. Alex Morgan"
               value={fullName}
               onChange={(e) => {
                 setFullName(e.target.value);
-                if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: undefined }));
+                if (errors.fullName) setErrors((prev: FormErrors) => ({ ...prev, fullName: undefined }));
               }}
               error={errors.fullName}
               icon={<User className="w-4 h-4" />}
@@ -137,7 +162,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
-                if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                if (errors.email) setErrors((prev: FormErrors) => ({ ...prev, email: undefined }));
               }}
               error={errors.email}
               icon={<Mail className="w-4 h-4" />}
@@ -152,7 +177,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
-                  if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                  if (errors.password) setErrors((prev: FormErrors) => ({ ...prev, password: undefined }));
                 }}
                 error={errors.password}
                 helperText="8+ characters with upper case, lower case and a number."
@@ -169,7 +194,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
               value={confirmPassword}
               onChange={(e) => {
                 setConfirmPassword(e.target.value);
-                if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                if (errors.confirmPassword) setErrors((prev: FormErrors) => ({ ...prev, confirmPassword: undefined }));
               }}
               error={errors.confirmPassword}
               required
