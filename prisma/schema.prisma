@@ -1,0 +1,512 @@
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../generated/prisma"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["app"]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model action_approvals {
+  id               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  action_id        String     @db.Uuid
+  approver_user_id String?    @db.Uuid
+  decision         String
+  reason           String?
+  payload_hash     String
+  policy_version   Int
+  created_at       DateTime   @default(now()) @db.Timestamptz(6)
+  ai_actions       ai_actions @relation(fields: [action_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users            users?     @relation(fields: [approver_user_id], references: [id], onUpdate: NoAction)
+
+  @@index([action_id, created_at(sort: Desc)], map: "action_approvals_action_created_idx")
+  @@index([approver_user_id, created_at(sort: Desc)], map: "action_approvals_approver_created_idx")
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model action_policies {
+  id                  String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id          String       @db.Uuid
+  environment         String
+  action_type         String
+  risk_level          String
+  requires_approval   Boolean      @default(true)
+  required_approvals  Int          @default(1)
+  allow_self_approval Boolean      @default(false)
+  enabled             Boolean      @default(true)
+  policy_version      Int          @default(1)
+  created_by_user_id  String?      @db.Uuid
+  created_at          DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime     @default(now()) @db.Timestamptz(6)
+  users               users?       @relation(fields: [created_by_user_id], references: [id], onUpdate: NoAction)
+  projects            projects     @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  ai_actions          ai_actions[]
+
+  @@unique([project_id, environment, action_type, risk_level], map: "action_policies_project_env_action_risk_uq")
+  @@index([created_by_user_id], map: "action_policies_created_by_idx")
+  @@index([project_id, environment, action_type, enabled], map: "action_policies_lookup_idx")
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ai_actions {
+  id                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id           String              @db.Uuid
+  recommendation_id    String?             @db.Uuid
+  deployment_id        String?             @db.Uuid
+  policy_id            String?             @db.Uuid
+  environment          String
+  action_type          String
+  parameters           Json
+  payload_hash         String
+  risk_level           String
+  status               String              @default("PROPOSED")
+  requested_by_user_id String?             @db.Uuid
+  policy_decision      Json                @default("{}")
+  result               Json?
+  error_message        String?
+  created_at           DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime            @default(now()) @db.Timestamptz(6)
+  started_at           DateTime?           @db.Timestamptz(6)
+  finished_at          DateTime?           @db.Timestamptz(6)
+  action_approvals     action_approvals[]
+  deployments          deployments?        @relation(fields: [deployment_id], references: [id], onUpdate: NoAction)
+  action_policies      action_policies?    @relation(fields: [policy_id], references: [id], onUpdate: NoAction)
+  projects             projects            @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  ai_recommendations   ai_recommendations? @relation(fields: [recommendation_id], references: [id], onUpdate: NoAction)
+  users                users?              @relation(fields: [requested_by_user_id], references: [id], onUpdate: NoAction)
+
+  @@index([deployment_id], map: "ai_actions_deployment_idx")
+  @@index([policy_id], map: "ai_actions_policy_idx", where: raw("(policy_id IS NOT NULL)"))
+  @@index([project_id, created_at(sort: Desc)], map: "ai_actions_project_created_idx")
+  @@index([project_id, status], map: "ai_actions_project_status_idx")
+  @@index([recommendation_id], map: "ai_actions_recommendation_idx")
+  @@index([requested_by_user_id], map: "ai_actions_requester_idx")
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ai_recommendations {
+  id                         String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id                 String                    @db.Uuid
+  deployment_id              String?                   @db.Uuid
+  infrastructure_resource_id String?                   @db.Uuid
+  title                      String
+  recommendation             String
+  rationale                  String?
+  expected_benefit           String?
+  risk_level                 String                    @default("LOW")
+  status                     String                    @default("OPEN")
+  context                    Json                      @default("{}")
+  model_name                 String?
+  prompt_version             String?
+  created_at                 DateTime                  @default(now()) @db.Timestamptz(6)
+  expires_at                 DateTime?                 @db.Timestamptz(6)
+  ai_actions                 ai_actions[]
+  deployments                deployments?              @relation(fields: [deployment_id], references: [id], onUpdate: NoAction)
+  infrastructure_resources   infrastructure_resources? @relation(fields: [infrastructure_resource_id], references: [id], onUpdate: NoAction)
+  projects                   projects                  @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([deployment_id], map: "ai_recommendations_deployment_idx")
+  @@index([project_id, created_at(sort: Desc)], map: "ai_recommendations_project_created_idx")
+  @@index([project_id, status], map: "ai_recommendations_project_status_idx")
+  @@index([infrastructure_resource_id], map: "ai_recommendations_resource_idx", where: raw("(infrastructure_resource_id IS NOT NULL)"))
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model audit_logs {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actor_user_id String?   @db.Uuid
+  project_id    String?   @db.Uuid
+  event_type    String
+  resource_type String?
+  resource_id   String?
+  outcome       String    @default("SUCCESS")
+  reason        String?
+  metadata      Json      @default("{}")
+  ip_address    String?   @db.Inet
+  user_agent    String?
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  users         users?    @relation(fields: [actor_user_id], references: [id], onUpdate: NoAction)
+  projects      projects? @relation(fields: [project_id], references: [id], onUpdate: NoAction)
+
+  @@index([actor_user_id, created_at(sort: Desc)], map: "audit_logs_actor_created_idx")
+  @@index([event_type, created_at(sort: Desc)], map: "audit_logs_event_created_idx")
+  @@index([project_id, created_at(sort: Desc)], map: "audit_logs_project_created_idx")
+  @@index([resource_type, resource_id], map: "audit_logs_resource_idx")
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ci_job_runs {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ci_job_id       String    @db.Uuid
+  external_run_id String?
+  status          String    @default("QUEUED")
+  url             String?
+  started_at      DateTime? @db.Timestamptz(6)
+  finished_at     DateTime? @db.Timestamptz(6)
+  exit_code       Int?
+  error_message   String?
+  metadata        Json      @default("{}")
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  ci_jobs         ci_jobs   @relation(fields: [ci_job_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([ci_job_id, created_at(sort: Desc)], map: "ci_job_runs_job_created_idx")
+  @@index([status])
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ci_jobs {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id      String        @db.Uuid
+  deployment_id   String?       @db.Uuid
+  provider        String        @default("JENKINS")
+  job_name        String
+  external_job_id String?
+  status          String        @default("PENDING")
+  url             String?
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime      @default(now()) @db.Timestamptz(6)
+  ci_job_runs     ci_job_runs[]
+  deployments     deployments?  @relation(fields: [deployment_id], references: [id], onUpdate: NoAction)
+  projects        projects      @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([deployment_id], map: "ci_jobs_deployment_idx")
+  @@index([project_id, created_at(sort: Desc)], map: "ci_jobs_project_created_idx")
+  @@index([status])
+  @@schema("app")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model deployment_events {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deployment_id String      @db.Uuid
+  from_state    String?
+  to_state      String?
+  stage         String?
+  message       String
+  metadata      Json        @default("{}")
+  created_at    DateTime    @default(now()) @db.Timestamptz(6)
+  deployments   deployments @relation(fields: [deployment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([deployment_id, created_at(sort: Desc)], map: "deployment_events_deployment_created_idx")
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model deployment_logs {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deployment_id    String            @db.Uuid
+  step_id          String?           @db.Uuid
+  source           String
+  level            String            @default("INFO")
+  message          String
+  metadata         Json              @default("{}")
+  logged_at        DateTime          @default(now()) @db.Timestamptz(6)
+  deployments      deployments       @relation(fields: [deployment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  deployment_steps deployment_steps? @relation(fields: [step_id], references: [id], onUpdate: NoAction)
+
+  @@index([deployment_id, logged_at(sort: Desc)], map: "deployment_logs_deployment_time_idx")
+  @@index([level, logged_at(sort: Desc)], map: "deployment_logs_level_time_idx")
+  @@index([step_id, logged_at(sort: Desc)], map: "deployment_logs_step_time_idx", where: raw("(step_id IS NOT NULL)"))
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model deployment_steps {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deployment_id   String            @db.Uuid
+  step_order      Int
+  step_name       String
+  status          String            @default("PENDING")
+  started_at      DateTime?         @db.Timestamptz(6)
+  finished_at     DateTime?         @db.Timestamptz(6)
+  exit_code       Int?
+  metadata        Json              @default("{}")
+  error_message   String?
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime          @default(now()) @db.Timestamptz(6)
+  deployment_logs deployment_logs[]
+  deployments     deployments       @relation(fields: [deployment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([deployment_id, step_order], map: "deployment_steps_order_uq")
+  @@index([deployment_id, status], map: "deployment_steps_deployment_status_idx")
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model deployments {
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id               String                     @db.Uuid
+  environment              String
+  repository_url           String
+  branch                   String?
+  commit_sha               String?
+  replicas                 Int                        @default(1)
+  status                   String                     @default("QUEUED")
+  started_at               DateTime?                  @db.Timestamptz(6)
+  finished_at              DateTime?                  @db.Timestamptz(6)
+  error_message            String?
+  created_by_user_id       String?                    @db.Uuid
+  idempotency_key          String?
+  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  ai_actions               ai_actions[]
+  ai_recommendations       ai_recommendations[]
+  ci_jobs                  ci_jobs[]
+  deployment_events        deployment_events[]
+  deployment_logs          deployment_logs[]
+  deployment_steps         deployment_steps[]
+  users                    users?                     @relation(fields: [created_by_user_id], references: [id], onUpdate: NoAction)
+  projects                 projects                   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  infrastructure_resources infrastructure_resources[]
+
+  @@unique([created_by_user_id, idempotency_key], map: "deployments_idempotency_key_uq", where: raw("((idempotency_key IS NOT NULL) AND (created_by_user_id IS NOT NULL))"))
+  @@index([created_by_user_id], map: "deployments_created_by_idx")
+  @@index([project_id, created_at(sort: Desc)], map: "deployments_project_created_idx")
+  @@index([project_id, status], map: "deployments_project_status_idx")
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model infrastructure_resources {
+  id                   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id           String               @db.Uuid
+  deployment_id        String?              @db.Uuid
+  provider             String               @default("AWS")
+  resource_type        String
+  external_resource_id String?
+  region               String?
+  status               String               @default("UNKNOWN")
+  metadata             Json                 @default("{}")
+  created_at           DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime             @default(now()) @db.Timestamptz(6)
+  ai_recommendations   ai_recommendations[]
+  deployments          deployments?         @relation(fields: [deployment_id], references: [id], onUpdate: NoAction)
+  projects             projects             @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([deployment_id], map: "infrastructure_resources_deployment_idx")
+  @@index([provider, external_resource_id], map: "infrastructure_resources_external_id_idx", where: raw("(external_resource_id IS NOT NULL)"))
+  @@index([project_id, status], map: "infrastructure_resources_project_status_idx")
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model permissions {
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key                      String                     @unique
+  description              String
+  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  project_role_permissions project_role_permissions[]
+
+  @@schema("app")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model project_memberships {
+  id                                                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id                                        String            @db.Uuid
+  user_id                                           String            @db.Uuid
+  project_role_id                                   String            @db.Uuid
+  status                                            membership_status @default(ACTIVE)
+  added_by_user_id                                  String?           @db.Uuid
+  created_at                                        DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at                                        DateTime          @default(now()) @db.Timestamptz(6)
+  users_project_memberships_added_by_user_idTousers users?            @relation("project_memberships_added_by_user_idTousers", fields: [added_by_user_id], references: [id], onUpdate: NoAction)
+  projects                                          projects          @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  project_roles                                     project_roles     @relation(fields: [project_role_id, project_id], references: [id, project_id], onUpdate: NoAction, map: "project_memberships_role_project_fk")
+  users_project_memberships_user_idTousers          users             @relation("project_memberships_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([project_id, user_id], map: "project_memberships_project_user_uq")
+  @@index([added_by_user_id], map: "project_memberships_added_by_user_idx")
+  @@index([project_id, status], map: "project_memberships_project_status_idx")
+  @@index([project_role_id], map: "project_memberships_role_idx")
+  @@index([project_role_id, project_id], map: "project_memberships_role_project_idx")
+  @@index([user_id, status], map: "project_memberships_user_status_idx")
+  @@schema("app")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model project_role_permissions {
+  project_role_id String        @db.Uuid
+  permission_id   String        @db.Uuid
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  permissions     permissions   @relation(fields: [permission_id], references: [id], onUpdate: NoAction)
+  project_roles   project_roles @relation(fields: [project_role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([project_role_id, permission_id])
+  @@index([permission_id], map: "project_role_permissions_permission_idx")
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model project_roles {
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id               String                     @db.Uuid
+  name                     String
+  normalized_name          String
+  description              String?
+  is_system                Boolean                    @default(false)
+  created_by_user_id       String                     @db.Uuid
+  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  project_memberships      project_memberships[]
+  project_role_permissions project_role_permissions[]
+  users                    users                      @relation(fields: [created_by_user_id], references: [id], onUpdate: NoAction)
+  projects                 projects                   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([id, project_id], map: "project_roles_id_project_uq")
+  @@unique([project_id, normalized_name], map: "project_roles_project_normalized_name_uq")
+  @@index([created_by_user_id], map: "project_roles_created_by_user_idx")
+  @@index([project_id], map: "project_roles_project_idx")
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model projects {
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                     String
+  slug                     String                     @unique(map: "projects_slug_uq")
+  description              String?
+  owner_user_id            String                     @db.Uuid
+  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  repository_url           String?
+  default_environment      String                     @default("development")
+  action_policies          action_policies[]
+  ai_actions               ai_actions[]
+  ai_recommendations       ai_recommendations[]
+  audit_logs               audit_logs[]
+  ci_jobs                  ci_jobs[]
+  deployments              deployments[]
+  infrastructure_resources infrastructure_resources[]
+  project_memberships      project_memberships[]
+  project_roles            project_roles[]
+  users                    users                      @relation(fields: [owner_user_id], references: [id], onUpdate: NoAction)
+
+  @@index([owner_user_id])
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model refresh_sessions {
+  id                     String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                String             @db.Uuid
+  token_hash             String             @unique
+  family_id              String             @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at             DateTime           @default(now()) @db.Timestamptz(6)
+  expires_at             DateTime           @db.Timestamptz(6)
+  last_used_at           DateTime?          @db.Timestamptz(6)
+  rotated_at             DateTime?          @db.Timestamptz(6)
+  revoked_at             DateTime?          @db.Timestamptz(6)
+  revoke_reason          String?
+  replaced_by_session_id String?            @db.Uuid
+  user_agent             String?
+  ip_address             String?            @db.Inet
+  refresh_sessions       refresh_sessions?  @relation("refresh_sessionsTorefresh_sessions", fields: [replaced_by_session_id], references: [id], onUpdate: NoAction)
+  other_refresh_sessions refresh_sessions[] @relation("refresh_sessionsTorefresh_sessions")
+  users                  users              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([expires_at], map: "refresh_sessions_expiry_idx")
+  @@index([family_id], map: "refresh_sessions_family_idx")
+  @@index([replaced_by_session_id], map: "refresh_sessions_replaced_by_idx")
+  @@index([user_id, revoked_at], map: "refresh_sessions_user_revoked_idx")
+  @@schema("app")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model users {
+  id                                                              String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                                                            String
+  email                                                           String
+  password_hash                                                   String
+  platform_role                                                   platform_role         @default(USER)
+  status                                                          account_status
+  created_at                                                      DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at                                                      DateTime              @default(now()) @db.Timestamptz(6)
+  action_approvals                                                action_approvals[]
+  action_policies                                                 action_policies[]
+  ai_actions                                                      ai_actions[]
+  audit_logs                                                      audit_logs[]
+  deployments                                                     deployments[]
+  project_memberships_project_memberships_added_by_user_idTousers project_memberships[] @relation("project_memberships_added_by_user_idTousers")
+  project_memberships_project_memberships_user_idTousers          project_memberships[] @relation("project_memberships_user_idTousers")
+  project_roles                                                   project_roles[]
+  projects                                                        projects[]
+  refresh_sessions                                                refresh_sessions[]
+  password_reset_tokens                                           password_reset_tokens[]
+
+  @@index([platform_role])
+  @@index([status])
+  @@schema("app")
+}
+
+model password_reset_tokens {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  token_hash String    @unique
+  expires_at DateTime  @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@schema("app")
+}
+
+enum account_status {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DISABLED
+
+  @@schema("app")
+}
+
+enum membership_status {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  REMOVED
+
+  @@schema("app")
+}
+
+enum platform_role {
+  USER
+  ADMIN
+
+  @@schema("app")
+}
