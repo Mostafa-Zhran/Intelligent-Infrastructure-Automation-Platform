@@ -15,16 +15,33 @@ export interface ApiResponse<T = any> {
   error?: string;
 }
 
-const BACKEND_URL = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).replace(/\/$/, '') : '';
+const TOKEN_STORAGE_KEY = 'iiap_access_token';
+
+// In local dev, use relative path so Vite proxy forwards requests with zero CORS issues.
+// In production, use configured remote Backend_API.
+const rawBackendUrl = String(import.meta.env.Backend_API || import.meta.env.BACKEND_API || import.meta.env.VITE_API_URL || '').trim();
+const BACKEND_URL = import.meta.env.DEV
+  ? ''
+  : (rawBackendUrl
+      ? (rawBackendUrl.startsWith('http://') || rawBackendUrl.startsWith('https://')
+          ? rawBackendUrl
+          : `https://${rawBackendUrl}`
+        ).replace(/\/$/, '')
+      : '');
+
 const API_BASE = `${BACKEND_URL}/api/v1/auth`;
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers as Record<string, string>),
+  };
+
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
     credentials: 'include',
   });
 
@@ -44,26 +61,37 @@ export const authApi = {
     email: string;
     password: string;
     confirmPassword: string;
-  }): Promise<{ user: ApiUser }> {
-    const res = await request<ApiResponse<{ user: ApiUser }>>('/signup', {
+  }): Promise<{ user: ApiUser; accessToken?: string }> {
+    const res = await request<ApiResponse<{ user: ApiUser; accessToken?: string }>>('/signup', {
       method: 'POST',
       body: JSON.stringify(body),
     });
+    if (res.data?.accessToken) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, res.data.accessToken);
+    }
     return res.data!;
   },
 
   async signIn(body: {
     email: string;
     password: string;
-  }): Promise<{ user: ApiUser }> {
-    const res = await request<ApiResponse<{ user: ApiUser }>>('/signin', {
+  }): Promise<{ user: ApiUser; accessToken?: string }> {
+    const res = await request<ApiResponse<{ user: ApiUser; accessToken?: string }>>('/signin', {
       method: 'POST',
       body: JSON.stringify(body),
     });
+    if (res.data?.accessToken) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, res.data.accessToken);
+    }
     return res.data!;
   },
 
   async signOut(): Promise<{ message?: string }> {
+    try {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
     return request<ApiResponse>('/signout', {
       method: 'POST',
     });
