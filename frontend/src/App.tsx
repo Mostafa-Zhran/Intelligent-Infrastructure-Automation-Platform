@@ -12,8 +12,24 @@ import { NoAccessPage } from './pages/NoAccessPage';
 import { PageId, UserProfile, ToastNotification } from './types';
 import { authApi } from './services/api';
 
+const LOCAL_STORAGE_USER_KEY = 'iiap_user_session';
+
+function getStoredUser(): UserProfile | null {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export const App: React.FC = () => {
-  // Navigation state (automatically routes real email reset links)
+  const cachedUser = getStoredUser();
+  const [user, setUser] = useState<UserProfile | null>(cachedUser);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!cachedUser);
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
+
+  // Navigation state (automatically routes real email reset links & preserves profile on refresh)
   const [currentPage, setCurrentPage] = useState<PageId>(() => {
     const path = window.location.pathname.replace(/^\//, '').toLowerCase();
     const params = new URLSearchParams(window.location.search);
@@ -26,12 +42,17 @@ export const App: React.FC = () => {
     if (path === 'forgot-password') {
       return 'forgot-password';
     }
+    if (path === 'profile') {
+      return 'profile';
+    }
+    if (path === 'no-access') {
+      return 'no-access';
+    }
+    if (cachedUser) {
+      return 'profile';
+    }
     return 'signin';
   });
-
-  // Authenticated state: false by default until user signs in or signs up
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [user, setUser] = useState<UserProfile | null>(null);
 
   // Toast notification state
   const [toast, setToast] = useState<ToastNotification | null>(null);
@@ -41,8 +62,9 @@ export const App: React.FC = () => {
     setToast({ id, type, title, message });
   };
 
-  // Check existing session on load
+  // Revalidate session with backend on load
   useEffect(() => {
+    setIsAuthChecking(true);
     authApi
       .getProfile()
       .then((res) => {
@@ -55,7 +77,7 @@ export const App: React.FC = () => {
             .toUpperCase()
             .slice(0, 2) || 'AM';
 
-          setUser({
+          const authenticatedUser: UserProfile = {
             id: u.id,
             fullName: u.name,
             email: u.email,
@@ -63,12 +85,62 @@ export const App: React.FC = () => {
             isVerified: true,
             role: u.platform_role || 'USER',
             status: u.status || 'ACTIVE',
-          });
+          };
+
+          setUser(authenticatedUser);
           setIsAuthenticated(true);
+          try {
+            localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(authenticatedUser));
+          } catch {
+            // ignore
+          }
+
+          const path = window.location.pathname.replace(/^\//, '').toLowerCase();
+          if (path === 'profile' || path === '') {
+            setCurrentPage('profile');
+          }
+        } else {
+          // No user returned
+          setIsAuthenticated(false);
+          setUser(null);
+          try {
+            localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
+          } catch {
+            // ignore
+          }
+          const path = window.location.pathname.replace(/^\//, '').toLowerCase();
+          if (path === 'profile') {
+            setCurrentPage('signin');
+            window.history.replaceState({}, document.title, '/');
+          }
         }
       })
-      .catch(() => {
-        // Not authenticated
+      .catch((err: unknown) => {
+        const errorMsg = err instanceof Error ? err.message : String(err || '');
+        const isUnauthorized =
+          errorMsg.includes('401') ||
+          errorMsg.toLowerCase().includes('authentication required') ||
+          errorMsg.toLowerCase().includes('expired') ||
+          errorMsg.toLowerCase().includes('invalid');
+
+        if (isUnauthorized) {
+          setIsAuthenticated(false);
+          setUser(null);
+          try {
+            localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
+            localStorage.removeItem('iiap_access_token');
+          } catch {
+            // ignore
+          }
+          const path = window.location.pathname.replace(/^\//, '').toLowerCase();
+          if (path === 'profile') {
+            setCurrentPage('signin');
+            window.history.replaceState({}, document.title, '/');
+          }
+        }
+      })
+      .finally(() => {
+        setIsAuthChecking(false);
       });
   }, []);
 
@@ -106,7 +178,7 @@ export const App: React.FC = () => {
   // Guarded navigation
   const handleNavigate = (page: PageId) => {
     // Prevent navigating to profile without an active account session
-    if (page === 'profile' && (!isAuthenticated || !user)) {
+    if (page === 'profile' && !isAuthenticated && !user && !isAuthChecking) {
       showToast('error', 'Authentication Required', 'Please sign in or create an account to view your account profile.');
       setCurrentPage('signin');
       window.history.pushState({}, document.title, '/');
@@ -141,8 +213,14 @@ export const App: React.FC = () => {
     };
     setUser(authenticatedUser);
     setIsAuthenticated(true);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(authenticatedUser));
+    } catch {
+      // ignore
+    }
     showToast('success', 'Session Established', `Welcome back, ${displayName}!`);
     setCurrentPage('profile');
+    window.history.pushState({}, document.title, '/profile');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -158,13 +236,28 @@ export const App: React.FC = () => {
     }
     setIsAuthenticated(false);
     setUser(null);
+    try {
+      localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
+    } catch {
+      // ignore
+    }
     showToast('info', 'Signed Out', 'Your platform session has been cleanly terminated');
     setCurrentPage('signin');
+    window.history.pushState({}, document.title, '/');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleUpdateUser = (updated: Partial<UserProfile>) => {
-    setUser((prev) => (prev ? { ...prev, ...updated } : null));
+    setUser((prev) => {
+      if (!prev) return null;
+      const next = { ...prev, ...updated };
+      try {
+        localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
   };
 
   // Fallback guest user for 403 screen if visited prior to sign in
@@ -221,7 +314,12 @@ export const App: React.FC = () => {
         )}
 
         {currentPage === 'profile' && (
-          isAuthenticated && user ? (
+          isAuthChecking && !user ? (
+            <div className="flex flex-col items-center justify-center min-h-[45vh] text-center">
+              <div className="w-10 h-10 rounded-full border-2 border-violet-500/20 border-t-violet-500 animate-spin mb-4" />
+              <p className="text-gray-400 font-mono text-sm tracking-wide">Validating session...</p>
+            </div>
+          ) : isAuthenticated && user ? (
             <ProfilePage
               user={user}
               onUpdateUser={handleUpdateUser}

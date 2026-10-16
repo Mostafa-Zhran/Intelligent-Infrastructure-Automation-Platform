@@ -1,24 +1,31 @@
 # Dependencies
 node_modules/
+*/node_modules/
+
+# Production builds
+dist/
+frontend/dist/
+
+# Environment files
+.env
+.env.*
+!.env.example
+*.local
 
 # Logs
 *.log
 npm-debug.log*
 
-# Environment
-.env
-.env.local
-.env.*.local
+# Prisma generated
+backend/generated/
 
-# Editor
-.vscode/
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# OS
+# OS and Editor
 .DS_Store
 Thumbs.db
+.vscode/
+.idea/
+
+# Local AI tooling
+.agents/
+.claude/
+.windsurf/

@@ -1,0 +1,43 @@
+{
+  "name": "intelligent-infrastructure-automation-platform",
+  "version": "1.0.0",
+  "description": "Intelligent Infrastructure Automation Platform Backend API",
+  "main": "src/server.js",
+  "scripts": {
+    "build": "npx prisma generate",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "postinstall": "npx prisma generate",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform/issues"
+  },
+  "homepage": "https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform#readme",
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "joi": "^18.2.9",
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^10.1.1",
+    "pg": "^8.23.1",
+    "prisma": "^7.10.0",
+    "resend": "^6.33.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

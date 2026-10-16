@@ -1,26 +1,14 @@
 {
-  "name": "intelligent-infrastructure-automation-platform-auth",
-  "private": true,
+  "name": "intelligent-infrastructure-automation-platform-root",
   "version": "1.0.0",
-  "type": "module",
+  "private": true,
+  "description": "Root workspace runner for Intelligent Infrastructure Automation Platform",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "lucide-react": "^1.16.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.17",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.11"
+    "dev": "npm run dev --prefix frontend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "build:frontend": "npm run build --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "start:backend": "npm run start --prefix backend"
   }
 }
