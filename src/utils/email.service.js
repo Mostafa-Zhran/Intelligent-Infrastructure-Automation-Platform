@@ -1,21 +1,43 @@
-const { Resend } = require('resend');
 const nodemailer = require('nodemailer');
 
-const resendClient = process.env.RESEND_API_KEY
-    ? new Resend(process.env.RESEND_API_KEY)
-    : null;
+/**
+ * Creates and returns a Nodemailer transporter configured for Gmail / SMTP.
+ */
+function getTransporter() {
+    const user = process.env.SMTP_USER || process.env.EMAIL_USER;
+    const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
 
-const transporter = (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
-    ? nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT || 587),
-        secure: Number(process.env.SMTP_PORT) === 465,
+    if (!user || !pass) {
+        return null;
+    }
+
+    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const port = Number(process.env.SMTP_PORT || 465);
+
+    // If using Gmail (either explicit service or smtp.gmail.com host)
+    if (host.includes('gmail') || process.env.SMTP_SERVICE === 'gmail') {
+        return nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user,
+                pass, // Google App Password (16 characters)
+            },
+        });
+    }
+
+    // Generic SMTP configuration
+    return nodemailer.createTransport({
+        host,
+        port,
+        secure: process.env.SMTP_SECURE !== undefined
+            ? process.env.SMTP_SECURE === 'true'
+            : port === 465,
         auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
+            user,
+            pass,
         },
-    })
-    : null;
+    });
+}
 
 function getEmailHtml(resetUrl) {
     return `
@@ -48,39 +70,58 @@ async function sendPasswordResetEmail(email, resetUrl) {
     const htmlContent = getEmailHtml(resetUrl);
     const textContent = `Use this link to reset your password: ${resetUrl}\n\nIf you did not request this, ignore this email.`;
 
-    // 1. Try Resend if API Key is configured (Preferred Modern Production Option)
-    if (process.env.RESEND_API_KEY) {
-        const client = resendClient || new Resend(process.env.RESEND_API_KEY);
-        const fromAddress = process.env.RESEND_FROM || 'onboarding@resend.dev';
+    const transporter = getTransporter();
 
-        console.log(`[Resend] Sending password reset email to ${email}...`);
-        const { data, error } = await client.emails.send({
-            from: fromAddress,
-            to: email,
-            subject: 'Reset your password | Automated DevOps Platform',
-            html: htmlContent,
-            text: textContent,
-        });
+    // 1. Try Gmail / SMTP if configured (Priority)
+    if (transporter) {
+        const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+        const fromAddress = process.env.SMTP_FROM || `"Intelligent Platform" <${smtpUser}>`;
 
-        if (error) {
-            console.error('[Resend Error]:', error);
-            throw new Error(`Resend Error: ${error.message}`);
+        console.log(`[Gmail/SMTP] Sending password reset email to ${email}...`);
+        try {
+            const info = await transporter.sendMail({
+                from: fromAddress,
+                to: email,
+                subject: 'Reset your password | Automated DevOps Platform',
+                text: textContent,
+                html: htmlContent,
+            });
+
+            console.log('[Gmail/SMTP Success]: Message ID', info.messageId);
+            return info;
+        } catch (error) {
+            console.error('[Gmail/SMTP Error]:', error.message);
+            throw new Error(`Gmail/SMTP Error: ${error.message}`);
         }
-
-        console.log('[Resend Success]:', data);
-        return data;
     }
 
-    // 2. Try SMTP if configured
-    if (transporter) {
-        console.log(`[SMTP] Sending password reset email to ${email}...`);
-        return transporter.sendMail({
-            from: process.env.SMTP_FROM || process.env.SMTP_USER,
-            to: email,
-            subject: 'Reset your password | Automated DevOps Platform',
-            text: textContent,
-            html: htmlContent,
-        });
+    // 2. Fallback to Resend if configured
+    if (process.env.RESEND_API_KEY) {
+        try {
+            const { Resend } = require('resend');
+            const client = new Resend(process.env.RESEND_API_KEY);
+            const fromAddress = process.env.RESEND_FROM || 'onboarding@resend.dev';
+
+            console.log(`[Resend] Sending password reset email to ${email}...`);
+            const { data, error } = await client.emails.send({
+                from: fromAddress,
+                to: email,
+                subject: 'Reset your password | Automated DevOps Platform',
+                html: htmlContent,
+                text: textContent,
+            });
+
+            if (error) {
+                console.error('[Resend Error]:', error);
+                throw new Error(`Resend Error: ${error.message}`);
+            }
+
+            console.log('[Resend Success]:', data);
+            return data;
+        } catch (err) {
+            console.error('[Resend Execution Error]:', err.message);
+            throw err;
+        }
     }
 
     // 3. Dev Fallback: Print cleanly to console
@@ -93,3 +134,4 @@ async function sendPasswordResetEmail(email, resetUrl) {
 }
 
 module.exports = { sendPasswordResetEmail };
+
