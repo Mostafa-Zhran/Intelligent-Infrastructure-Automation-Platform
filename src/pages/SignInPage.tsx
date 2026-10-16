@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Shield, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { Mail, Shield, AlertCircle, ArrowRight } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { InputField } from '../components/ui/InputField';
 import { PasswordInput } from '../components/ui/PasswordInput';
@@ -7,9 +7,11 @@ import { Button } from '../components/ui/Button';
 import { PipelineVisual } from '../components/pipeline/PipelineVisual';
 import { PageId } from '../types';
 
+import { authApi } from '../services/api';
+
 interface SignInPageProps {
   onNavigate: (page: PageId) => void;
-  onSignInSuccess: (email: string) => void;
+  onSignInSuccess: (userData: { id?: string; name?: string; email: string; role?: string }) => void;
 }
 
 export const SignInPage: React.FC<SignInPageProps> = ({
@@ -38,7 +40,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
 
@@ -46,34 +48,14 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
     setIsLoading(true);
 
-    // Simulated session validation delay
-    setTimeout(() => {
+    try {
+      const result = await authApi.signIn({ email, password });
+      onSignInSuccess(result.user);
+    } catch (err: any) {
+      setAuthError(err.message || 'Invalid email or password. Please verify and retry.');
+    } finally {
       setIsLoading(false);
-      // If user typed 'fail@error.com' or clicked trigger error
-      if (email.includes('error') || password === 'wrong') {
-        setAuthError('Invalid email or security token. Please verify and retry.');
-      } else {
-        onSignInSuccess(email);
-      }
-    }, 1200);
-  };
-
-  const fillDemoCredentials = () => {
-    setEmail('alex.morgan@enterprise.dev');
-    setPassword('DevOpsPass123!');
-    setErrors({});
-    setAuthError(null);
-  };
-
-  const triggerAuthError = () => {
-    setEmail('alex.morgan@enterprise.dev');
-    setPassword('wrong');
-    setErrors({});
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setAuthError('Invalid email or security token. Please verify and retry.');
-    }, 800);
+    }
   };
 
   return (
@@ -95,27 +77,6 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <p className="text-sm text-[#A1A1B5] mt-1">
                 Welcome back. Enter your workspace credentials.
               </p>
-            </div>
-
-            {/* Quick Demo Pre-fills for Reviewers */}
-            <div className="flex items-center gap-2 mb-5 p-2 rounded-lg bg-white/5 border border-white/10 text-xs">
-              <Sparkles className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
-              <span className="text-[#A1A1B5] text-[11px]">Quick fill:</span>
-              <button
-                type="button"
-                onClick={fillDemoCredentials}
-                className="text-[11px] font-medium text-cyan-300 hover:text-cyan-200 underline"
-              >
-                Valid account
-              </button>
-              <span className="text-white/20">|</span>
-              <button
-                type="button"
-                onClick={triggerAuthError}
-                className="text-[11px] font-medium text-red-400 hover:text-red-300 underline"
-              >
-                Simulate error
-              </button>
             </div>
 
             {/* Error State Banner */}

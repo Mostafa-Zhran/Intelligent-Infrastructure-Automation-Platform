@@ -6,16 +6,16 @@ export type PageId =
   | 'profile' 
   | 'no-access';
 
+export type PlatformRole = 'USER' | 'ADMIN';
+
 export interface UserProfile {
   id: string;
   fullName: string;
   email: string;
   avatarInitials: string;
   isVerified: boolean;
-  role: 'viewer' | 'operator' | 'admin';
-  title: string;
-  organization: string;
-  timezone: string;
+  role: PlatformRole | string;
+  status?: string;
 }
 
 export interface ToastNotification {

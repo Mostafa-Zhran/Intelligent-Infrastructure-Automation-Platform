@@ -35,14 +35,14 @@ export const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {isLoading ? (
-        <span className="flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin text-current" />
+        <span className="inline-flex items-center justify-center gap-2 whitespace-nowrap">
+          <Loader2 className="w-4 h-4 animate-spin text-current shrink-0" />
           <span>{loadingText || children}</span>
         </span>
       ) : (
-        <span className="flex items-center gap-2">
-          {icon && <span className="flex-shrink-0">{icon}</span>}
-          <span>{children}</span>
+        <span className="inline-flex items-center justify-center gap-2 whitespace-nowrap">
+          {icon && <span className="shrink-0 inline-flex items-center">{icon}</span>}
+          <span className="inline-flex items-center justify-center gap-2">{children}</span>
         </span>
       )}
     </button>
