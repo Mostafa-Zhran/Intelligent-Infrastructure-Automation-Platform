@@ -2,33 +2,35 @@
 const authService = require('./auth.service');
 const asyncHandler = require('../../utils/asyncHandler');
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const accessCookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     path: '/',
     maxAge: 15 * 60 * 1000,
 };
 
 const refreshCookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     path: '/api/v1/auth',
     maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
 const clearAccessCookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     path: '/',
 };
 
 const clearRefreshCookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     path: '/api/v1/auth',
 };
 
@@ -57,6 +59,7 @@ const signIn = asyncHandler(async (req, res) => {
         success: true,
         data: {
             user: result.user,
+            accessToken: result.accessToken,
         },
     });
 });

@@ -4,7 +4,11 @@ const asyncHandler = require('../utils/asyncHandler');
 require('dotenv').config();
 
 const authenticate = asyncHandler(async (req, res, next) => {
-    const accessToken = req.cookies?.accessToken;
+    let accessToken = req.cookies?.accessToken;
+
+    if (!accessToken && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+        accessToken = req.headers.authorization.split(' ')[1];
+    }
 
     if (!accessToken) {
         throw new ApiError(401, 'Authentication required');
