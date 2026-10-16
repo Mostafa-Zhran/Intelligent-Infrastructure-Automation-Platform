@@ -6,13 +6,15 @@ export type PageId =
   | 'profile' 
   | 'no-access';
 
+export type PlatformRole = 'USER' | 'ADMIN';
+
 export interface UserProfile {
   id: string;
   fullName: string;
   email: string;
   avatarInitials: string;
   isVerified: boolean;
-  role: 'USER' | 'ADMIN' | string;
+  role: PlatformRole | string;
   status?: string;
 }
 

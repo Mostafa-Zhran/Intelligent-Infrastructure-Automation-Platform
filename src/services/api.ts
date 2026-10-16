@@ -1,8 +1,10 @@
+export type PlatformRole = 'USER' | 'ADMIN';
+
 export interface ApiUser {
   id: string;
   name: string;
   email: string;
-  platform_role: 'VIEWER' | 'OPERATOR' | 'ADMIN' | string;
+  platform_role: PlatformRole;
   status: string;
 }
 
