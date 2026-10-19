@@ -3,44 +3,53 @@ import React from 'react';
 export const BackgroundEffects: React.FC = () => {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 select-none" aria-hidden="true">
-      {/* 1. Base dark void background */}
+      {/* 1. Base dark void */}
       <div className="absolute inset-0 bg-[#07070D]" />
 
-      {/* 2. Layered Engineering Blueprint Grid */}
-      <div className="absolute inset-0 bg-engineering-grid opacity-75" />
+      {/* 2. Engineering blueprint grid */}
+      <div className="absolute inset-0 bg-engineering-grid opacity-80" />
 
-      {/* 3. Crosshair coordinate matrix */}
-      <div className="absolute inset-0 bg-crosshair-pattern opacity-60" />
+      {/* 3. Crosshair dot matrix */}
+      <div className="absolute inset-0 bg-crosshair-pattern opacity-55" />
 
-      {/* 4. Subtle Animated Radar Beam Sweep Line */}
-      <div className="absolute inset-x-0 h-40 bg-gradient-to-b from-transparent via-cyan-500/[0.04] to-transparent radar-sweep-beam pointer-events-none" />
+      {/* 4. Animated radar sweep beam */}
+      <div className="absolute inset-x-0 h-36 bg-gradient-to-b from-transparent via-cyan-500/[0.05] to-transparent radar-sweep-beam pointer-events-none" />
 
-      {/* 5. Restrained Violet Glow (Top-left & brand zone) */}
+      {/* 5. Violet nebula — top-left, animated drift */}
       <div
-        className="absolute -top-[10%] left-[5%] w-[650px] h-[650px] rounded-full blur-[150px] opacity-25 bg-gradient-to-br from-violet-600 via-indigo-700 to-transparent"
+        className="absolute -top-[15%] -left-[5%] w-[700px] h-[700px] rounded-full blur-[160px] animate-glow-drift animate-glow-pulse"
+        style={{ background: 'radial-gradient(circle, rgba(109,40,217,0.32) 0%, rgba(99,102,241,0.18) 40%, transparent 75%)' }}
       />
 
-      {/* 6. Restrained Cyan Glow (Bottom-right & telemetry zone) */}
+      {/* 6. Cyan nebula — bottom-right, opposite drift phase */}
       <div
-        className="absolute -bottom-[10%] right-[5%] w-[700px] h-[700px] rounded-full blur-[170px] opacity-20 bg-gradient-to-tl from-cyan-500 via-blue-700 to-transparent"
+        className="absolute -bottom-[15%] -right-[5%] w-[750px] h-[750px] rounded-full blur-[180px] animate-glow-pulse delay-300"
+        style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.22) 0%, rgba(56,189,248,0.12) 40%, transparent 75%)', animationDelay: '2s' }}
       />
 
-      {/* 7. Center Ambient Indigo Pulse */}
+      {/* 7. Center indigo ambient fill — subtle depth */}
       <div
-        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[450px] rounded-full blur-[180px] opacity-15 bg-indigo-600"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[500px] rounded-full blur-[200px] opacity-12"
+        style={{ background: 'radial-gradient(ellipse, rgba(99,102,241,0.25) 0%, transparent 70%)' }}
       />
 
-      {/* 8. Technical grid coordinates watermark (DevOps Command Center aesthetic) */}
-      <div className="absolute top-20 left-6 hidden xl:block font-mono text-[9px] text-white/15 tracking-widest uppercase">
+      {/* 8. Top specular highlight — edge catch along very top */}
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/20 to-cyan-400/20" />
+
+      {/* 9. Engineering coordinate watermarks */}
+      <div className="absolute bottom-20 right-8 hidden xl:block font-mono text-[9px] text-white/10 tracking-widest uppercase text-right leading-relaxed">
+        ZONE: CLOUD-EAST-01<br />
+        REGISTRY: K8S-PROD-STABLE<br />
+        CLUSTER: CTRL-PLANE-v1.31
       </div>
-      <div className="absolute bottom-16 right-6 hidden xl:block font-mono text-[9px] text-white/15 tracking-widest uppercase text-right">
-        ZONE: CLOUD-EAST-01 // REGISTRY: K8S-PROD-STABLE
-      </div>
-      <div className="absolute top-20 right-6 hidden xl:block font-mono text-[9px] text-cyan-400/20 tracking-widest uppercase text-right">
+      <div className="absolute bottom-20 left-8 hidden xl:block font-mono text-[9px] text-cyan-400/15 tracking-widest uppercase leading-relaxed">
+        PIPELINE: CI-08F2A<br />
+        STATUS: ALL-SYSTEMS-NOMINAL<br />
+        UPTIME: 99.99%
       </div>
 
-      {/* 9. Radial Vignette Frame for smooth focus on cards */}
-      <div className="absolute inset-0 shadow-[inset_0_0_140px_rgba(7,7,13,0.85)]" />
+      {/* 10. Radial vignette — focus toward center */}
+      <div className="absolute inset-0 shadow-[inset_0_0_160px_rgba(7,7,13,0.9)]" />
     </div>
   );
 };

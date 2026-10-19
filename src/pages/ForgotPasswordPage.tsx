@@ -44,7 +44,7 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto px-4 py-12">
+    <div className="w-full max-w-md mx-auto px-4 py-12 animate-slideUpFade">
       <GlassCard glow="violet" size="lg" className="p-6 sm:p-8">
         {!isSubmitted ? (
           <>
@@ -53,7 +53,8 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('signin')}
-                className="inline-flex items-center gap-1.5 text-xs text-[#A1A1B5] hover:text-white transition-all group focus:outline-none"
+                className="inline-flex items-center gap-1.5 text-xs text-[#A1A1B5] hover:text-white transition-all py-1.5 px-2.5 rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
               >
                 <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
                 <span>Return to sign in</span>
@@ -62,15 +63,16 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({
 
             {/* Header */}
             <div className="text-center mb-6">
-              <div className="mx-auto w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-500 p-[1px] shadow-lg shadow-violet-900/40 mb-3 flex items-center justify-center">
-                <div className="w-full h-full bg-[#0E0E18] rounded-[15px] flex items-center justify-center">
-                  <KeyRound className="w-6 h-6 text-violet-400" />
-                </div>
+              <div
+                className="mx-auto w-12 h-12 rounded-2xl mb-4 flex items-center justify-center shadow-lg"
+                style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.9) 0%, rgba(67,56,202,0.85) 100%)', border: '1px solid rgba(139,92,246,0.4)', boxShadow: '0 8px 24px -6px rgba(124,58,237,0.5), inset 0 1px 0 rgba(255,255,255,0.15)' }}
+              >
+                <KeyRound className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold tracking-tight text-white">
+              <h2 className="text-2xl font-extrabold tracking-tight text-white">
                 Forgot password?
               </h2>
-              <p className="text-sm text-[#A1A1B5] mt-1.5 max-w-xs mx-auto">
+              <p className="text-sm text-[#C4C4D4] mt-1.5 max-w-xs mx-auto">
                 Enter your registered email and we will send you a reset link.
               </p>
             </div>
@@ -104,12 +106,12 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({
             </form>
 
             <div className="mt-6 pt-5 border-t border-white/10 text-center">
-              <p className="text-xs text-[#A1A1B5]">
+              <p className="text-xs text-gray-300">
                 Remember your password?{' '}
                 <button
                   type="button"
                   onClick={() => onNavigate('signin')}
-                  className="font-medium text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1 group focus:outline-none focus:underline"
+                  className="font-medium text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1 py-1 px-1.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
                 >
                   <span>Return to Sign in</span>
                   <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />

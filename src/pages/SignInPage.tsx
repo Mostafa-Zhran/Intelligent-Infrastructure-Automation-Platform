@@ -60,21 +60,16 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      {/* Split screen desktop layout, stacked on mobile */}
+      {/* Split screen desktop layout, mobile prioritizes sign-in form on top */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-        {/* Left-side brand panel */}
-        <div className="lg:col-span-7 h-full flex items-center">
-          <PipelineVisual />
-        </div>
-
-        {/* Right-side sign-in card */}
-        <div className="lg:col-span-5 w-full flex justify-center">
+        {/* Right-side sign-in card (order-1 on mobile so login is immediately accessible, order-2 on desktop) */}
+        <div className="order-1 lg:order-2 lg:col-span-5 w-full flex justify-center">
           <GlassCard glow="violet" size="lg" className="w-full max-w-md p-6 sm:p-8">
             <div className="mb-6">
               <h2 className="text-2xl font-bold tracking-tight text-white">
                 Sign in
               </h2>
-              <p className="text-sm text-[#A1A1B5] mt-1">
+              <p className="text-sm text-gray-300 mt-1">
                 Welcome back. Enter your workspace credentials.
               </p>
             </div>
@@ -82,13 +77,13 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             {/* Error State Banner */}
             {authError && (
               <div 
-                className="mb-5 p-3.5 rounded-xl bg-red-950/50 border border-red-500/40 text-xs text-red-200 flex items-start gap-2.5 animate-fadeIn"
+                className="mb-5 p-3.5 rounded-xl bg-red-950/60 border border-red-500/40 text-xs text-red-200 flex items-start gap-2.5 animate-fadeIn"
                 role="alert"
               >
                 <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
                 <div>
-                  <strong className="font-semibold block text-red-300">Authentication failed</strong>
-                  <span className="text-red-300/90 leading-tight block mt-0.5">{authError}</span>
+                  <strong className="font-semibold block text-red-200">Authentication failed</strong>
+                  <span className="text-red-300 leading-tight block mt-0.5">{authError}</span>
                 </div>
               </div>
             )}
@@ -126,7 +121,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   <button
                     type="button"
                     onClick={() => onNavigate('forgot-password')}
-                    className="text-xs text-violet-400 hover:text-violet-300 transition-colors focus:outline-none focus:underline"
+                    className="text-xs text-violet-300 hover:text-violet-200 py-1 px-1 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
                   >
                     Forgot password?
                   </button>
@@ -147,11 +142,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
             {/* Bottom link: No platform account? Sign up */}
             <div className="mt-6 pt-5 border-t border-white/10 text-center">
-              <p className="text-xs text-[#A1A1B5]">
+              <p className="text-xs text-gray-300">
                 No platform account?{' '}
                 <button
+                  type="button"
                   onClick={() => onNavigate('signup')}
-                  className="font-medium text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1 focus:outline-none focus:underline"
+                  className="font-medium text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1 py-1 px-1.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
                 >
                   <span>Sign up</span>
                   <ArrowRight className="w-3 h-3" />
@@ -160,11 +156,16 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             </div>
 
             {/* Security label: Protected by Enterprise MFA IAM Policies */}
-            <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-[#A1A1B5]/70">
-              <Shield className="w-3 h-3 text-emerald-400/80" />
+            <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-gray-400">
+              <Shield className="w-3.5 h-3.5 text-emerald-400" />
               <span>Protected by Enterprise MFA IAM Policies</span>
             </div>
           </GlassCard>
+        </div>
+
+        {/* Left-side brand panel (order-2 on mobile, order-1 on desktop) */}
+        <div className="order-2 lg:order-1 lg:col-span-7 h-full flex items-center">
+          <PipelineVisual />
         </div>
       </div>
     </div>

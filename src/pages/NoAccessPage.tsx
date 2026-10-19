@@ -16,47 +16,48 @@ export const NoAccessPage: React.FC<NoAccessPageProps> = ({
   onSignOut,
 }) => {
   return (
-    <div className="w-full max-w-lg mx-auto px-4 py-16">
-      <GlassCard glow="none" size="lg" className="p-6 sm:p-8 text-center border-red-500/30">
+    <div className="w-full max-w-lg mx-auto px-4 py-16 animate-slideUpFade">
+      <GlassCard glow="none" size="lg" className="p-6 sm:p-8 text-center" style={{ border: '1px solid rgba(239,68,68,0.25)' }}>
         {/* Shield / lock icon */}
-        <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-600/30 via-red-500/20 to-amber-500/20 border border-red-500/40 p-[1px] shadow-2xl shadow-red-950/70 mb-5 flex items-center justify-center">
-          <div className="w-full h-full bg-[#0E0E18] rounded-[15px] flex items-center justify-center">
-            <ShieldAlert className="w-8 h-8 text-red-400" />
-          </div>
+        <div
+          className="mx-auto w-14 h-14 rounded-2xl shadow-xl mb-5 flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg, rgba(153,27,27,0.9) 0%, rgba(127,29,29,0.85) 100%)', border: '1px solid rgba(239,68,68,0.35)', boxShadow: '0 8px 24px -6px rgba(239,68,68,0.35)' }}
+        >
+          <ShieldAlert className="w-7 h-7 text-red-300" />
         </div>
 
         {/* Heading & Text */}
         <div className="space-y-2 mb-6">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-950/50 border border-red-500/30 text-[11px] font-mono text-red-300">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            Access Restricted
+          </h1>
+
+          <div className="flex items-center justify-center gap-1.5 text-[11px] font-mono text-red-300 tabular-nums">
             <Lock className="w-3 h-3 text-red-400" />
             <span>HTTP 403 · FORBIDDEN</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-            No access
-          </h1>
-
-          <p className="text-sm text-[#A1A1B5] max-w-md mx-auto leading-relaxed">
-            You don’t have permission to view this page. Ask an admin if you need a different role.
+          <p className="text-sm text-gray-300 max-w-md mx-auto leading-relaxed pt-1">
+            You don’t have permission to view this page. Ask an administrator if your account requires elevated privileges.
           </p>
         </div>
 
-        {/* User context row: name@email.com · Role: viewer */}
-        <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 mb-6 flex items-center justify-center gap-2 text-xs font-mono">
+        {/* User context strip */}
+        <div className="py-2.5 px-4 rounded-xl bg-white/[0.04] border border-white/10 mb-5 flex flex-wrap items-center justify-center gap-2 text-xs font-mono">
           <span className="text-gray-300 truncate max-w-[200px] sm:max-w-none">{user.email}</span>
-          <span className="text-white/30">·</span>
+          <span className="text-white/30" aria-hidden="true">·</span>
           <span className="text-amber-400 font-semibold uppercase">
             Role: {user.role}
           </span>
         </div>
 
-        {/* Audit Context Details */}
-        <div className="p-3 bg-red-950/20 border border-red-500/20 rounded-xl text-left text-xs space-y-1.5 text-red-300 mb-6">
+        {/* Policy Context Details */}
+        <div className="p-3.5 bg-red-950/30 border border-red-500/25 rounded-xl text-left text-xs space-y-1.5 text-red-200 mb-6">
           <div className="flex items-center gap-2 font-medium">
             <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
             <span>RBAC Policy Enforcement</span>
           </div>
-          <p className="text-[11px] text-[#A1A1B5] leading-normal pl-5.5">
+          <p className="text-[12px] text-gray-300 leading-normal pl-5.5">
             Resource requires elevated privilege <code className="text-red-300 bg-red-950/60 px-1 py-0.5 rounded font-mono">cluster:operator</code> or <code className="text-red-300 bg-red-950/60 px-1 py-0.5 rounded font-mono">cluster:admin</code>. Your account is bound to <code className="text-cyan-300 bg-cyan-950/60 px-1 py-0.5 rounded font-mono">viewer</code>.
           </p>
         </div>
@@ -85,8 +86,9 @@ export const NoAccessPage: React.FC<NoAccessPageProps> = ({
         {/* Return to profile shortcut */}
         <div className="mt-5 pt-4 border-t border-white/10 text-center">
           <button
+            type="button"
             onClick={() => onNavigate('profile')}
-            className="text-xs text-[#A1A1B5] hover:text-white transition-colors"
+            className="text-xs text-gray-300 hover:text-white py-1 px-2 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
           >
             Return to Account Profile →
           </button>

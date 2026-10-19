@@ -34,7 +34,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
         <button
           type="button"
           onClick={toggleVisibility}
-          className="text-[#A1A1B5] hover:text-white transition-colors p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+          className="text-gray-400 hover:text-white transition-colors w-9 h-9 flex items-center justify-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
           aria-label={showPassword ? `Hide ${label}` : `Show ${label}`}
           title={showPassword ? "Hide password" : "Show password"}
         >
