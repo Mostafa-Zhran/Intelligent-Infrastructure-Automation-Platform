@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import * as THREE from 'three';
 import { Sparkles, X, Activity, ArrowRight, ShieldCheck } from 'lucide-react';
 import { PageId } from '../../types';
@@ -98,6 +99,24 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
 
   // Store interactive mesh references for raycasting
   const interactiveMeshesRef = useRef<Map<THREE.Object3D, NodeInfo>>(new Map());
+
+  // Close modal on Escape key and prevent background body scroll when open
+  useEffect(() => {
+    if (!selectedNode) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedNode(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [selectedNode]);
 
   useEffect(() => {
     // Check reduced motion preference
@@ -602,112 +621,125 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
         </div>
       )}
 
-      {/* ── Center / Modal: Selected Node Detailed Inspection Card ────── */}
-      {selectedNode && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fadeIn">
+      {/* ── Center / Modal: Selected Node Detailed Inspection Card (Rendered via Portal) ────── */}
+      {selectedNode &&
+        createPortal(
           <div
-            className="w-full max-w-md p-6 sm:p-7 rounded-3xl border shadow-2xl relative animate-scaleIn"
-            style={{
-              background: 'rgba(12, 12, 22, 0.96)',
-              borderColor: `${selectedNode.color}60`,
-              boxShadow: `0 24px 64px -16px rgba(0,0,0,0.9), 0 0 32px -8px ${selectedNode.color}50`,
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="node-modal-title"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelectedNode(null);
             }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-[#07070D]/85 backdrop-blur-xl animate-fadeIn"
           >
-            {/* Top specular */}
             <div
-              className="absolute inset-x-0 top-0 h-[2px] rounded-t-3xl"
-              style={{ background: `linear-gradient(90deg, transparent, ${selectedNode.color}, transparent)` }}
-            />
-
-            {/* Close button */}
-            <button
-              type="button"
-              onClick={() => setSelectedNode(null)}
-              className="absolute top-4 right-4 w-9 h-9 rounded-xl flex items-center justify-center text-white/50 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-              aria-label="Close details"
+              className="w-full max-w-md sm:max-w-lg p-6 sm:p-8 rounded-3xl border shadow-2xl relative animate-scaleIn"
+              style={{
+                background: 'linear-gradient(180deg, #121222 0%, #0B0B14 100%)',
+                borderColor: `${selectedNode.color}70`,
+                boxShadow: `0 24px 64px -16px rgba(0,0,0,0.9), 0 0 40px -10px ${selectedNode.color}60`,
+              }}
             >
-              <X className="w-4 h-4" />
-            </button>
-
-            {/* Header */}
-            <div className="flex items-start gap-4 mb-5">
+              {/* Top specular glow line */}
               <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0"
-                style={{
-                  background: `${selectedNode.color}25`,
-                  border: `1px solid ${selectedNode.color}70`,
-                  color: selectedNode.color,
-                }}
-              >
-                <Activity className="w-6 h-6" />
-              </div>
-              <div className="min-w-0 pr-6">
-                <span
-                  className="text-[10px] font-mono uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full inline-block mb-1"
-                  style={{
-                    color: selectedNode.color,
-                    background: `${selectedNode.color}15`,
-                    border: `1px solid ${selectedNode.color}35`,
-                  }}
-                >
-                  {selectedNode.role}
-                </span>
-                <h3 className="text-xl font-bold text-white tracking-tight">
-                  {selectedNode.name}
-                </h3>
-              </div>
-            </div>
+                className="absolute inset-x-0 top-0 h-[2px] rounded-t-3xl"
+                style={{ background: `linear-gradient(90deg, transparent, ${selectedNode.color}, transparent)` }}
+              />
 
-            {/* Description */}
-            <p className="text-sm text-[#C4C4D4] leading-relaxed mb-5">
-              {selectedNode.description}
-            </p>
-
-            {/* Technical Metrics Panel */}
-            <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 space-y-2 mb-6 text-xs font-mono">
-              <div className="flex items-center justify-between">
-                <span className="text-[#A1A1B5]">Active Metric:</span>
-                <span className="text-white font-semibold">{selectedNode.metric}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#A1A1B5]">Architecture:</span>
-                <span className="text-cyan-300 font-semibold">{selectedNode.tech}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#A1A1B5]">Status:</span>
-                <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  {selectedNode.pipelineState}
-                </span>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => onNavigate('signin')}
-                className="flex-1 min-h-[44px] px-5 py-2.5 rounded-xl text-white font-semibold text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 hover:brightness-110"
-                style={{
-                  background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
-                  border: '1px solid rgba(139,92,246,0.5)',
-                }}
-              >
-                <span>Launch in Console</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
+              {/* Close button */}
               <button
                 type="button"
                 onClick={() => setSelectedNode(null)}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-300 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 transition-colors"
+                className="absolute top-4 right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white/50 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                aria-label="Close details"
               >
-                Dismiss
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
+
+              {/* Header */}
+              <div className="flex items-start gap-4 mb-5">
+                <div
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0"
+                  style={{
+                    background: `${selectedNode.color}25`,
+                    border: `1px solid ${selectedNode.color}70`,
+                    color: selectedNode.color,
+                  }}
+                >
+                  <Activity className="w-6 h-6 sm:w-7 sm:h-7" />
+                </div>
+                <div className="min-w-0 pr-6">
+                  <span
+                    className="text-[10px] sm:text-[11px] font-mono uppercase tracking-wider font-semibold px-2.5 py-0.5 rounded-full inline-block mb-1.5"
+                    style={{
+                      color: selectedNode.color,
+                      background: `${selectedNode.color}20`,
+                      border: `1px solid ${selectedNode.color}45`,
+                    }}
+                  >
+                    {selectedNode.role}
+                  </span>
+                  <h3 id="node-modal-title" className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                    {selectedNode.name}
+                  </h3>
+                </div>
+              </div>
+
+              {/* Description */}
+              <p className="text-sm sm:text-base text-[#D4D4E8] leading-relaxed mb-6">
+                {selectedNode.description}
+              </p>
+
+              {/* Technical Metrics Panel */}
+              <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 space-y-2.5 mb-6 text-xs sm:text-sm font-mono">
+                <div className="flex items-center justify-between">
+                  <span className="text-[#A1A1B5]">Active Metric:</span>
+                  <span className="text-white font-semibold">{selectedNode.metric}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#A1A1B5]">Architecture:</span>
+                  <span className="text-cyan-300 font-semibold">{selectedNode.tech}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#A1A1B5]">Pipeline Status:</span>
+                  <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4" />
+                    {selectedNode.pipelineState}
+                  </span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedNode(null);
+                    onNavigate('signin');
+                  }}
+                  className="flex-1 min-h-[46px] px-5 py-2.5 rounded-xl text-white font-semibold text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 hover:brightness-110"
+                  style={{
+                    background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
+                    border: '1px solid rgba(139,92,246,0.5)',
+                  }}
+                >
+                  <span>Launch in Console</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedNode(null)}
+                  className="px-5 py-2.5 min-h-[46px] rounded-xl text-sm font-medium text-gray-300 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
