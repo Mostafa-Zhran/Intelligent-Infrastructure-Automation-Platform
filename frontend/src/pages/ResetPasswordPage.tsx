@@ -73,7 +73,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto px-4 py-12">
+    <div className="w-full max-w-md mx-auto px-4 py-12 animate-slideUpFade">
       <GlassCard glow="cyan" size="lg" className="p-6 sm:p-8">
         {!isSuccess ? (
           <>
@@ -82,7 +82,8 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('signin')}
-                className="inline-flex items-center gap-1.5 text-xs text-[#A1A1B5] hover:text-white transition-all group focus:outline-none"
+                className="inline-flex items-center gap-1.5 text-xs text-[#A1A1B5] hover:text-white transition-all py-1.5 px-2.5 rounded-lg group focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
               >
                 <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
                 <span>Return to sign in</span>
@@ -91,15 +92,16 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
 
             {/* Header */}
             <div className="text-center mb-6">
-              <div className="mx-auto w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-500 p-[1px] shadow-lg shadow-violet-900/40 mb-3 flex items-center justify-center">
-                <div className="w-full h-full bg-[#0E0E18] rounded-[15px] flex items-center justify-center">
-                  <Lock className="w-6 h-6 text-cyan-400" />
-                </div>
+              <div
+                className="mx-auto w-12 h-12 rounded-2xl mb-4 flex items-center justify-center shadow-lg"
+                style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.8) 0%, rgba(37,99,235,0.75) 100%)', border: '1px solid rgba(56,189,248,0.4)', boxShadow: '0 8px 24px -6px rgba(6,182,212,0.4), inset 0 1px 0 rgba(255,255,255,0.15)' }}
+              >
+                <Lock className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold tracking-tight text-white">
+              <h2 className="text-2xl font-extrabold tracking-tight text-white">
                 Set new password
               </h2>
-              <p className="text-sm text-[#A1A1B5] mt-1.5 max-w-xs mx-auto">
+              <p className="text-sm text-[#C4C4D4] mt-1.5 max-w-xs mx-auto">
                 Choose a strong password you have not used before.
               </p>
             </div>
@@ -113,13 +115,14 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
               )}
               {!new URLSearchParams(window.location.search).get('token') && (
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-[#A1A1B5]">Reset Security Token</label>
+                  <label htmlFor="reset-token-input" className="text-xs font-medium text-gray-300">Reset Security Token</label>
                   <input
+                    id="reset-token-input"
                     type="text"
                     placeholder="Enter token from email or logs"
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-[#0F0F1A] border border-white/10 rounded-xl text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/60"
+                    className="glass-input w-full text-white placeholder-gray-400 text-sm rounded-xl py-2.5 px-3.5"
                   />
                 </div>
               )}
@@ -180,12 +183,12 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
 
             {/* Footer Navigation */}
             <div className="mt-6 pt-5 border-t border-white/10 text-center space-y-2">
-              <p className="text-xs text-[#A1A1B5]">
+              <p className="text-xs text-gray-300">
                 Remember your password?{' '}
                 <button
                   type="button"
                   onClick={() => onNavigate('signin')}
-                  className="font-medium text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1 group focus:outline-none focus:underline"
+                  className="font-medium text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1 py-1 px-1.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
                 >
                   <span>Return to Sign in</span>
                   <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
@@ -195,7 +198,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
                 <button
                   type="button"
                   onClick={() => onNavigate('forgot-password')}
-                  className="text-xs text-violet-400 hover:text-violet-300 transition-colors focus:outline-none focus:underline"
+                  className="text-xs text-violet-300 hover:text-violet-200 py-1 px-1.5 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
                 >
                   Link invalid or expired? Request a new one
                 </button>

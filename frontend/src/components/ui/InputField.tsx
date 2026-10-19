@@ -20,7 +20,8 @@ export const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(({
   required,
   ...props
 }, ref) => {
-  const inputId = id || label.toLowerCase().replace(/\s+/g, '-');
+  const generatedId = React.useId();
+  const inputId = id || `input-${generatedId}`;
   const errorId = `${inputId}-error`;
   const helperId = `${inputId}-helper`;
 
@@ -29,15 +30,15 @@ export const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(({
       <div className="flex justify-between items-center">
         <label 
           htmlFor={inputId}
-          className="text-xs font-semibold uppercase tracking-wider text-gray-300"
+          className="text-xs font-semibold uppercase tracking-wider text-gray-200"
         >
-          {label} {required && <span className="text-violet-400">*</span>}
+          {label} {required && <span className="text-violet-400" aria-hidden="true">*</span>}
         </label>
       </div>
 
       <div className="relative">
         {icon && (
-          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A1A1B5] pointer-events-none flex items-center justify-center">
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none flex items-center justify-center">
             {icon}
           </div>
         )}
@@ -46,9 +47,10 @@ export const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(({
           ref={ref}
           id={inputId}
           aria-invalid={!!error}
+          aria-required={required}
           aria-describedby={error ? errorId : helperText ? helperId : undefined}
           required={required}
-          className={`glass-input w-full text-white placeholder-[#A1A1B5]/50 text-sm rounded-input py-2.5 
+          className={`glass-input w-full text-white placeholder-gray-400 text-sm rounded-xl py-2.5 
             ${icon ? 'pl-10' : 'pl-3.5'} 
             ${rightElement ? 'pr-11' : 'pr-3.5'}
             ${error ? '!border-red-500/70 focus:!ring-red-500/30' : ''}
@@ -57,7 +59,7 @@ export const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(({
         />
 
         {rightElement && (
-          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center">
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center">
             {rightElement}
           </div>
         )}
@@ -69,7 +71,7 @@ export const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(({
           <span>{error}</span>
         </div>
       ) : helperText ? (
-        <p id={helperId} className="text-xs text-[#A1A1B5] mt-0.5">
+        <p id={helperId} className="text-xs text-gray-400 mt-0.5">
           {helperText}
         </p>
       ) : null}

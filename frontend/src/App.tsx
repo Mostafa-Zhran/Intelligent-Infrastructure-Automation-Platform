@@ -286,7 +286,7 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content View with transition */}
-      <main className="flex-1 flex flex-col justify-center relative z-10 w-full animate-fadeIn">
+      <main className="flex-1 flex flex-col justify-center relative z-10 w-full animate-slideUpFade">
         {currentPage === 'signin' && (
           <SignInPage
             onNavigate={handleNavigate}
@@ -315,9 +315,16 @@ export const App: React.FC = () => {
 
         {currentPage === 'profile' && (
           isAuthChecking && !user ? (
-            <div className="flex flex-col items-center justify-center min-h-[45vh] text-center">
-              <div className="w-10 h-10 rounded-full border-2 border-violet-500/20 border-t-violet-500 animate-spin mb-4" />
-              <p className="text-gray-400 font-mono text-sm tracking-wide">Validating session...</p>
+            <div className="flex flex-col items-center justify-center min-h-[45vh] text-center gap-4">
+              <div className="relative w-12 h-12">
+                <div className="absolute inset-0 rounded-full border-2 border-violet-500/15" />
+                <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-violet-500 animate-spin" />
+                <div className="absolute inset-[4px] rounded-full border border-transparent border-t-cyan-400/50 animate-spin" style={{ animationDuration: '0.75s', animationDirection: 'reverse' }} />
+              </div>
+              <div>
+                <p className="text-[13px] text-white font-medium">Validating session</p>
+                <p className="text-[11px] text-[#A1A1B5] font-mono mt-0.5">Checking credentials…</p>
+              </div>
             </div>
           ) : isAuthenticated && user ? (
             <ProfilePage

@@ -123,63 +123,72 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   ];
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-slideUpFade">
 
       {/* ── Page Header ── */}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-violet-400 bg-violet-500/10 px-2.5 py-1 rounded-full border border-violet-500/20">
-                Account Management
-              </span>
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-white">Account Profile</h1>
-            <p className="text-sm text-[#A1A1B5] mt-1">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-[#A1A1B5] mb-1">Account Management</p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-white leading-tight">Account Profile</h1>
+            <p className="text-sm text-[#C4C4D4] mt-1">
               Manage your identity and credentials.
             </p>
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono">
+          <div
+            className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)' }}
+          >
             <Fingerprint className="w-3.5 h-3.5 text-cyan-400" />
             <span className="text-[#A1A1B5]">ID:</span>
-            <span className="text-white font-semibold">{user.id}</span>
+            <span className="text-white font-semibold tabular-nums">{user.id}</span>
           </div>
         </div>
       </div>
 
       {/* ── Identity Card ── */}
-      <div className="mb-6 rounded-2xl border border-white/10 bg-gradient-to-r from-violet-950/30 via-[#0D0D1A]/80 to-indigo-950/30 backdrop-blur-xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-        {/* Avatar */}
+      <div
+        className="mb-6 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-5"
+        style={{ background: 'rgba(13,13,22,0.85)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 16px 40px -8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07)' }}
+      >
+        {/* Avatar with gradient ring */}
         <div className="relative flex-shrink-0">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 p-[2px] shadow-lg shadow-violet-900/40">
-            <div className="w-full h-full bg-[#0A0A14] rounded-[14px] flex items-center justify-center text-xl font-bold text-white">
+          <div
+            className="p-[2px] rounded-2xl"
+            style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.9) 0%, rgba(34,211,238,0.7) 100%)' }}
+          >
+            <div
+              className="w-16 h-16 rounded-[14px] flex items-center justify-center text-xl font-extrabold text-white"
+              style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.8) 0%, rgba(67,56,202,0.7) 100%)' }}
+            >
               {user.avatarInitials}
             </div>
           </div>
-          <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-emerald-500 border-2 border-[#07070D] flex items-center justify-center shadow-md">
+          <div
+            className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full border-2 border-[#07070D] flex items-center justify-center shadow-md"
+            style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}
+          >
             <BadgeCheck className="w-3.5 h-3.5 text-white" />
           </div>
         </div>
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 mb-0.5">
-            <h2 className="text-lg font-bold text-white truncate">{user.fullName}</h2>
-            <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30 uppercase tracking-wider flex-shrink-0">
-              {user.role}
-            </span>
+          <div className="flex flex-wrap items-center gap-2.5 mb-1">
+            <h2 className="text-lg font-extrabold text-white tracking-tight truncate">{user.fullName}</h2>
+            <span className="badge badge-violet uppercase">{user.role}</span>
           </div>
-          <p className="text-xs text-[#A1A1B5] truncate">{user.email}</p>
+          <p className="text-[13px] text-[#A1A1B5] truncate">{user.email}</p>
           <div className="flex flex-wrap items-center gap-3 mt-2">
             <span className="flex items-center gap-1.5 text-xs text-[#A1A1B5]">
               <Shield className="w-3.5 h-3.5 text-violet-400" />
-              Role: <strong className="text-white font-mono">{user.role}</strong>
+              Role: <strong className="text-white font-mono text-xs">{user.role}</strong>
             </span>
             {user.status && (
               <span className="flex items-center gap-1.5 text-xs text-[#A1A1B5]">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                Status: <strong className="text-emerald-400 font-mono">{user.status}</strong>
+                <span className="status-dot-pulse w-2 h-2 bg-emerald-400 inline-block" />
+                Status: <strong className="text-emerald-400 font-mono text-xs">{user.status}</strong>
               </span>
             )}
           </div>
@@ -187,13 +196,18 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
         {/* Right actions */}
         <div className="flex flex-col gap-2 flex-shrink-0">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-400 bg-emerald-950/40 px-3 py-1.5 rounded-lg border border-emerald-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <div
+            className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 px-3 py-1.5 rounded-lg"
+            style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}
+          >
+            <span className="status-dot-pulse w-1.5 h-1.5 bg-emerald-400 inline-block" />
             Session Active
           </div>
           <button
-            onClick={() => onShowToast('info', 'Photo Upload', 'Photo upload dialog triggered')}
-            className="flex items-center gap-1.5 text-[11px] font-medium text-[#A1A1B5] hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/10 transition-colors"
+            type="button"
+            onClick={() => onShowToast('info', 'Photo Upload', 'Photo upload feature coming soon')}
+            className="flex items-center gap-1.5 text-[11px] font-medium text-[#C4C4D4] hover:text-white px-3 py-1.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
           >
             <Camera className="w-3.5 h-3.5" />
             Change photo
@@ -202,18 +216,21 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       </div>
 
       {/* ── Tab Navigation ── */}
-      <div className="mb-6 flex gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
+      <div role="tablist" aria-label="Profile Sections" className="mb-6 flex gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl text-xs font-medium transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl text-xs font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
               activeTab === tab.id
-                ? 'bg-gradient-to-r from-violet-600/40 to-indigo-600/30 text-white border border-violet-500/40 shadow-md'
-                : 'text-[#A1A1B5] hover:text-white hover:bg-white/5'
+                ? 'bg-violet-900/50 text-white border border-violet-500/40 shadow-sm'
+                : 'text-gray-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            <span className={activeTab === tab.id ? 'text-violet-400' : 'text-gray-500'}>
+            <span className={activeTab === tab.id ? 'text-violet-300' : 'text-gray-400'}>
               {tab.icon}
             </span>
             <span>{tab.label}</span>
@@ -250,7 +267,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               {/* Email with verified badge */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-gray-300">
+                  <label htmlFor="profile-email" className="text-xs font-semibold uppercase tracking-wider text-gray-200">
                     Work Email
                   </label>
                   <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/30">
@@ -259,14 +276,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   </span>
                 </div>
                 <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A1A1B5] pointer-events-none">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                     <Mail className="w-4 h-4" />
                   </div>
                   <input
+                    id="profile-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className={`glass-input w-full text-white placeholder-[#A1A1B5]/50 text-sm rounded-input py-2.5 pl-10 pr-3.5 ${
+                    aria-invalid={!!profileErrors.email}
+                    className={`glass-input w-full text-white placeholder-gray-400 text-sm rounded-xl py-2.5 pl-10 pr-3.5 ${
                       profileErrors.email ? '!border-red-500/70' : ''
                     }`}
                   />
@@ -312,7 +331,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
             {/* Save footer */}
             <div className="pt-2 flex items-center justify-between border-t border-white/10">
-              <p className="text-[11px] text-[#A1A1B5]">Changes apply immediately to your workspace identity.</p>
+              <p className="text-[11px] text-gray-400">Changes apply immediately to your workspace identity.</p>
               <Button type="submit" isLoading={isSavingProfile} loadingText="Saving…">
                 Save changes
               </Button>
@@ -330,7 +349,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
             <div>
               <h3 className="text-base font-semibold text-white">Change Password</h3>
-              <p className="text-xs text-[#A1A1B5] mt-0.5">Use a strong, unique password for your account.</p>
+              <p className="text-xs text-gray-300 mt-0.5">Use a strong, unique password for your account.</p>
             </div>
           </div>
 
@@ -375,7 +394,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
 
             <div className="pt-2 flex items-center justify-between border-t border-white/10">
-              <p className="text-[11px] text-[#A1A1B5]">You'll be asked to sign in again after updating.</p>
+              <p className="text-[11px] text-gray-400">You'll be asked to sign in again after updating.</p>
               <Button
                 type="submit"
                 variant="primary"

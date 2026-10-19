@@ -7,36 +7,65 @@ interface ToastProps {
   onClose: () => void;
 }
 
+const toastConfig = {
+  success: {
+    icon: <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: '#34D399' }} />,
+    bg: 'rgba(5,46,22,0.92)',
+    border: 'rgba(16,185,129,0.3)',
+    barColor: '#10B981',
+    titleColor: '#6EE7B7',
+  },
+  error: {
+    icon: <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: '#F87171' }} />,
+    bg: 'rgba(69,10,10,0.92)',
+    border: 'rgba(239,68,68,0.35)',
+    barColor: '#EF4444',
+    titleColor: '#FCA5A5',
+  },
+  info: {
+    icon: <Info className="w-4 h-4 flex-shrink-0" style={{ color: '#38BDF8' }} />,
+    bg: 'rgba(7,36,55,0.92)',
+    border: 'rgba(56,189,248,0.3)',
+    barColor: '#38BDF8',
+    titleColor: '#7DD3FC',
+  },
+};
+
 export const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
   if (!toast) return null;
 
-  const icons = {
-    success: <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />,
-    error: <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />,
-    info: <Info className="w-4 h-4 text-cyan-400 flex-shrink-0" />,
-  };
-
-  const borders = {
-    success: 'border-emerald-500/30 bg-emerald-950/80 shadow-emerald-950/50',
-    error: 'border-red-500/30 bg-red-950/80 shadow-red-950/50',
-    info: 'border-cyan-500/30 bg-cyan-950/80 shadow-cyan-950/50',
-  };
+  const config = toastConfig[toast.type];
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full animate-slideUp">
-      <div className={`p-4 rounded-xl border backdrop-blur-xl shadow-2xl flex items-start gap-3 ${borders[toast.type]}`}>
-        {icons[toast.type]}
-        <div className="flex-1 min-w-0">
-          <h4 className="text-xs font-semibold text-white tracking-wide">{toast.title}</h4>
-          <p className="text-xs text-gray-300 mt-0.5">{toast.message}</p>
+    <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full animate-slideUpFade" role="alert" aria-live="polite">
+      <div
+        className="rounded-2xl overflow-hidden shadow-2xl"
+        style={{
+          background: config.bg,
+          backdropFilter: 'blur(20px)',
+          border: `1px solid ${config.border}`,
+          boxShadow: `0 20px 48px -12px rgba(0,0,0,0.8), 0 0 0 1px ${config.border}, inset 0 1px 0 rgba(255,255,255,0.07)`,
+        }}
+      >
+        {/* Colored top bar */}
+        <div className="h-[3px] w-full" style={{ background: `linear-gradient(90deg, ${config.barColor}, transparent)` }} />
+
+        <div className="p-4 flex items-start gap-3">
+          <div className="mt-0.5">{config.icon}</div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-[13px] font-semibold tracking-wide" style={{ color: config.titleColor }}>
+              {toast.title}
+            </h4>
+            <p className="text-[12px] text-[#C4C4D4] mt-0.5 leading-relaxed">{toast.message}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white/40 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
+            aria-label="Close notification"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
-        <button
-          onClick={onClose}
-          className="text-white/50 hover:text-white p-1 rounded-md transition-colors"
-          aria-label="Close notification"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
       </div>
     </div>
   );
