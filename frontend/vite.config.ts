@@ -9,6 +9,15 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     envPrefix: ['VITE_', 'Backend_', 'BACKEND_'],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            three: ['three'],
+          },
+        },
+      },
+    },
     server: {
       port: 5173,
       open: false,

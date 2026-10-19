@@ -1,310 +1,269 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   ArrowRight, Zap, CheckCircle2, ShieldCheck, RefreshCw,
-  Globe2, GitBranch, Box, Layers, Container, Cpu, Sparkles, ChevronRight
+  GitBranch, Box, Layers, Container, Cpu, Sparkles,
+  ChevronDown, Eye, Server, BarChart3, ChevronRight, Activity
 } from 'lucide-react';
 import { PageId } from '../types';
+import { InfrastructureScene3D } from '../components/3d/InfrastructureScene3D';
 
 interface LandingPageProps {
   onNavigate: (page: PageId) => void;
   isAuthenticated?: boolean;
 }
 
-const pipelineSteps = [
+const featuresData = [
   {
-    name: 'Git',
-    detail: 'main:8f9a2b',
-    icon: GitBranch,
-    color: '#FBBF24',
-    bg: 'rgba(251,191,36,0.1)',
-    border: 'rgba(251,191,36,0.35)',
-    glow: 'rgba(251,191,36,0.2)',
-    status: 'Synced',
-  },
-  {
-    name: 'Terraform',
-    detail: '14 to add',
+    id: 'infra-auto',
+    title: 'Infrastructure Automation',
+    subtitle: 'Declarative Cloud Topology',
+    desc: 'Automate complex multi-cloud VPCs, Kubernetes clusters, and storage fabrics with zero manual configuration. Continuous drift reconciliation ensures production always mirrors your Git repository state.',
     icon: Box,
+    badge: 'Terraform & OpenTofu',
+    badgeClass: 'badge-violet',
+    stat: '100% Declarative',
     color: '#A78BFA',
-    bg: 'rgba(139,92,246,0.1)',
-    border: 'rgba(139,92,246,0.35)',
-    glow: 'rgba(139,92,246,0.2)',
-    status: 'Planned',
   },
   {
-    name: 'Ansible',
-    detail: '4 plays ok',
+    id: 'cicd-mgmt',
+    title: 'CI/CD Pipeline Management',
+    subtitle: 'Hermetic Delivery Loops',
+    desc: 'Pre-configured, battle-tested pipeline stages execute parallelized tests, artifact caching, container signing, and multi-cloud rollouts with sub-minute execution speeds.',
     icon: Layers,
-    color: '#22D3EE',
-    bg: 'rgba(34,211,238,0.1)',
-    border: 'rgba(34,211,238,0.35)',
-    glow: 'rgba(34,211,238,0.2)',
-    status: 'Applied',
-  },
-  {
-    name: 'Docker',
-    detail: 'cache 99%',
-    icon: Container,
-    color: '#60A5FA',
-    bg: 'rgba(96,165,250,0.1)',
-    border: 'rgba(96,165,250,0.35)',
-    glow: 'rgba(96,165,250,0.2)',
-    status: 'Built',
-  },
-  {
-    name: 'Kubernetes',
-    detail: '12/12 pods',
-    icon: Cpu,
-    color: '#34D399',
-    bg: 'rgba(52,211,153,0.1)',
-    border: 'rgba(52,211,153,0.35)',
-    glow: 'rgba(52,211,153,0.2)',
-    status: 'Ready',
-  },
-];
-
-const features = [
-  {
-    title: 'Continuous Reconcile',
-    desc: 'Automatic drift detection and declarative sync across multi-cloud regions with zero latency overhead.',
-    icon: RefreshCw,
-    badge: 'Zero Drift',
+    badge: 'Automated Rails',
     badgeClass: 'badge-cyan',
-    stat: '99.99% sync',
-    statColor: '#22D3EE',
+    stat: '< 45s Execution',
+    color: '#38BDF8',
   },
   {
-    title: 'Secure Infrastructure',
-    desc: 'Automated IAM hardening, secret vault isolation, and least-privilege binding out of the box.',
+    id: 'sec-comp',
+    title: 'Security and Compliance',
+    subtitle: 'Zero-Trust Defense Fabric',
+    desc: 'Built-in automated IAM policy audits, runtime secret injection via HashiCorp Vault, vulnerability SBOM scans, and end-to-end mTLS encryption exceeding SOC2 Type II benchmarks.',
     icon: ShieldCheck,
-    badge: 'mTLS + OIDC',
+    badge: 'mTLS + Vault',
     badgeClass: 'badge-emerald',
     stat: 'SOC2 Type II',
-    statColor: '#34D399',
+    color: '#34D399',
   },
   {
-    title: 'Global Deployment',
-    desc: 'Instant blue/green orchestration with progressive canary rollouts and instant rollback triggers.',
-    icon: Globe2,
-    badge: 'Edge CDN',
-    badgeClass: 'badge-violet',
-    stat: '< 150ms rollout',
-    statColor: '#A78BFA',
-  },
-  {
-    title: 'Automated Verification',
-    desc: 'Automated syntax parsing, cost estimation, and compliance checks before every pipeline execution.',
-    icon: CheckCircle2,
-    badge: 'Policy as Code',
+    id: 'env-prov',
+    title: 'Environment Provisioning',
+    subtitle: 'Ephemeral Preview Stacks',
+    desc: 'Spin up on-demand staging and sandbox environments for every pull request with isolated network namespaces, realistic database seeding, and automated teardown triggers.',
+    icon: Server,
+    badge: 'Instant On-Demand',
     badgeClass: 'badge-amber',
-    stat: '100% audited',
-    statColor: '#FCD34D',
+    stat: '0 Waste Overhead',
+    color: '#FCD34D',
+  },
+  {
+    id: 'mon-obs',
+    title: 'Monitoring and Observability',
+    subtitle: 'Real-Time Edge Telemetry',
+    desc: 'Unified streaming telemetry integrating OpenTelemetry metrics, structured distributed tracing, and automated health checks that trigger canary rollbacks before outages occur.',
+    icon: BarChart3,
+    badge: 'OpenTelemetry',
+    badgeClass: 'badge-violet',
+    stat: '99.99% Availability',
+    color: '#C084FC',
   },
 ];
 
-const metrics = [
-  { label: 'Platform Availability SLA', value: '99.99%' },
-  { label: 'Median Pipeline Runtime', value: '< 45s' },
-  { label: 'Cloud Resources Synced', value: '14,000+' },
-  { label: 'Automated Checks per Run', value: '38' },
+const workflowSteps = [
+  {
+    number: '01',
+    title: 'Code Commit & Trigger',
+    desc: 'Developers push commits or open pull requests. Webhook triggers cryptographic identity verification.',
+    tech: 'Git · GitHub · GitLab',
+    icon: GitBranch,
+    accent: '#FBBF24',
+  },
+  {
+    number: '02',
+    title: 'Declarative IaC Plan',
+    desc: 'Terraform runs automated speculative plans, security compliance audits, and cloud cost calculations.',
+    tech: 'Terraform · Policy-as-Code',
+    icon: Box,
+    accent: '#A78BFA',
+  },
+  {
+    number: '03',
+    title: 'Hermetic Containerization',
+    desc: 'Multi-stage Docker BuildKit compiles microservice binaries, attaches SBOM, and signs artifacts.',
+    tech: 'Docker · BuildKit · Cosign',
+    icon: Container,
+    accent: '#38BDF8',
+  },
+  {
+    number: '04',
+    title: 'Automated Canary Rollout',
+    desc: 'Kubernetes ingress orchestrates progressive blue/green traffic migration with real-time SLA verification.',
+    tech: 'Kubernetes · Helm · Istio',
+    icon: Cpu,
+    accent: '#34D399',
+  },
 ];
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigate,
   isAuthenticated = false,
 }) => {
+  const featuresRef = useRef<HTMLDivElement>(null);
+
+  const scrollToFeatures = () => {
+    featuresRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-16 space-y-16 sm:space-y-24 animate-fadeIn">
-      {/* ── 1. Hero Section ────────────────────────────────────────── */}
-      <section className="text-center max-w-4xl mx-auto space-y-6 pt-4 sm:pt-8">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-violet-950/40 border border-violet-500/30 text-xs text-violet-300 shadow-sm animate-scaleIn">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="font-semibold tracking-wide uppercase font-mono text-[11px]">Intelligent Infrastructure Automation</span>
+    <div className="w-full relative overflow-hidden select-none animate-fadeIn">
+      {/* ── 1. Full-Width 3D Hero Scene ─────────────────────────────────── */}
+      <section className="relative w-full min-h-[92vh] flex flex-col justify-between pt-6 sm:pt-10">
+        {/* Background 3D Canvas */}
+        <div className="absolute inset-0 z-0">
+          <InfrastructureScene3D onNavigate={onNavigate} />
         </div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.15]">
-          Fill a form.{' '}
-          <span className="text-gradient-violet block sm:inline">
-            We run the pipeline.
-          </span>
-        </h1>
+        {/* Foreground Hero Content with backdrop scrim for maximum readability */}
+        <div className="relative z-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-8 sm:pt-14 pointer-events-none">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-950/50 backdrop-blur-xl border border-violet-500/35 text-xs text-violet-300 shadow-xl mb-6 pointer-events-auto animate-scaleIn">
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="font-semibold tracking-wide uppercase font-mono text-[11px]">
+              Intelligent DevOps & Cloud Infrastructure
+            </span>
+          </div>
 
-        <p className="text-base sm:text-lg lg:text-xl text-[#C4C4D4] max-w-2xl mx-auto leading-relaxed">
-          Deploy enterprise-grade cloud infrastructure with Terraform, Ansible, Jenkins, Docker, and Kubernetes through one unified, guided workflow.
-        </p>
+          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1] drop-shadow-2xl">
+            Fill a form.{' '}
+            <span className="text-gradient-violet block sm:inline">
+              We run the pipeline.
+            </span>
+          </h1>
 
-        {/* Primary Call-to-Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-4">
-          <button
-            type="button"
-            onClick={() => onNavigate(isAuthenticated ? 'profile' : 'signin')}
-            className="w-full sm:w-auto min-h-[48px] px-7 py-3 rounded-xl text-white font-semibold shadow-lg flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 group hover:brightness-110"
-            style={{
-              background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
-              border: '1px solid rgba(139,92,246,0.5)',
-              boxShadow: '0 8px 24px -4px rgba(124,58,237,0.5), inset 0 1px 0 rgba(255,255,255,0.2)',
-            }}
-          >
-            <span>{isAuthenticated ? 'Open Dashboard' : 'Sign in to Console'}</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </button>
+          <p className="mt-5 text-base sm:text-lg lg:text-xl text-[#D1D1E0] max-w-2xl mx-auto leading-relaxed drop-shadow-md">
+            Deploy enterprise-grade cloud environments with Terraform, Ansible, Docker, and Kubernetes through one unified 3D-orchestrated workflow.
+          </p>
 
-          {!isAuthenticated && (
+          {/* Interactive Hero CTAs */}
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 pointer-events-auto">
             <button
               type="button"
-              onClick={() => onNavigate('signup')}
-              className="w-full sm:w-auto min-h-[48px] px-6 py-3 rounded-xl text-gray-200 font-semibold bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/[0.12] border border-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-2"
+              onClick={() => onNavigate(isAuthenticated ? 'profile' : 'signin')}
+              className="w-full sm:w-auto min-h-[50px] px-8 py-3 rounded-xl text-white font-semibold text-base shadow-xl flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-95 group hover:brightness-110"
+              style={{
+                background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
+                border: '1px solid rgba(139,92,246,0.6)',
+                boxShadow: '0 8px 32px -4px rgba(124,58,237,0.6), inset 0 1px 0 rgba(255,255,255,0.25)',
+              }}
             >
-              <Zap className="w-4 h-4 text-cyan-400" />
-              <span>Create Account</span>
+              <span>{isAuthenticated ? 'Open Dashboard' : 'Get Started'}</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
-          )}
-        </div>
 
-        {/* Security badge line */}
-        <div className="pt-2 flex items-center justify-center gap-6 text-xs text-[#A1A1B5] font-mono">
-          <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            Zero Configuration
-          </span>
-          <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
-            Automated Validation
-          </span>
-          <span className="hidden sm:flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />
-            SOC2 Ready
-          </span>
-        </div>
-      </section>
+            <button
+              type="button"
+              onClick={scrollToFeatures}
+              className="w-full sm:w-auto min-h-[50px] px-7 py-3 rounded-xl text-gray-200 font-semibold text-base bg-white/[0.06] hover:bg-white/[0.12] active:bg-white/[0.18] backdrop-blur-md border border-white/15 hover:border-white/30 transition-all flex items-center justify-center gap-2"
+            >
+              <Eye className="w-4 h-4 text-cyan-400" />
+              <span>Explore Platform</span>
+            </button>
+          </div>
 
-      {/* ── 2. Interactive Automation Pipeline Rail ────────────────── */}
-      <section className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
-          <div className="flex items-center gap-2.5">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="status-dot-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
+          {/* Trust Guarantees */}
+          <div className="mt-8 flex items-center justify-center gap-6 sm:gap-10 text-xs text-[#A1A1B5] font-mono pointer-events-auto">
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              Zero Configuration
             </span>
-            <h2 className="text-xs font-mono uppercase tracking-widest text-white font-semibold">
-              Live Automation Pipeline Architecture
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="badge badge-emerald">CI/CD Verified</span>
-            <span className="text-[11px] font-mono text-[#A1A1B5]">v2.4 Core Engine</span>
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+              Self-Healing Meshes
+            </span>
+            <span className="hidden sm:flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-violet-400" />
+              SOC2 Type II Ready
+            </span>
           </div>
         </div>
 
-        <div
-          className="relative p-6 sm:p-8 rounded-2xl overflow-hidden"
-          style={{
-            background: 'rgba(10,10,18,0.92)',
-            backdropFilter: 'blur(24px)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 24px 64px -16px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.07)',
-          }}
-        >
-          {/* Top specular reflection */}
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent pointer-events-none" />
-
-          {/* Pipeline Nodes */}
-          <div className="flex items-center justify-between relative z-10 overflow-x-auto pb-2 sm:pb-0 gap-4 sm:gap-2 scrollbar-none">
-            {pipelineSteps.map((step, idx) => {
-              const Icon = step.icon;
-              return (
-                <React.Fragment key={step.name}>
-                  <div className="flex flex-col items-center flex-shrink-0 group cursor-default">
-                    <div
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-110 shadow-lg"
-                      style={{
-                        background: step.bg,
-                        border: `1px solid ${step.border}`,
-                        boxShadow: `0 8px 24px -4px ${step.glow}`,
-                      }}
-                    >
-                      <Icon className="w-6 h-6" style={{ color: step.color }} />
-                    </div>
-                    <span className="text-xs font-semibold text-white mt-2.5 tracking-tight">{step.name}</span>
-                    <span className="text-[10px] font-mono tabular-nums mt-0.5" style={{ color: step.color, opacity: 0.85 }}>
-                      {step.detail}
-                    </span>
-                    <div
-                      className="flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full"
-                      style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.25)' }}
-                    >
-                      <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
-                      <span className="text-[9px] font-mono text-emerald-400 font-semibold tracking-wide">
-                        {step.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Connectors */}
-                  {idx < pipelineSteps.length - 1 && (
-                    <div className="flex-1 mx-2 h-[2px] bg-white/[0.08] relative overflow-hidden min-w-[24px] rounded-full">
-                      <div
-                        className="absolute inset-0 animate-pipeline-shimmer rounded-full"
-                        style={{
-                          background: 'linear-gradient(90deg, transparent, rgba(139,92,246,0.9), rgba(34,211,238,0.9), transparent)',
-                          width: '60%',
-                        }}
-                      />
-                    </div>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </div>
+        {/* Scroll Indicator */}
+        <div className="relative z-20 pb-6 flex flex-col items-center justify-center pointer-events-auto">
+          <button
+            type="button"
+            onClick={scrollToFeatures}
+            className="flex flex-col items-center gap-1.5 text-xs font-mono text-[#A1A1B5] hover:text-white transition-colors group p-2"
+            aria-label="Scroll to platform capabilities"
+          >
+            <span className="tracking-wider uppercase text-[10px]">Explore Capabilities</span>
+            <ChevronDown className="w-4 h-4 text-cyan-400 group-hover:translate-y-1 transition-transform animate-bounce" />
+          </button>
         </div>
       </section>
 
-      {/* ── 3. Features & Benefits Grid ────────────────────────────── */}
-      <section className="space-y-6">
-        <div className="text-center max-w-xl mx-auto space-y-2">
-          <span className="badge badge-cyan">Built for Reliability</span>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            Enterprise Cloud Guarantees
+      {/* ── 2. Platform Features Grid ───────────────────────────────────── */}
+      <section ref={featuresRef} id="features" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 space-y-12">
+        <div className="text-center max-w-2xl mx-auto space-y-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/40 border border-cyan-500/30 text-[11px] font-mono text-cyan-300">
+            <Activity className="w-3 h-3 text-cyan-400" />
+            <span>Core Architecture Pillars</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
+            Intelligent Infrastructure Automation
           </h2>
-          <p className="text-sm text-[#A1A1B5]">
-            Everything needed to automate modern DevOps pipelines with confidence.
+          <p className="text-sm sm:text-base text-[#A1A1B5] leading-relaxed">
+            Eliminate fragile scripts and manual provisioning with self-healing, declarative infrastructure building blocks.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          {features.map((feat) => {
-            const Icon = feat.icon;
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {featuresData.map((f) => {
+            const Icon = f.icon;
             return (
               <div
-                key={feat.title}
-                className="p-5 sm:p-6 rounded-2xl bg-white/[0.025] hover:bg-white/[0.045] border border-white/[0.07] hover:border-white/15 transition-all duration-200 group flex items-start gap-4"
+                key={f.id}
+                className="p-6 sm:p-7 rounded-3xl bg-white/[0.025] hover:bg-white/[0.045] backdrop-blur-xl border border-white/[0.08] hover:border-white/20 transition-all duration-300 group flex flex-col justify-between hover:-translate-y-1 hover:shadow-2xl"
+                style={{
+                  boxShadow: '0 20px 48px -12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)',
+                }}
               >
-                <div
-                  className="p-3 rounded-xl flex-shrink-0 transition-transform group-hover:scale-105"
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                  }}
-                >
-                  <Icon className="w-5 h-5" style={{ color: feat.statColor }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
-                    <h3 className="text-base font-semibold text-white tracking-tight">
-                      {feat.title}
-                    </h3>
-                    <span className={`badge ${feat.badgeClass}`}>{feat.badge}</span>
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <div
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110"
+                      style={{
+                        background: `${f.color}20`,
+                        border: `1px solid ${f.color}50`,
+                      }}
+                    >
+                      <Icon className="w-6 h-6" style={{ color: f.color }} />
+                    </div>
+                    <span className={`badge ${f.badgeClass}`}>{f.badge}</span>
                   </div>
-                  <p className="text-xs sm:text-sm text-[#A1A1B5] leading-relaxed mb-3">
-                    {feat.desc}
+
+                  <h3 className="text-lg font-bold text-white tracking-tight group-hover:text-violet-200 transition-colors">
+                    {f.title}
+                  </h3>
+                  <p className="text-xs font-mono font-semibold text-cyan-300/90 mt-1">
+                    {f.subtitle}
                   </p>
-                  <span
-                    className="text-xs font-mono font-semibold tabular-nums inline-flex items-center gap-1"
-                    style={{ color: feat.statColor }}
-                  >
-                    <span>Metric:</span>
-                    <span>{feat.stat}</span>
+                  <p className="text-xs sm:text-sm text-[#A1A1B5] leading-relaxed mt-3">
+                    {f.desc}
+                  </p>
+                </div>
+
+                <div className="pt-5 mt-5 border-t border-white/[0.06] flex items-center justify-between">
+                  <span className="text-xs font-mono font-semibold text-white/90">
+                    {f.stat}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('signin')}
+                    className="text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1 group-hover:translate-x-0.5"
+                  >
+                    <span>Inspect</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             );
@@ -312,62 +271,108 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* ── 4. Platform Metrics Ribbon ─────────────────────────────── */}
-      <section
-        className="p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-violet-950/20 via-indigo-950/20 to-cyan-950/20 border border-white/10"
-      >
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
-          {metrics.map((m) => (
-            <div key={m.label} className="space-y-1">
-              <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-mono">
-                {m.value}
-              </div>
-              <div className="text-xs text-[#A1A1B5] font-medium">{m.label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── 5. Bottom Call to Action ───────────────────────────────── */}
-      <section
-        className="relative p-8 sm:p-12 rounded-3xl overflow-hidden text-center space-y-6"
-        style={{
-          background: 'linear-gradient(135deg, rgba(22,18,38,0.95) 0%, rgba(13,13,26,0.95) 100%)',
-          border: '1px solid rgba(139,92,246,0.3)',
-          boxShadow: '0 24px 64px -16px rgba(124,58,237,0.25)',
-        }}
-      >
-        <div className="max-w-xl mx-auto space-y-3">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            Ready to automate your cloud infrastructure?
+      {/* ── 3. How It Works (End-to-End Workflow) ───────────────────────── */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 space-y-12">
+        <div className="text-center max-w-2xl mx-auto space-y-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-950/40 border border-violet-500/30 text-[11px] font-mono text-violet-300">
+            <RefreshCw className="w-3 h-3 text-violet-400" />
+            <span>Autonomous Pipeline Lifecycle</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+            How The Platform Works
           </h2>
-          <p className="text-sm text-[#C4C4D4] leading-relaxed">
-            Access your automated pipeline console and orchestrate multi-cloud environments in minutes.
+          <p className="text-sm sm:text-base text-[#A1A1B5]">
+            From local git commit to fully verified multi-cloud production in four automated steps.
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => onNavigate('signin')}
-            className="w-full sm:w-auto min-h-[46px] px-8 py-2.5 rounded-xl text-white font-semibold shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 hover:brightness-110"
-            style={{
-              background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
-              border: '1px solid rgba(139,92,246,0.5)',
-            }}
-          >
-            <span>Sign In to Console</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          {workflowSteps.map((step) => {
+            const Icon = step.icon;
+            return (
+              <div
+                key={step.number}
+                className="relative p-6 rounded-2xl bg-white/[0.025] border border-white/[0.08] hover:border-white/20 transition-all duration-200 group flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-2xl font-black font-mono text-white/30 group-hover:text-violet-400 transition-colors">
+                      {step.number}
+                    </span>
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center"
+                      style={{
+                        background: `${step.accent}15`,
+                        border: `1px solid ${step.accent}40`,
+                      }}
+                    >
+                      <Icon className="w-5 h-5" style={{ color: step.accent }} />
+                    </div>
+                  </div>
 
-          <button
-            type="button"
-            onClick={() => onNavigate('signup')}
-            className="w-full sm:w-auto min-h-[46px] px-6 py-2.5 rounded-xl text-gray-200 font-semibold bg-white/[0.05] hover:bg-white/[0.08] active:bg-white/[0.12] border border-white/10 transition-all flex items-center justify-center gap-2"
-          >
-            <span>Create New Account</span>
-            <ChevronRight className="w-4 h-4 text-white/50" />
-          </button>
+                  <h3 className="text-base font-bold text-white tracking-tight mb-2">
+                    {step.title}
+                  </h3>
+                  <p className="text-xs text-[#A1A1B5] leading-relaxed mb-4">
+                    {step.desc}
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-white/[0.05] text-[11px] font-mono text-cyan-300/80">
+                  {step.tech}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ── 4. Final Conversion Call To Action ───────────────────────────── */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+        <div
+          className="relative p-8 sm:p-14 rounded-3xl overflow-hidden text-center space-y-6"
+          style={{
+            background: 'linear-gradient(135deg, rgba(26,20,48,0.95) 0%, rgba(10,10,20,0.98) 100%)',
+            border: '1px solid rgba(139,92,246,0.4)',
+            boxShadow: '0 32px 80px -16px rgba(124,58,237,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+          }}
+        >
+          {/* Top specular */}
+          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent pointer-events-none" />
+
+          <div className="max-w-2xl mx-auto space-y-3">
+            <span className="badge badge-emerald">Ready for Production</span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
+              Ready to automate your cloud infrastructure?
+            </h2>
+            <p className="text-sm sm:text-base text-[#C4C4D4] leading-relaxed">
+              Launch your 3D-orchestrated cloud console and execute reproducible Terraform, Ansible, and Kubernetes pipelines in seconds.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
+            <button
+              type="button"
+              onClick={() => onNavigate('signin')}
+              className="w-full sm:w-auto min-h-[48px] px-8 py-3 rounded-xl text-white font-semibold text-base shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95 hover:brightness-110"
+              style={{
+                background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
+                border: '1px solid rgba(139,92,246,0.6)',
+              }}
+            >
+              <span>Sign In to Console</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('signup')}
+              className="w-full sm:w-auto min-h-[48px] px-7 py-3 rounded-xl text-gray-200 font-semibold text-base bg-white/[0.05] hover:bg-white/[0.1] active:bg-white/[0.15] border border-white/10 transition-all flex items-center justify-center gap-2"
+            >
+              <Zap className="w-4 h-4 text-cyan-400" />
+              <span>Create Account</span>
+            </button>
+          </div>
         </div>
       </section>
     </div>
