@@ -44,8 +44,8 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto px-4 py-12 animate-slideUpFade">
-      <GlassCard glow="violet" size="lg" className="p-6 sm:p-8">
+    <div className="w-full max-w-md mx-auto px-3 sm:px-4 py-6 sm:py-12 animate-slideUpFade">
+      <GlassCard glow="violet" size="lg" className="p-5 sm:p-8">
         {!isSubmitted ? (
           <>
             {/* Top Quick Back Action */}

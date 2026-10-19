@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserPlus, User, Mail, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { UserPlus, User, Mail, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { InputField } from '../components/ui/InputField';
 import { PasswordInput } from '../components/ui/PasswordInput';
@@ -104,8 +104,21 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto px-4 py-8 sm:py-12">
-      <GlassCard glow="cyan" size="lg" className="p-6 sm:p-8">
+    <div className="w-full max-w-xl mx-auto px-3 sm:px-4 py-5 sm:py-12 animate-fadeIn">
+      {/* Back to Home Link */}
+      <div className="mb-3 sm:mb-4">
+        <button
+          type="button"
+          onClick={() => onNavigate('landing')}
+          className="inline-flex items-center gap-2 text-xs font-mono text-[#A1A1B5] hover:text-white transition-colors group py-1.5 px-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+          aria-label="Back to home page"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 text-violet-400 group-hover:-translate-x-1 transition-transform" />
+          <span>Back to Home</span>
+        </button>
+      </div>
+
+      <GlassCard glow="cyan" size="lg" className="p-5 sm:p-8">
         {/* Card Header */}
         <div className="text-center mb-6">
           <div

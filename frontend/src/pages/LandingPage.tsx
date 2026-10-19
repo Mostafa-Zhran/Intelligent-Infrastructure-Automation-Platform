@@ -133,23 +133,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1] drop-shadow-2xl">
+          <h1 className="text-3xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.15] drop-shadow-2xl">
             Fill a form.{' '}
             <span className="text-gradient-violet block sm:inline">
               We run the pipeline.
             </span>
           </h1>
 
-          <p className="mt-5 text-base sm:text-lg lg:text-xl text-[#D1D1E0] max-w-2xl mx-auto leading-relaxed drop-shadow-md">
+          <p className="mt-4 sm:mt-5 text-sm sm:text-lg lg:text-xl text-[#D1D1E0] max-w-2xl mx-auto leading-relaxed drop-shadow-md px-1">
             Deploy enterprise-grade cloud environments with Terraform, Ansible, Docker, and Kubernetes through one unified 3D-orchestrated workflow.
           </p>
 
           {/* Interactive Hero CTAs */}
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 pointer-events-auto">
+          <div className="mt-7 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none mx-auto pointer-events-auto">
             <button
               type="button"
               onClick={() => onNavigate(isAuthenticated ? 'profile' : 'signin')}
-              className="w-full sm:w-auto min-h-[50px] px-8 py-3 rounded-xl text-white font-semibold text-base shadow-xl flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-95 group hover:brightness-110"
+              className="w-full sm:w-auto min-h-[48px] px-8 py-3 rounded-xl text-white font-semibold text-base shadow-xl flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-95 group hover:brightness-110"
               style={{
                 background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
                 border: '1px solid rgba(139,92,246,0.6)',
@@ -163,7 +163,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button
               type="button"
               onClick={scrollToFeatures}
-              className="w-full sm:w-auto min-h-[50px] px-7 py-3 rounded-xl text-gray-200 font-semibold text-base bg-white/[0.06] hover:bg-white/[0.12] active:bg-white/[0.18] backdrop-blur-md border border-white/15 hover:border-white/30 transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto min-h-[48px] px-7 py-3 rounded-xl text-gray-200 font-semibold text-base bg-white/[0.06] hover:bg-white/[0.12] active:bg-white/[0.18] backdrop-blur-md border border-white/15 hover:border-white/30 transition-all flex items-center justify-center gap-2"
             >
               <Eye className="w-4 h-4 text-cyan-400" />
               <span>Explore Platform</span>
@@ -171,7 +171,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Trust Guarantees */}
-          <div className="mt-8 flex items-center justify-center gap-6 sm:gap-10 text-xs text-[#A1A1B5] font-mono pointer-events-auto">
+          <div className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-3.5 sm:gap-10 text-xs text-[#A1A1B5] font-mono pointer-events-auto px-2">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               Zero Configuration
@@ -202,57 +202,57 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ── 2. Platform Features Grid ───────────────────────────────────── */}
-      <section ref={featuresRef} id="features" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 space-y-12">
-        <div className="text-center max-w-2xl mx-auto space-y-3">
+      <section ref={featuresRef} id="features" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-24 space-y-8 sm:space-y-12">
+        <div className="text-center max-w-2xl mx-auto space-y-2.5 sm:space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/40 border border-cyan-500/30 text-[11px] font-mono text-cyan-300">
             <Activity className="w-3 h-3 text-cyan-400" />
             <span>Core Architecture Pillars</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
+          <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
             Intelligent Infrastructure Automation
           </h2>
-          <p className="text-sm sm:text-base text-[#A1A1B5] leading-relaxed">
+          <p className="text-xs sm:text-base text-[#A1A1B5] leading-relaxed">
             Eliminate fragile scripts and manual provisioning with self-healing, declarative infrastructure building blocks.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {featuresData.map((f) => {
             const Icon = f.icon;
             return (
               <div
                 key={f.id}
-                className="p-6 sm:p-7 rounded-3xl bg-white/[0.025] hover:bg-white/[0.045] backdrop-blur-xl border border-white/[0.08] hover:border-white/20 transition-all duration-300 group flex flex-col justify-between hover:-translate-y-1 hover:shadow-2xl"
+                className="p-5 sm:p-7 rounded-2xl sm:rounded-3xl bg-white/[0.025] hover:bg-white/[0.045] backdrop-blur-xl border border-white/[0.08] hover:border-white/20 transition-all duration-300 group flex flex-col justify-between hover:-translate-y-1 hover:shadow-2xl"
                 style={{
                   boxShadow: '0 20px 48px -12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)',
                 }}
               >
                 <div>
-                  <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center justify-between mb-4 sm:mb-5">
                     <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110"
+                      className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110"
                       style={{
                         background: `${f.color}20`,
                         border: `1px solid ${f.color}50`,
                       }}
                     >
-                      <Icon className="w-6 h-6" style={{ color: f.color }} />
+                      <Icon className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: f.color }} />
                     </div>
                     <span className={`badge ${f.badgeClass}`}>{f.badge}</span>
                   </div>
 
-                  <h3 className="text-lg font-bold text-white tracking-tight group-hover:text-violet-200 transition-colors">
+                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight group-hover:text-violet-200 transition-colors">
                     {f.title}
                   </h3>
-                  <p className="text-xs font-mono font-semibold text-cyan-300/90 mt-1">
+                  <p className="text-[11px] sm:text-xs font-mono font-semibold text-cyan-300/90 mt-1">
                     {f.subtitle}
                   </p>
-                  <p className="text-xs sm:text-sm text-[#A1A1B5] leading-relaxed mt-3">
+                  <p className="text-xs sm:text-sm text-[#A1A1B5] leading-relaxed mt-2.5 sm:mt-3">
                     {f.desc}
                   </p>
                 </div>
 
-                <div className="pt-5 mt-5 border-t border-white/[0.06] flex items-center justify-between">
+                <div className="pt-4 sm:pt-5 mt-4 sm:mt-5 border-t border-white/[0.06] flex items-center justify-between">
                   <span className="text-xs font-mono font-semibold text-white/90">
                     {f.stat}
                   </span>
@@ -272,53 +272,53 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ── 3. How It Works (End-to-End Workflow) ───────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 space-y-12">
-        <div className="text-center max-w-2xl mx-auto space-y-3">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20 space-y-8 sm:space-y-12">
+        <div className="text-center max-w-2xl mx-auto space-y-2.5 sm:space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-950/40 border border-violet-500/30 text-[11px] font-mono text-violet-300">
             <RefreshCw className="w-3 h-3 text-violet-400" />
             <span>Autonomous Pipeline Lifecycle</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
             How The Platform Works
           </h2>
-          <p className="text-sm sm:text-base text-[#A1A1B5]">
+          <p className="text-xs sm:text-base text-[#A1A1B5]">
             From local git commit to fully verified multi-cloud production in four automated steps.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {workflowSteps.map((step) => {
             const Icon = step.icon;
             return (
               <div
                 key={step.number}
-                className="relative p-6 rounded-2xl bg-white/[0.025] border border-white/[0.08] hover:border-white/20 transition-all duration-200 group flex flex-col justify-between"
+                className="relative p-5 sm:p-6 rounded-2xl bg-white/[0.025] border border-white/[0.08] hover:border-white/20 transition-all duration-200 group flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-black font-mono text-white/30 group-hover:text-violet-400 transition-colors">
+                  <div className="flex items-center justify-between mb-3.5 sm:mb-4">
+                    <span className="text-xl sm:text-2xl font-black font-mono text-white/30 group-hover:text-violet-400 transition-colors">
                       {step.number}
                     </span>
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center"
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center"
                       style={{
                         background: `${step.accent}15`,
                         border: `1px solid ${step.accent}40`,
                       }}
                     >
-                      <Icon className="w-5 h-5" style={{ color: step.accent }} />
+                      <Icon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: step.accent }} />
                     </div>
                   </div>
 
-                  <h3 className="text-base font-bold text-white tracking-tight mb-2">
+                  <h3 className="text-sm sm:text-base font-bold text-white tracking-tight mb-1.5 sm:mb-2">
                     {step.title}
                   </h3>
-                  <p className="text-xs text-[#A1A1B5] leading-relaxed mb-4">
+                  <p className="text-xs text-[#A1A1B5] leading-relaxed mb-3.5 sm:mb-4">
                     {step.desc}
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-white/[0.05] text-[11px] font-mono text-cyan-300/80">
+                <div className="pt-3 border-t border-white/[0.05] text-[10px] sm:text-[11px] font-mono text-cyan-300/80">
                   {step.tech}
                 </div>
               </div>
@@ -328,9 +328,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* ── 4. Final Conversion Call To Action ───────────────────────────── */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+      <section className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-12 sm:py-20">
         <div
-          className="relative p-8 sm:p-14 rounded-3xl overflow-hidden text-center space-y-6"
+          className="relative p-6 sm:p-12 lg:p-14 rounded-2xl sm:rounded-3xl overflow-hidden text-center space-y-5 sm:space-y-6"
           style={{
             background: 'linear-gradient(135deg, rgba(26,20,48,0.95) 0%, rgba(10,10,20,0.98) 100%)',
             border: '1px solid rgba(139,92,246,0.4)',
@@ -340,17 +340,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* Top specular */}
           <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent pointer-events-none" />
 
-          <div className="max-w-2xl mx-auto space-y-3">
+          <div className="max-w-2xl mx-auto space-y-2.5 sm:space-y-3">
             <span className="badge badge-emerald">Ready for Production</span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
+            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
               Ready to automate your cloud infrastructure?
             </h2>
-            <p className="text-sm sm:text-base text-[#C4C4D4] leading-relaxed">
+            <p className="text-xs sm:text-base text-[#C4C4D4] leading-relaxed">
               Launch your 3D-orchestrated cloud console and execute reproducible Terraform, Ansible, and Kubernetes pipelines in seconds.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-3.5 pt-2 w-full max-w-xs sm:max-w-none mx-auto">
             <button
               type="button"
               onClick={() => onNavigate('signin')}

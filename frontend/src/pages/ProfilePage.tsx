@@ -123,14 +123,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   ];
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-slideUpFade">
+    <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 animate-slideUpFade">
 
       {/* ── Page Header ── */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
             <p className="text-[10px] font-mono uppercase tracking-widest text-[#A1A1B5] mb-1">Account Management</p>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white leading-tight">Account Profile</h1>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">Account Profile</h1>
             <p className="text-sm text-[#C4C4D4] mt-1">
               Manage your identity and credentials.
             </p>
@@ -149,7 +149,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
       {/* ── Identity Card ── */}
       <div
-        className="mb-6 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-5"
+        className="mb-6 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5"
         style={{ background: 'rgba(13,13,22,0.85)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 16px 40px -8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07)' }}
       >
         {/* Avatar with gradient ring */}
@@ -159,7 +159,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.9) 0%, rgba(34,211,238,0.7) 100%)' }}
           >
             <div
-              className="w-16 h-16 rounded-[14px] flex items-center justify-center text-xl font-extrabold text-white"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] flex items-center justify-center text-lg sm:text-xl font-extrabold text-white"
               style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.8) 0%, rgba(67,56,202,0.7) 100%)' }}
             >
               {user.avatarInitials}
@@ -174,13 +174,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         </div>
 
         {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2.5 mb-1">
-            <h2 className="text-lg font-extrabold text-white tracking-tight truncate">{user.fullName}</h2>
-            <span className="badge badge-violet uppercase">{user.role}</span>
+        <div className="flex-1 min-w-0 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 mb-1">
+            <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight truncate">{user.fullName}</h2>
+            <span className="badge badge-violet uppercase text-[10px]">{user.role}</span>
           </div>
-          <p className="text-[13px] text-[#A1A1B5] truncate">{user.email}</p>
-          <div className="flex flex-wrap items-center gap-3 mt-2">
+          <p className="text-xs sm:text-[13px] text-[#A1A1B5] truncate">{user.email}</p>
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mt-2">
             <span className="flex items-center gap-1.5 text-xs text-[#A1A1B5]">
               <Shield className="w-3.5 h-3.5 text-violet-400" />
               Role: <strong className="text-white font-mono text-xs">{user.role}</strong>
@@ -195,7 +195,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         </div>
 
         {/* Right actions */}
-        <div className="flex flex-col gap-2 flex-shrink-0">
+        <div className="flex flex-row sm:flex-col gap-2 flex-shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
           <div
             className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 px-3 py-1.5 rounded-lg"
             style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}

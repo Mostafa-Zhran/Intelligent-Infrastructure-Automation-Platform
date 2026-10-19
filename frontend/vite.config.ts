@@ -9,6 +9,9 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     envPrefix: ['VITE_', 'Backend_', 'BACKEND_'],
+    optimizeDeps: {
+      include: ['three', 'lucide-react'],
+    },
     build: {
       rollupOptions: {
         output: {

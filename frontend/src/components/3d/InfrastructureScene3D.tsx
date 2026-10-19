@@ -96,6 +96,7 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
   const [selectedNode, setSelectedNode] = useState<NodeInfo | null>(null);
   const [isReducedMotion, setIsReducedMotion] = useState<boolean>(false);
   const [webglSupported, setWebglSupported] = useState<boolean>(true);
+  const [isSceneReady, setIsSceneReady] = useState<boolean>(false);
 
   // Store interactive mesh references for raycasting
   const interactiveMeshesRef = useRef<Map<THREE.Object3D, NodeInfo>>(new Map());
@@ -148,8 +149,9 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x07070D, 0.045);
 
+    const isMobileInit = width < 768;
     const camera = new THREE.PerspectiveCamera(48, width / height, 0.1, 100);
-    camera.position.set(0, 0, 8.5);
+    camera.position.set(0, isMobileInit ? 0.35 : 0, isMobileInit ? 12.5 : 8.5);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -437,15 +439,35 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
       if (!container) return;
       const w = container.clientWidth;
       const h = container.clientHeight;
+      const isMobile = w < 768;
       camera.aspect = w / h;
+      camera.position.z = isMobile ? 12.5 : 8.5;
+      camera.position.y = isMobile ? 0.35 : 0;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const rect = container.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+      mouse.x = x;
+      mouse.y = y;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(nodeMeshes, false);
+      if (intersects.length > 0) {
+        const hitMesh = intersects[0].object as THREE.Mesh;
+        const info = hitMesh.userData.info as NodeInfo;
+        setSelectedNode(info);
+      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', handleResize);
     container.addEventListener('mousemove', handlePointerMove);
     container.addEventListener('click', handleClick);
+    container.addEventListener('pointerdown', handlePointerDown);
 
     // ── 8. Visibility & Intersection Observer Optimization ──────────────
     let isVisible = true;
@@ -514,17 +536,23 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
       renderer.render(scene, camera);
     };
 
+    // Pre-warm renderer immediately so first frame shows without waiting for loop ticks
+    renderer.render(scene, camera);
+    setIsSceneReady(true);
+
     animate();
 
     // ── 10. Cleanup ─────────────────────────────────────────────────────
     return () => {
       cancelAnimationFrame(animationFrameId);
+      setIsSceneReady(false);
       observer.disconnect();
       mediaQuery.removeEventListener('change', motionListener);
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
       container.removeEventListener('mousemove', handlePointerMove);
       container.removeEventListener('click', handleClick);
+      container.removeEventListener('pointerdown', handlePointerDown);
 
       // Dispose Geometries and Materials
       scene.traverse((obj) => {
@@ -550,11 +578,85 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
   }
 
   return (
-    <div className="relative w-full h-[520px] sm:h-[620px] lg:h-[700px] overflow-hidden select-none">
-      {/* 3D WebGL Canvas Container */}
+    <div
+      style={{ touchAction: 'pan-y' }}
+      className="relative w-full h-full min-h-[520px] sm:min-h-[620px] lg:min-h-[700px] overflow-hidden select-none"
+    >
+      {/* ── Instant Cyber Topology Placeholder (Renders at 0ms so page is NEVER blank) ── */}
+      <div
+        className={`absolute inset-0 z-0 pointer-events-none transition-opacity duration-1000 ease-out ${
+          isSceneReady ? 'opacity-0' : 'opacity-100'
+        }`}
+        aria-hidden="true"
+      >
+        {/* Core and node glow blooms */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] sm:w-[480px] h-[380px] sm:h-[480px] rounded-full bg-violet-600/20 blur-[100px] animate-pulse" />
+        <div className="absolute top-[32%] left-[22%] -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-violet-500/15 blur-[60px]" />
+        <div className="absolute top-[30%] right-[22%] translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-emerald-500/15 blur-[60px]" />
+        <div className="absolute bottom-[28%] left-[24%] -translate-x-1/2 translate-y-1/2 w-48 h-48 rounded-full bg-sky-500/15 blur-[60px]" />
+        <div className="absolute bottom-[26%] right-[24%] translate-x-1/2 translate-y-1/2 w-48 h-48 rounded-full bg-amber-500/15 blur-[60px]" />
+
+        {/* Lightweight SVG Topology Architecture Wireframe */}
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.8" />
+              <stop offset="60%" stopColor="#6D28D9" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#07070D" stopOpacity="0" />
+            </radialGradient>
+            <linearGradient id="tfGrad" x1="50%" y1="50%" x2="22%" y2="34%">
+              <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#A78BFA" stopOpacity="0.4" />
+            </linearGradient>
+            <linearGradient id="k8sGrad" x1="50%" y1="50%" x2="78%" y2="32%">
+              <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#34D399" stopOpacity="0.4" />
+            </linearGradient>
+            <linearGradient id="dkGrad" x1="50%" y1="50%" x2="26%" y2="70%">
+              <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.4" />
+            </linearGradient>
+            <linearGradient id="vaultGrad" x1="50%" y1="50%" x2="74%" y2="68%">
+              <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#FBBF24" stopOpacity="0.4" />
+            </linearGradient>
+          </defs>
+
+          {/* Connection Cables */}
+          <path d="M 50% 50% Q 36% 40% 22% 34%" fill="none" stroke="url(#tfGrad)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
+          <path d="M 50% 50% Q 64% 38% 78% 32%" fill="none" stroke="url(#k8sGrad)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
+          <path d="M 50% 50% Q 38% 62% 26% 70%" fill="none" stroke="url(#dkGrad)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
+          <path d="M 50% 50% Q 62% 60% 74% 68%" fill="none" stroke="url(#vaultGrad)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
+
+          {/* Center Orchestrator */}
+          <circle cx="50%" cy="50%" r="48" fill="url(#coreGlow)" />
+          <circle cx="50%" cy="50%" r="36" fill="none" stroke="#A78BFA" strokeWidth="1.5" opacity="0.6" strokeDasharray="3 3" />
+          <circle cx="50%" cy="50%" r="20" fill="#7C3AED" fillOpacity="0.4" stroke="#C084FC" strokeWidth="2" />
+
+          {/* Node 1: Terraform */}
+          <circle cx="22%" cy="34%" r="22" fill="#A78BFA" fillOpacity="0.12" stroke="#A78BFA" strokeWidth="1.5" />
+          <circle cx="22%" cy="34%" r="10" fill="#A78BFA" fillOpacity="0.7" />
+
+          {/* Node 2: K8s */}
+          <circle cx="78%" cy="32%" r="22" fill="#34D399" fillOpacity="0.12" stroke="#34D399" strokeWidth="1.5" />
+          <circle cx="78%" cy="32%" r="10" fill="#34D399" fillOpacity="0.7" />
+
+          {/* Node 3: Docker */}
+          <circle cx="26%" cy="70%" r="22" fill="#38BDF8" fillOpacity="0.12" stroke="#38BDF8" strokeWidth="1.5" />
+          <circle cx="26%" cy="70%" r="10" fill="#38BDF8" fillOpacity="0.7" />
+
+          {/* Node 4: Vault */}
+          <circle cx="74%" cy="68%" r="22" fill="#FBBF24" fillOpacity="0.12" stroke="#FBBF24" strokeWidth="1.5" />
+          <circle cx="74%" cy="68%" r="10" fill="#FBBF24" fillOpacity="0.7" />
+        </svg>
+      </div>
+
+      {/* 3D WebGL Canvas Container with smooth entrance cross-fade */}
       <div
         ref={mountRef}
-        className="absolute inset-0 w-full h-full z-0 cursor-default"
+        className={`absolute inset-0 w-full h-full z-0 cursor-default transition-opacity duration-700 ease-out ${
+          isSceneReady ? 'opacity-100' : 'opacity-0'
+        }`}
         aria-label="Interactive 3D DevOps Infrastructure Visualization"
         role="img"
       />
@@ -566,13 +668,18 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
       <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#07070D] to-transparent pointer-events-none z-10" />
 
       {/* ── Top Floating HUD: Controls / Hint ─────────────────────────── */}
-      <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.04] backdrop-blur-md border border-white/10 text-[11px] font-mono text-[#A1A1B5] shadow-lg">
-          <span className="relative flex h-2 w-2">
+      <div
+        className={`absolute top-3 sm:top-5 left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-all duration-700 w-[92%] sm:w-auto max-w-sm sm:max-w-none text-center ${
+          isSceneReady ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
+        }`}
+      >
+        <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-white/[0.05] backdrop-blur-md border border-white/10 text-[10px] sm:text-[11px] font-mono text-[#A1A1B5] shadow-lg">
+          <span className="relative flex h-2 w-2 flex-shrink-0">
             <span className="status-dot-pulse absolute inline-flex h-full w-full rounded-full bg-cyan-400" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
           </span>
-          <span>Interactive 3D Mesh · Move mouse to rotate · Click nodes to inspect</span>
+          <span className="hidden sm:inline">Interactive 3D Topology · Move mouse to rotate · Tap nodes to inspect</span>
+          <span className="sm:hidden">Interactive 3D · Tap nodes to inspect</span>
         </div>
       </div>
 
@@ -631,16 +738,18 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
             onClick={(e) => {
               if (e.target === e.currentTarget) setSelectedNode(null);
             }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-[#07070D]/85 backdrop-blur-xl animate-fadeIn"
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-[#07070D]/85 backdrop-blur-xl animate-fadeIn"
           >
             <div
-              className="w-full max-w-md sm:max-w-lg p-6 sm:p-8 rounded-3xl border shadow-2xl relative animate-scaleIn"
+              className="w-full sm:max-w-lg p-5 sm:p-8 rounded-t-3xl sm:rounded-3xl border border-b-0 sm:border-b shadow-2xl relative animate-slideUp sm:animate-scaleIn max-h-[88vh] overflow-y-auto"
               style={{
                 background: 'linear-gradient(180deg, #121222 0%, #0B0B14 100%)',
                 borderColor: `${selectedNode.color}70`,
                 boxShadow: `0 24px 64px -16px rgba(0,0,0,0.9), 0 0 40px -10px ${selectedNode.color}60`,
               }}
             >
+              {/* Mobile bottom-sheet drag handle */}
+              <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-4 sm:hidden" />
               {/* Top specular glow line */}
               <div
                 className="absolute inset-x-0 top-0 h-[2px] rounded-t-3xl"

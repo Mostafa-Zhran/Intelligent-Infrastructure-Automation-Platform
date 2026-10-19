@@ -181,7 +181,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => handleNavClick('profile')}
-              className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+              className={`flex items-center gap-1.5 text-xs px-3 py-2 min-h-[40px] rounded-xl font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
                 currentPage === 'profile'
                   ? 'text-white bg-violet-500/20 border border-violet-500/40'
                   : 'text-gray-300 bg-white/[0.04] border border-white/10 hover:text-white'
@@ -197,7 +197,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => handleNavClick(currentPage === 'signin' ? 'signup' : 'signin')}
-              className="text-xs px-2.5 py-1.5 rounded-lg text-white font-semibold shadow-sm flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 active:scale-95 transition-all"
+              className="text-xs px-3 py-2 min-h-[40px] rounded-xl text-white font-semibold shadow-sm flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 active:scale-95 transition-all"
               style={{
                 background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
                 border: '1px solid rgba(139,92,246,0.35)',
@@ -205,12 +205,12 @@ export const Header: React.FC<HeaderProps> = ({
             >
               {currentPage === 'signin' ? (
                 <>
-                  <Zap className="w-3 h-3 flex-shrink-0" />
+                  <Zap className="w-3.5 h-3.5 flex-shrink-0" />
                   <span>Register</span>
                 </>
               ) : (
                 <>
-                  <LogIn className="w-3 h-3 flex-shrink-0" />
+                  <LogIn className="w-3.5 h-3.5 flex-shrink-0" />
                   <span>Sign in</span>
                 </>
               )}
@@ -221,7 +221,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/[0.12] border border-white/10 text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/[0.12] border border-white/10 text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
             aria-expanded={isMobileMenuOpen}
             aria-label="Toggle navigation menu"
           >
@@ -234,9 +234,15 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Mobile Drawer Navigation Menu */}
+      {/* Mobile Drawer Navigation Menu with Backdrop */}
       {isMobileMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 z-50 bg-[#07070D]/95 backdrop-blur-2xl border-b border-white/10 shadow-2xl p-4 animate-slideDownFade">
+        <>
+          <div
+            className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="md:hidden absolute top-full left-0 right-0 z-50 bg-[#07070D]/98 backdrop-blur-2xl border-b border-white/10 shadow-2xl p-4 sm:p-5 animate-slideDownFade">
           <div className="space-y-3 max-w-lg mx-auto">
             {/* System Status Pill on Mobile */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-950/25 border border-emerald-500/20 text-xs">
@@ -371,6 +377,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         </div>
+        </>
       )}
     </header>
   );
