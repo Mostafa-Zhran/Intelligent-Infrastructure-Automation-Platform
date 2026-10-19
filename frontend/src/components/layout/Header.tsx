@@ -75,10 +75,10 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       <div className="relative max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-[60px] flex items-center justify-between gap-2">
-        {/* Brand mark */}
+        {/* Brand mark pointing to Home / Landing Page */}
         <button
           type="button"
-          onClick={() => handleNavClick(isAuthenticated ? 'profile' : 'signin')}
+          onClick={() => handleNavClick('landing')}
           className="flex items-center gap-2.5 sm:gap-3 text-left group focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded-xl p-1 -m-1 flex-shrink-0"
           aria-label="Automated DevOps home"
         >
@@ -307,10 +307,26 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="space-y-2 pt-1">
                 <button
                   type="button"
+                  onClick={() => handleNavClick('landing')}
+                  className={`w-full min-h-[44px] flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    currentPage === 'landing'
+                      ? 'bg-violet-600/20 text-white border border-violet-500/40'
+                      : 'bg-white/[0.04] text-gray-200 hover:bg-white/[0.08] border border-white/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Terminal className="w-4 h-4 text-violet-400" />
+                    <span>Platform Overview</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-white/40" />
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => handleNavClick('signin')}
-                  className={`w-full min-h-[44px] flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                  className={`w-full min-h-[44px] flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                     currentPage === 'signin'
-                      ? 'bg-white/10 text-white border border-white/20'
+                      ? 'bg-white/15 text-white border border-white/25'
                       : 'bg-white/[0.04] text-gray-200 hover:bg-white/[0.08] border border-white/10'
                   }`}
                 >

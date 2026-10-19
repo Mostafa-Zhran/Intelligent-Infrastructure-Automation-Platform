@@ -3,6 +3,7 @@ import { BackgroundEffects } from './components/layout/BackgroundEffects';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { Toast } from './components/ui/Toast';
+import { LandingPage } from './pages/LandingPage';
 import { SignInPage } from './pages/SignInPage';
 import { SignUpPage } from './pages/SignUpPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
@@ -29,7 +30,7 @@ export const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!cachedUser);
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
 
-  // Navigation state (automatically routes real email reset links & preserves profile on refresh)
+  // Navigation state (routes '/' to landing and '/signin' to sign-in page)
   const [currentPage, setCurrentPage] = useState<PageId>(() => {
     const path = window.location.pathname.replace(/^\//, '').toLowerCase();
     const params = new URLSearchParams(window.location.search);
@@ -39,19 +40,19 @@ export const App: React.FC = () => {
     if (path === 'signup') {
       return 'signup';
     }
+    if (path === 'signin') {
+      return 'signin';
+    }
     if (path === 'forgot-password') {
       return 'forgot-password';
     }
     if (path === 'profile') {
-      return 'profile';
+      return cachedUser ? 'profile' : 'signin';
     }
     if (path === 'no-access') {
       return 'no-access';
     }
-    if (cachedUser) {
-      return 'profile';
-    }
-    return 'signin';
+    return 'landing';
   });
 
   // Toast notification state
@@ -111,7 +112,7 @@ export const App: React.FC = () => {
           const path = window.location.pathname.replace(/^\//, '').toLowerCase();
           if (path === 'profile') {
             setCurrentPage('signin');
-            window.history.replaceState({}, document.title, '/');
+            window.history.replaceState({}, document.title, '/signin');
           }
         }
       })
@@ -135,7 +136,7 @@ export const App: React.FC = () => {
           const path = window.location.pathname.replace(/^\//, '').toLowerCase();
           if (path === 'profile') {
             setCurrentPage('signin');
-            window.history.replaceState({}, document.title, '/');
+            window.history.replaceState({}, document.title, '/signin');
           }
         }
       })
@@ -163,12 +164,16 @@ export const App: React.FC = () => {
         setCurrentPage('reset-password');
       } else if (path === 'signup') {
         setCurrentPage('signup');
+      } else if (path === 'signin') {
+        setCurrentPage('signin');
       } else if (path === 'forgot-password') {
         setCurrentPage('forgot-password');
       } else if (path === 'profile') {
         setCurrentPage('profile');
+      } else if (path === 'no-access') {
+        setCurrentPage('no-access');
       } else {
-        setCurrentPage('signin');
+        setCurrentPage('landing');
       }
     };
     window.addEventListener('popstate', handlePopState);
@@ -181,12 +186,12 @@ export const App: React.FC = () => {
     if (page === 'profile' && !isAuthenticated && !user && !isAuthChecking) {
       showToast('error', 'Authentication Required', 'Please sign in or create an account to view your account profile.');
       setCurrentPage('signin');
-      window.history.pushState({}, document.title, '/');
+      window.history.pushState({}, document.title, '/signin');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    const newPath = page === 'signin' ? '/' : `/${page}`;
+    const newPath = page === 'landing' ? '/' : `/${page}`;
     window.history.pushState({}, document.title, newPath);
 
     setCurrentPage(page);
@@ -242,7 +247,7 @@ export const App: React.FC = () => {
       // ignore
     }
     showToast('info', 'Signed Out', 'Your platform session has been cleanly terminated');
-    setCurrentPage('signin');
+    setCurrentPage('landing');
     window.history.pushState({}, document.title, '/');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -287,6 +292,13 @@ export const App: React.FC = () => {
 
       {/* Main Content View with transition */}
       <main className="flex-1 flex flex-col justify-center relative z-10 w-full animate-slideUpFade">
+        {currentPage === 'landing' && (
+          <LandingPage
+            onNavigate={handleNavigate}
+            isAuthenticated={isAuthenticated}
+          />
+        )}
+
         {currentPage === 'signin' && (
           <SignInPage
             onNavigate={handleNavigate}
