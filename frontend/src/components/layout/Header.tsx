@@ -1,5 +1,5 @@
 import React from 'react';
-import { Terminal, LogOut, User, UserPlus, LogIn, Zap } from 'lucide-react';
+import { Terminal, LogOut, User, LogIn, Zap } from 'lucide-react';
 import { PageId, UserProfile } from '../../types';
 
 interface HeaderProps {

@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   GitBranch, Box, Layers, Container, Cpu,
-  ShieldCheck, RefreshCw, Globe2, CheckCircle2, Activity, ArrowRight
+  ShieldCheck, RefreshCw, Globe2, CheckCircle2, Activity
 } from 'lucide-react';
 
 const pipelineSteps = [

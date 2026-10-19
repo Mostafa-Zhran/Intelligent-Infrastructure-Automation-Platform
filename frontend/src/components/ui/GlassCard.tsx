@@ -5,6 +5,7 @@ interface GlassCardProps {
   className?: string;
   glow?: 'none' | 'violet' | 'cyan';
   size?: 'md' | 'lg';
+  style?: React.CSSProperties;
 }
 
 const glowStyles = {
@@ -27,6 +28,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   className = '',
   glow = 'none',
   size = 'lg',
+  style,
 }) => {
   const roundedClass = size === 'lg' ? 'rounded-2xl' : 'rounded-xl';
   const styles = glowStyles[glow];
@@ -34,7 +36,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   return (
     <div
       className={`glass-panel ${roundedClass} relative overflow-hidden transition-all duration-300 ${className}`}
-      style={styles}
+      style={{ ...styles, ...style }}
     >
       {/* Precision specular top hairline */}
       <div
