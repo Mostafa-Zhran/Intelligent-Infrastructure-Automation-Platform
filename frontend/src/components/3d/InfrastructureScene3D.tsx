@@ -481,15 +481,19 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
 
     // ── 9. Animation Render Loop ────────────────────────────────────────
     let animationFrameId: number;
-    let clock = new THREE.Clock();
+    let lastTime = performance.now();
+    let elapsedTime = 0;
 
-    const animate = () => {
+    const animate = (currentTime?: number) => {
       animationFrameId = requestAnimationFrame(animate);
 
       if (!isVisible || document.hidden) return;
 
-      const delta = clock.getDelta();
-      const time = clock.getElapsedTime();
+      const now = typeof currentTime === 'number' && !isNaN(currentTime) ? currentTime : performance.now();
+      const delta = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+      elapsedTime += delta;
+      const time = elapsedTime;
       const speedFactor = isReducedMotion ? 0.2 : 1.0;
 
       // Rotate central core
@@ -597,7 +601,7 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
         <div className="absolute bottom-[26%] right-[24%] translate-x-1/2 translate-y-1/2 w-48 h-48 rounded-full bg-amber-500/15 blur-[60px]" />
 
         {/* Lightweight SVG Topology Architecture Wireframe */}
-        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+        <svg className="w-full h-full" viewBox="0 0 1000 1000" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.8" />
@@ -623,31 +627,31 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
           </defs>
 
           {/* Connection Cables */}
-          <path d="M 50% 50% Q 36% 40% 22% 34%" fill="none" stroke="url(#tfGrad)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
-          <path d="M 50% 50% Q 64% 38% 78% 32%" fill="none" stroke="url(#k8sGrad)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
-          <path d="M 50% 50% Q 38% 62% 26% 70%" fill="none" stroke="url(#dkGrad)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
-          <path d="M 50% 50% Q 62% 60% 74% 68%" fill="none" stroke="url(#vaultGrad)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
+          <path d="M 500 500 Q 360 400 220 340" fill="none" stroke="url(#tfGrad)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
+          <path d="M 500 500 Q 640 380 780 320" fill="none" stroke="url(#k8sGrad)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
+          <path d="M 500 500 Q 380 620 260 700" fill="none" stroke="url(#dkGrad)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
+          <path d="M 500 500 Q 620 600 740 680" fill="none" stroke="url(#vaultGrad)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
 
           {/* Center Orchestrator */}
-          <circle cx="50%" cy="50%" r="48" fill="url(#coreGlow)" />
-          <circle cx="50%" cy="50%" r="36" fill="none" stroke="#A78BFA" strokeWidth="1.5" opacity="0.6" strokeDasharray="3 3" />
-          <circle cx="50%" cy="50%" r="20" fill="#7C3AED" fillOpacity="0.4" stroke="#C084FC" strokeWidth="2" />
+          <circle cx="500" cy="500" r="48" fill="url(#coreGlow)" />
+          <circle cx="500" cy="500" r="36" fill="none" stroke="#A78BFA" strokeWidth="1.5" opacity="0.6" strokeDasharray="3 3" />
+          <circle cx="500" cy="500" r="20" fill="#7C3AED" fillOpacity="0.4" stroke="#C084FC" strokeWidth="2" />
 
           {/* Node 1: Terraform */}
-          <circle cx="22%" cy="34%" r="22" fill="#A78BFA" fillOpacity="0.12" stroke="#A78BFA" strokeWidth="1.5" />
-          <circle cx="22%" cy="34%" r="10" fill="#A78BFA" fillOpacity="0.7" />
+          <circle cx="220" cy="340" r="22" fill="#A78BFA" fillOpacity="0.12" stroke="#A78BFA" strokeWidth="1.5" />
+          <circle cx="220" cy="340" r="10" fill="#A78BFA" fillOpacity="0.7" />
 
           {/* Node 2: K8s */}
-          <circle cx="78%" cy="32%" r="22" fill="#34D399" fillOpacity="0.12" stroke="#34D399" strokeWidth="1.5" />
-          <circle cx="78%" cy="32%" r="10" fill="#34D399" fillOpacity="0.7" />
+          <circle cx="780" cy="320" r="22" fill="#34D399" fillOpacity="0.12" stroke="#34D399" strokeWidth="1.5" />
+          <circle cx="780" cy="320" r="10" fill="#34D399" fillOpacity="0.7" />
 
           {/* Node 3: Docker */}
-          <circle cx="26%" cy="70%" r="22" fill="#38BDF8" fillOpacity="0.12" stroke="#38BDF8" strokeWidth="1.5" />
-          <circle cx="26%" cy="70%" r="10" fill="#38BDF8" fillOpacity="0.7" />
+          <circle cx="260" cy="700" r="22" fill="#38BDF8" fillOpacity="0.12" stroke="#38BDF8" strokeWidth="1.5" />
+          <circle cx="260" cy="700" r="10" fill="#38BDF8" fillOpacity="0.7" />
 
           {/* Node 4: Vault */}
-          <circle cx="74%" cy="68%" r="22" fill="#FBBF24" fillOpacity="0.12" stroke="#FBBF24" strokeWidth="1.5" />
-          <circle cx="74%" cy="68%" r="10" fill="#FBBF24" fillOpacity="0.7" />
+          <circle cx="740" cy="680" r="22" fill="#FBBF24" fillOpacity="0.12" stroke="#FBBF24" strokeWidth="1.5" />
+          <circle cx="740" cy="680" r="10" fill="#FBBF24" fillOpacity="0.7" />
         </svg>
       </div>
 

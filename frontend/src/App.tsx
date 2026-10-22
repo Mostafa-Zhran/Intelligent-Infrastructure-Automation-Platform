@@ -65,6 +65,11 @@ export const App: React.FC = () => {
 
   // Revalidate session with backend on load
   useEffect(() => {
+    if (!authApi.hasToken()) {
+      setIsAuthChecking(false);
+      return;
+    }
+
     setIsAuthChecking(true);
     authApi
       .getProfile()

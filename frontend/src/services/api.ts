@@ -97,6 +97,18 @@ export const authApi = {
     });
   },
 
+  getToken(): string | null {
+    try {
+      return localStorage.getItem(TOKEN_STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  },
+
+  hasToken(): boolean {
+    return Boolean(this.getToken());
+  },
+
   async getProfile(): Promise<{ user: ApiUser }> {
     const res = await request<ApiResponse<{ user: ApiUser }>>('/profile', {
       method: 'GET',
