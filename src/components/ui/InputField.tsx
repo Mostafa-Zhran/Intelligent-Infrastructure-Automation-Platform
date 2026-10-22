@@ -50,7 +50,7 @@ export const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(({
           aria-required={required}
           aria-describedby={error ? errorId : helperText ? helperId : undefined}
           required={required}
-          className={`glass-input w-full text-white placeholder-gray-400 text-sm rounded-xl py-2.5 
+          className={`glass-input w-full text-white placeholder-gray-400 text-base sm:text-sm min-h-[44px] rounded-xl py-2.5 
             ${icon ? 'pl-10' : 'pl-3.5'} 
             ${rightElement ? 'pr-11' : 'pr-3.5'}
             ${error ? '!border-red-500/70 focus:!ring-red-500/30' : ''}

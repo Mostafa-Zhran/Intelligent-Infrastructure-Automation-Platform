@@ -16,8 +16,8 @@ export const NoAccessPage: React.FC<NoAccessPageProps> = ({
   onSignOut,
 }) => {
   return (
-    <div className="w-full max-w-lg mx-auto px-4 py-16 animate-slideUpFade">
-      <GlassCard glow="none" size="lg" className="p-6 sm:p-8 text-center" style={{ border: '1px solid rgba(239,68,68,0.25)' }}>
+    <div className="w-full max-w-lg mx-auto px-3 sm:px-4 py-8 sm:py-16 animate-slideUpFade">
+      <GlassCard glow="none" size="lg" className="p-5 sm:p-8 text-center" style={{ border: '1px solid rgba(239,68,68,0.25)' }}>
         {/* Shield / lock icon */}
         <div
           className="mx-auto w-14 h-14 rounded-2xl shadow-xl mb-5 flex items-center justify-center"

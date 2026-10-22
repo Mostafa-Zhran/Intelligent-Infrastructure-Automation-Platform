@@ -151,6 +151,10 @@ input, textarea { caret-color: var(--color-violet); }
   50%  { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
+@keyframes toast-countdown {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
 
 /* Animation Utility Classes */
 .animate-fadeIn          { animation: fadeIn 0.4s var(--ease-out) both; }

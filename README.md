@@ -245,4 +245,4 @@ The app uses a dark-mode first design system defined in `tailwind.config.js` and
 
 ---
 
-> For full project documentation, see the [main repository README](https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform#readme).
+> For full project documentation, see the [root README](../README.md).
