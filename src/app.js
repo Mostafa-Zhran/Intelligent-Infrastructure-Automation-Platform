@@ -4,6 +4,8 @@ const cookieParser = require('cookie-parser');
 
 const authRoutes = require('./modules/auth/auth.routes');
 const githubRoutes = require('./modules/integrations/github/github.routes');
+const projectRoutes = require('./modules/projects/projects.routes');
+const correlationId = require('./middleware/correlationId');
 const notFound = require('./middleware/notFound');
 const globalError = require('./middleware/globalError');
 const cors = require('cors');
@@ -11,6 +13,7 @@ const corsOptions = require('./config/cors');
 const setupSwagger = require('./config/swagger'); // جديد
 const app = express();
 
+app.use(correlationId);
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors(corsOptions));
@@ -27,6 +30,7 @@ app.get('/', (req, res) => {
             health: '/health',
             auth: '/api/v1/auth',
             github: '/api/v1/integrations/github',
+            projects: '/api/v1/projects',
             docs: '/api-docs', // جديد
             openapi: '/api-docs.json', // جديد
             frontend: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -42,6 +46,8 @@ app.get('/health', (req, res) => {
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/integrations/github', githubRoutes);
+app.use('/api/v1/projects', projectRoutes);
+app.use('/api/projects', projectRoutes);
 
 app.use(notFound);
 app.use(globalError);

@@ -9,6 +9,7 @@ const {
   fetchRepositories,
   fetchRepository,
   fetchRepositoryBranches,
+  fetchCommit,
 } = require('./github.api.service');
 const ApiError = require('../../../utils/ApiError');
 
@@ -433,6 +434,78 @@ async function getRepositoryBranches(userId, { owner, repo, page = 1, perPage = 
   };
 }
 
+/**
+ * يحلل اسم الفرع أو كود الالتزام (Commit SHA)
+ * يلتقط الـ SHA الكامل الدقيق المكون من 40 حرفاً ست عشرياً
+ */
+async function resolveBranchCommit({ userId, ownerUserId, owner, repo, branch, commitSha }) {
+  if (commitSha && typeof commitSha === 'string' && commitSha.trim()) {
+    const cleanSha = commitSha.trim();
+    if (!/^[0-9a-f]{40}$/i.test(cleanSha)) {
+      throw new ApiError(400, 'Invalid commit SHA format. Must be a 40-character hexadecimal string.');
+    }
+    return { sha: cleanSha, branch: branch || null };
+  }
+
+  const selectedBranch = branch ? branch.trim() : null;
+  if (!selectedBranch) {
+    throw new ApiError(400, 'Either a valid branch or commitSha is required to trigger a deployment.');
+  }
+
+  if (!owner || !repo) {
+    throw new ApiError(400, 'Project repository owner and name must be configured to resolve git references.');
+  }
+
+  let connection = await githubRepository.findConnectionByUserId(userId);
+  if ((!connection || connection.revoked_at) && ownerUserId) {
+    connection = await githubRepository.findConnectionByUserId(ownerUserId);
+  }
+
+  if (!connection || connection.revoked_at) {
+    throw new ApiError(
+      400,
+      `Cannot resolve commit SHA for branch '${selectedBranch}' because no active GitHub account is connected. Please connect your GitHub account or specify an explicit commitSha.`
+    );
+  }
+
+  let accessToken;
+  try {
+    accessToken = decryptToken({
+      ciphertext: connection.token_ciphertext,
+      iv: connection.token_iv,
+      tag: connection.token_tag,
+    });
+  } catch (err) {
+    throw new ApiError(400, 'GitHub credentials could not be decrypted. Please reconnect your GitHub account.');
+  }
+
+  const commitResult = await fetchCommit({
+    accessToken,
+    owner,
+    repo,
+    ref: selectedBranch,
+  });
+
+  if (!commitResult.ok) {
+    if (commitResult.reason === 'not_found') {
+      throw new ApiError(400, `Branch '${selectedBranch}' was not found in repository '${owner}/${repo}' on GitHub.`);
+    }
+    if (commitResult.reason === 'token_revoked') {
+      await githubRepository.markConnectionRevoked(connection.id, 'TOKEN_REVOKED');
+      throw new ApiError(401, 'GitHub token has been revoked. Please reconnect GitHub.');
+    }
+    if (commitResult.reason === 'rate_limited') {
+      throw new ApiError(429, 'GitHub rate limit exceeded while resolving commit.');
+    }
+    throw new ApiError(502, 'GitHub service is temporarily unavailable. Could not resolve commit SHA.');
+  }
+
+  return {
+    sha: commitResult.sha,
+    branch: selectedBranch,
+  };
+}
+
 module.exports = {
   startConnection,
   hashState,
@@ -440,4 +513,5 @@ module.exports = {
   getOrganizations,
   getRepositories,
   getRepositoryBranches,
-};
+  resolveBranchCommit,
+};

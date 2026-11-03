@@ -284,6 +284,7 @@ model deployments {
   infrastructure_resources infrastructure_resources[]
 
   @@unique([created_by_user_id, idempotency_key], map: "deployments_idempotency_key_uq", where: raw("((idempotency_key IS NOT NULL) AND (created_by_user_id IS NOT NULL))"))
+  @@unique([project_id, environment], map: "deployments_active_project_env_uq", where: raw("(status IN ('QUEUED', 'RUNNING'))"))
   @@index([created_by_user_id], map: "deployments_created_by_idx")
   @@index([project_id, created_at(sort: Desc)], map: "deployments_project_created_idx")
   @@index([project_id, status], map: "deployments_project_status_idx")

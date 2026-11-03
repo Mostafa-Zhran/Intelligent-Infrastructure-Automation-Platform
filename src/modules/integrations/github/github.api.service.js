@@ -337,6 +337,53 @@ async function fetchRepositoryBranches({
     };
 }
 
+async function fetchCommit({ accessToken, owner, repo, ref }) {
+    let response;
+    try {
+        response = await fetch(
+            `${githubConfig.apiBaseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits/${encodeURIComponent(ref)}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: 'application/vnd.github+json',
+                    'X-GitHub-Api-Version': '2022-11-28',
+                },
+                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+            }
+        );
+    } catch (err) {
+        return { ok: false, reason: 'network_error' };
+    }
+
+    if (response.status === 401) {
+        return { ok: false, reason: 'token_revoked' };
+    }
+
+    if (response.status === 403) {
+        const remaining = response.headers.get('x-ratelimit-remaining');
+        const resetEpoch = Number(response.headers.get('x-ratelimit-reset') || 0);
+        if (remaining === '0') {
+            return {
+                ok: false,
+                reason: 'rate_limited',
+                rateLimitReset: resetEpoch > 0 ? new Date(resetEpoch * 1000) : null,
+            };
+        }
+        return { ok: false, reason: 'forbidden' };
+    }
+
+    if (response.status === 404) {
+        return { ok: false, reason: 'not_found' };
+    }
+
+    if (!response.ok) {
+        return { ok: false, reason: `github_unavailable_${response.status}` };
+    }
+
+    const data = await response.json();
+    return { ok: true, sha: data.sha, commit: data };
+}
+
 module.exports = {
     exchangeCodeForToken,
     fetchGitHubUser,
@@ -345,4 +392,5 @@ module.exports = {
     fetchRepositories,
     fetchRepository,
     fetchRepositoryBranches,
-};
+    fetchCommit,
+};
