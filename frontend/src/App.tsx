@@ -8,17 +8,9 @@ import { SignInPage } from './pages/SignInPage';
 import { SignUpPage } from './pages/SignUpPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
-import { ResetLinkExpiredPage } from './pages/ResetLinkExpiredPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { NoAccessPage } from './pages/NoAccessPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { ProjectsPage } from './pages/ProjectsPage';
-import { NewProjectPage } from './pages/NewProjectPage';
-import { ProjectDetailsPage } from './pages/ProjectDetailsPage';
-import { DeploymentsPage } from './pages/DeploymentsPage';
-import { DeploymentDetailsPage } from './pages/DeploymentDetailsPage';
-import { DeploymentLogsPage } from './pages/DeploymentLogsPage';
-import { PageId, UserProfile, ToastNotification, ProjectItem, DeploymentRecord } from './types';
+import { PageId, UserProfile, ToastNotification } from './types';
 import { authApi } from './services/api';
 
 const LOCAL_STORAGE_USER_KEY = 'iiap_user_session';
@@ -38,13 +30,10 @@ export const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!cachedUser);
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
 
-  // Navigation state (sync with URL path)
+  // Navigation state (routes '/' to landing and '/signin' to sign-in page)
   const [currentPage, setCurrentPage] = useState<PageId>(() => {
     const path = window.location.pathname.replace(/^\//, '').toLowerCase();
     const params = new URLSearchParams(window.location.search);
-    if (path === 'reset-link-expired') {
-      return 'reset-link-expired';
-    }
     if (path === 'reset-password' || params.has('token')) {
       return 'reset-password';
     }
@@ -57,39 +46,14 @@ export const App: React.FC = () => {
     if (path === 'forgot-password') {
       return 'forgot-password';
     }
-    if (path === 'dashboard') {
-      return cachedUser ? 'dashboard' : 'signin';
-    }
     if (path === 'profile') {
       return cachedUser ? 'profile' : 'signin';
-    }
-    if (path === 'projects') {
-      return cachedUser ? 'projects' : 'signin';
-    }
-    if (path === 'new-project') {
-      return cachedUser ? 'new-project' : 'signin';
-    }
-    if (path === 'project-details') {
-      return cachedUser ? 'project-details' : 'signin';
-    }
-    if (path === 'deployments') {
-      return cachedUser ? 'deployments' : 'signin';
-    }
-    if (path === 'deployment-details') {
-      return cachedUser ? 'deployment-details' : 'signin';
-    }
-    if (path === 'deployment-logs') {
-      return cachedUser ? 'deployment-logs' : 'signin';
     }
     if (path === 'no-access') {
       return 'no-access';
     }
     return 'landing';
   });
-
-  // Selected project & deployment entity tracking for drill-down views
-  const [selectedProject, setSelectedProject] = useState<ProjectItem | undefined>(undefined);
-  const [selectedDeployment, setSelectedDeployment] = useState<DeploymentRecord | undefined>(undefined);
 
   // Toast notification state
   const [toast, setToast] = useState<ToastNotification | null>(null);
@@ -138,11 +102,8 @@ export const App: React.FC = () => {
           }
 
           const path = window.location.pathname.replace(/^\//, '').toLowerCase();
-          const protectedPages = ['profile', 'dashboard', 'projects', 'new-project', 'project-details', 'deployments', 'deployment-details', 'deployment-logs'];
-          if (protectedPages.includes(path)) {
-            setCurrentPage(path as PageId);
-          } else if (path === '') {
-            setCurrentPage('dashboard');
+          if (path === 'profile' || path === '') {
+            setCurrentPage('profile');
           }
         } else {
           // No user returned
@@ -154,8 +115,7 @@ export const App: React.FC = () => {
             // ignore
           }
           const path = window.location.pathname.replace(/^\//, '').toLowerCase();
-          const protectedPages = ['profile', 'dashboard', 'projects', 'new-project', 'project-details', 'deployments', 'deployment-details', 'deployment-logs'];
-          if (protectedPages.includes(path)) {
+          if (path === 'profile') {
             setCurrentPage('signin');
             window.history.replaceState({}, document.title, '/signin');
           }
@@ -179,8 +139,7 @@ export const App: React.FC = () => {
             // ignore
           }
           const path = window.location.pathname.replace(/^\//, '').toLowerCase();
-          const protectedPages = ['profile', 'dashboard', 'projects', 'new-project', 'project-details', 'deployments', 'deployment-details', 'deployment-logs'];
-          if (protectedPages.includes(path)) {
+          if (path === 'profile') {
             setCurrentPage('signin');
             window.history.replaceState({}, document.title, '/signin');
           }
@@ -206,9 +165,7 @@ export const App: React.FC = () => {
     const handlePopState = () => {
       const path = window.location.pathname.replace(/^\//, '').toLowerCase();
       const params = new URLSearchParams(window.location.search);
-      if (path === 'reset-link-expired') {
-        setCurrentPage('reset-link-expired');
-      } else if (path === 'reset-password' || params.has('token')) {
+      if (path === 'reset-password' || params.has('token')) {
         setCurrentPage('reset-password');
       } else if (path === 'signup') {
         setCurrentPage('signup');
@@ -216,22 +173,8 @@ export const App: React.FC = () => {
         setCurrentPage('signin');
       } else if (path === 'forgot-password') {
         setCurrentPage('forgot-password');
-      } else if (path === 'dashboard') {
-        setCurrentPage('dashboard');
       } else if (path === 'profile') {
         setCurrentPage('profile');
-      } else if (path === 'projects') {
-        setCurrentPage('projects');
-      } else if (path === 'new-project') {
-        setCurrentPage('new-project');
-      } else if (path === 'project-details') {
-        setCurrentPage('project-details');
-      } else if (path === 'deployments') {
-        setCurrentPage('deployments');
-      } else if (path === 'deployment-details') {
-        setCurrentPage('deployment-details');
-      } else if (path === 'deployment-logs') {
-        setCurrentPage('deployment-logs');
       } else if (path === 'no-access') {
         setCurrentPage('no-access');
       } else {
@@ -244,19 +187,9 @@ export const App: React.FC = () => {
 
   // Guarded navigation
   const handleNavigate = (page: PageId) => {
-    // Prevent navigating to protected views without an active account session
-    const protectedPages: PageId[] = [
-      'profile',
-      'dashboard',
-      'projects',
-      'new-project',
-      'project-details',
-      'deployments',
-      'deployment-details',
-      'deployment-logs',
-    ];
-    if (protectedPages.includes(page) && !isAuthenticated && !user && !isAuthChecking) {
-      showToast('error', 'Authentication Required', 'Please sign in or create an account to access this console view.');
+    // Prevent navigating to profile without an active account session
+    if (page === 'profile' && !isAuthenticated && !user && !isAuthChecking) {
+      showToast('error', 'Authentication Required', 'Please sign in or create an account to view your account profile.');
       setCurrentPage('signin');
       window.history.pushState({}, document.title, '/signin');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -296,8 +229,8 @@ export const App: React.FC = () => {
       // ignore
     }
     showToast('success', 'Session Established', `Welcome back, ${displayName}!`);
-    setCurrentPage('dashboard');
-    window.history.pushState({}, document.title, '/dashboard');
+    setCurrentPage('profile');
+    window.history.pushState({}, document.title, '/profile');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -337,7 +270,7 @@ export const App: React.FC = () => {
     });
   };
 
-  // Fallback guest user for 403 / dashboard fallback
+  // Fallback guest user for 403 screen if visited prior to sign in
   const fallbackUser: UserProfile = user || {
     id: 'guest',
     fullName: 'Guest User',
@@ -353,7 +286,7 @@ export const App: React.FC = () => {
       {/* Visual background glows & engineering grid */}
       <BackgroundEffects />
 
-      {/* Shared Header on every page with Auth Awareness & Navigation */}
+      {/* Shared Header on every page with Auth Awareness */}
       <Header
         currentPage={currentPage}
         onNavigate={handleNavigate}
@@ -397,12 +330,6 @@ export const App: React.FC = () => {
           />
         )}
 
-        {currentPage === 'reset-link-expired' && (
-          <ResetLinkExpiredPage
-            onNavigate={handleNavigate}
-          />
-        )}
-
         {currentPage === 'profile' && (
           isAuthChecking && !user ? (
             <div className="flex flex-col items-center justify-center min-h-[45vh] text-center gap-4">
@@ -437,66 +364,6 @@ export const App: React.FC = () => {
             user={fallbackUser}
             onNavigate={handleNavigate}
             onSignOut={handleSignOut}
-          />
-        )}
-
-        {currentPage === 'dashboard' && (
-          <DashboardPage
-            user={fallbackUser}
-            onNavigate={handleNavigate}
-            onShowToast={showToast}
-          />
-        )}
-
-        {currentPage === 'projects' && (
-          <ProjectsPage
-            onNavigate={handleNavigate}
-            onSelectProject={(project) => {
-              setSelectedProject(project);
-              handleNavigate('project-details');
-            }}
-            onShowToast={showToast}
-          />
-        )}
-
-        {currentPage === 'new-project' && (
-          <NewProjectPage
-            onNavigate={handleNavigate}
-            onShowToast={showToast}
-          />
-        )}
-
-        {currentPage === 'project-details' && (
-          <ProjectDetailsPage
-            project={selectedProject}
-            onNavigate={handleNavigate}
-            onShowToast={showToast}
-          />
-        )}
-
-        {currentPage === 'deployments' && (
-          <DeploymentsPage
-            onNavigate={handleNavigate}
-            onSelectDeployment={(dep) => {
-              setSelectedDeployment(dep);
-              handleNavigate('deployment-details');
-            }}
-            onShowToast={showToast}
-          />
-        )}
-
-        {currentPage === 'deployment-details' && (
-          <DeploymentDetailsPage
-            deployment={selectedDeployment}
-            onNavigate={handleNavigate}
-            onShowToast={showToast}
-          />
-        )}
-
-        {currentPage === 'deployment-logs' && (
-          <DeploymentLogsPage
-            onNavigate={handleNavigate}
-            onShowToast={showToast}
           />
         )}
       </main>

@@ -1,21 +1,20 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   User,
   Shield,
   Key,
-  Lock,
-  Mail,
-  Camera,
-  Trash2,
-  Upload,
-  Check,
   CheckCircle2,
+  Camera,
+  Lock,
+  BadgeCheck,
   AlertCircle,
-  Eye,
-  EyeOff,
-  Laptop,
-  LogOut,
+  Mail,
+  Fingerprint,
 } from 'lucide-react';
+import { GlassCard } from '../components/ui/GlassCard';
+import { InputField } from '../components/ui/InputField';
+import { PasswordInput } from '../components/ui/PasswordInput';
+import { Button } from '../components/ui/Button';
 import { UserProfile, PageId } from '../types';
 import { authApi } from '../services/api';
 
@@ -27,29 +26,30 @@ interface ProfilePageProps {
   onSignOut: () => void;
 }
 
+type Tab = 'profile' | 'security';
+
 export const ProfilePage: React.FC<ProfilePageProps> = ({
   user,
   onUpdateUser,
   onShowToast,
   onNavigate: _onNavigate,
-  onSignOut,
+  onSignOut: _onSignOut,
 }) => {
-  // ── Profile details state ──────────────────────────────────
+  const [activeTab, setActiveTab] = useState<Tab>('profile');
+
+  // ── Profile state ──────────────────────────────────────
   const [fullName, setFullName] = useState(user.fullName);
   const [email, setEmail] = useState(user.email);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatarUrl || null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [profileErrors, setProfileErrors] = useState<{ fullName?: string; email?: string }>({});
+  const [profileErrors, setProfileErrors] = useState<{
+    fullName?: string;
+    email?: string;
+  }>({});
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // ── Password state ─────────────────────────────────────────
+  // ── Security state ─────────────────────────────────────
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<{
     currentPassword?: string;
@@ -58,66 +58,20 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   }>({});
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-  // Password policy checks
-  const hasMinLength = newPassword.length >= 8;
-  const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
-  const hasNumber = /\d/.test(newPassword);
-
-  // ── Handle avatar upload ───────────────────────────────────
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 2.5 * 1024 * 1024) {
-      onShowToast('error', 'File Too Large', 'Please select an image smaller than 2.5MB.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setAvatarUrl(result);
-      onUpdateUser({ avatarUrl: result });
-      onShowToast('success', 'Avatar Updated', 'Profile photo uploaded successfully.');
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveAvatar = () => {
-    setAvatarUrl(null);
-    onUpdateUser({ avatarUrl: undefined });
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    onShowToast('info', 'Avatar Reset', 'Profile photo reset to standard initials avatar.');
-  };
-
-  // ── Handle profile form submit ─────────────────────────────
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: { fullName?: string; email?: string } = {};
-
     if (!fullName.trim()) errs.fullName = 'Full name is required.';
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       errs.email = 'A valid email address is required.';
-    }
-
-    if (Object.keys(errs).length > 0) {
-      setProfileErrors(errs);
-      return;
-    }
+    if (Object.keys(errs).length > 0) { setProfileErrors(errs); return; }
     setProfileErrors({});
     setIsSavingProfile(true);
 
     try {
       const result = await authApi.updateProfile({ name: fullName, email });
       const updatedUser = result.user;
-      const initials = (updatedUser?.name || fullName)
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2) || 'AM';
+      const initials = (updatedUser?.name || fullName).split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'AM';
 
       onUpdateUser({
         fullName: updatedUser?.name || fullName,
@@ -126,7 +80,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         status: updatedUser?.status,
         role: updatedUser?.platform_role,
       });
-      onShowToast('success', 'Profile Updated', 'Your profile credentials were saved successfully.');
+      onShowToast('success', 'Profile Updated', 'Your profile changes have been saved to the database.');
     } catch (err: any) {
       onShowToast('error', 'Update Failed', err.message || 'Unable to update profile.');
     } finally {
@@ -134,19 +88,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     }
   };
 
-  // ── Handle password change submit ──────────────────────────
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: { currentPassword?: string; newPassword?: string; confirmPassword?: string } = {};
-
     if (!currentPassword) errs.currentPassword = 'Current password is required.';
     if (!newPassword || newPassword.length < 8) errs.newPassword = 'Password must be at least 8 characters.';
-    if (newPassword !== confirmPassword) errs.confirmPassword = 'New passwords do not match.';
-
-    if (Object.keys(errs).length > 0) {
-      setPasswordErrors(errs);
-      return;
-    }
+    if (newPassword !== confirmPassword) errs.confirmPassword = 'Passwords do not match.';
+    if (Object.keys(errs).length > 0) { setPasswordErrors(errs); return; }
     setPasswordErrors({});
     setIsUpdatingPassword(true);
     setPasswordSuccess(false);
@@ -157,377 +105,309 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         newPassword,
         confirmPassword,
       });
+      setPasswordSuccess(true);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setPasswordSuccess(true);
-      onShowToast('success', 'Security Updated', 'Your password has been changed successfully.');
+      onShowToast('success', 'Password Updated', 'Your password has been changed successfully.');
     } catch (err: any) {
-      onShowToast('error', 'Password Change Failed', err.message || 'Unable to update password.');
+      onShowToast('error', 'Password Change Failed', err.message || 'Failed to update password.');
     } finally {
       setIsUpdatingPassword(false);
     }
   };
 
+  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: 'profile', label: 'Profile Details', icon: <User className="w-4 h-4" /> },
+    { id: 'security', label: 'Security', icon: <Lock className="w-4 h-4" /> },
+  ];
+
   return (
-    <div className="w-full relative py-8 sm:py-12 px-4 max-w-[740px] mx-auto space-y-6 animate-slideUpFade">
-      {/* Background ambient glows */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden -z-10">
-        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-[340px] bg-violet-600/15 blur-[120px] rounded-full" />
-        <div className="absolute top-[480px] -right-32 w-[380px] h-[380px] bg-sky-500/10 blur-[140px] rounded-full" />
+    <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10 animate-slideUpFade">
+
+      {/* ── Page Header ── */}
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-[#A1A1B5] mb-1">Account Management</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">Account Profile</h1>
+            <p className="text-sm text-[#C4C4D4] mt-1">
+              Manage your identity and credentials.
+            </p>
+          </div>
+
+          <div
+            className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)' }}
+          >
+            <Fingerprint className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-[#A1A1B5]">ID:</span>
+            <span className="text-white font-semibold tabular-nums">{user.id}</span>
+          </div>
+        </div>
       </div>
 
-      {/* Page Header */}
-      <header className="space-y-1">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.05] border border-white/10 backdrop-blur-md mb-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.7)] animate-pulse" />
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#A1A1B5]">
-            Account Security &amp; Identity
-          </span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-          Account Profile
-        </h1>
-        <p className="text-sm text-[#A1A1B5]">
-          Manage your account credentials and personal preferences.
-        </p>
-      </header>
-
-      {/* Card 1: Edit profile */}
-      <section className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[#13131F]/80 border border-white/10 backdrop-blur-md shadow-xl relative overflow-hidden transition duration-200">
-        {/* Precision top specular rim highlight */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
-
-        <div className="flex items-center justify-between pb-6 border-b border-white/5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 shadow-inner">
-              <User className="w-5 h-5 text-violet-300" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-white">Edit profile</h2>
-              <p className="text-xs text-[#A1A1B5]">Update your photo and personal identity details</p>
-            </div>
-          </div>
-          <span className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 font-mono text-xs text-sky-300">
-            ID: {user.id || 'dev-8842'}
-          </span>
-        </div>
-
-        {/* Avatar preview & change block */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-5 p-4 rounded-xl bg-white/[0.02] border border-white/5 my-6">
-          <div className="relative group cursor-pointer w-20 h-20 shrink-0">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-600 via-indigo-600 to-sky-500 flex items-center justify-center shadow-[0_0_24px_rgba(139,92,246,0.35)] overflow-hidden border-2 border-white/10">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-2xl font-bold text-white tracking-wide">
-                  {user.avatarInitials || 'AM'}
-                </span>
-              )}
-            </div>
-
-            <label
-              htmlFor="avatar-upload-input"
-              className="absolute inset-0 rounded-full bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition duration-200 cursor-pointer"
+      {/* ── Identity Card ── */}
+      <div
+        className="mb-6 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5"
+        style={{ background: 'rgba(13,13,22,0.85)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 16px 40px -8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07)' }}
+      >
+        {/* Avatar with gradient ring */}
+        <div className="relative flex-shrink-0">
+          <div
+            className="p-[2px] rounded-2xl"
+            style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.9) 0%, rgba(34,211,238,0.7) 100%)' }}
+          >
+            <div
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] flex items-center justify-center text-lg sm:text-xl font-extrabold text-white"
+              style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.8) 0%, rgba(67,56,202,0.7) 100%)' }}
             >
-              <Camera className="w-5 h-5 text-white" />
-              <span className="text-[10px] uppercase font-bold tracking-wider mt-0.5">Change</span>
-            </label>
-            <input
-              ref={fileInputRef}
-              id="avatar-upload-input"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarChange}
-            />
-          </div>
-
-          <div className="flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <label
-                htmlFor="avatar-upload-input"
-                className="cursor-pointer inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium transition duration-150 border border-white/10"
-              >
-                <Upload className="w-3.5 h-3.5 text-sky-400" />
-                <span>Upload photo</span>
-              </label>
-
-              {avatarUrl && (
-                <button
-                  type="button"
-                  onClick={handleRemoveAvatar}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 transition duration-150"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Remove</span>
-                </button>
-              )}
+              {user.avatarInitials}
             </div>
-            <p className="text-xs text-[#A1A1B5]">
-              Recommended: Square PNG, JPG or WebP. Max size 2.5MB.
-            </p>
+          </div>
+          <div
+            className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full border-2 border-[#07070D] flex items-center justify-center shadow-md"
+            style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}
+          >
+            <BadgeCheck className="w-3.5 h-3.5 text-white" />
           </div>
         </div>
 
-        {/* Profile Form */}
-        <form onSubmit={handleSaveProfile} className="space-y-4">
-          <div className="space-y-1.5 text-left">
-            <label htmlFor="profile-fullname" className="block text-xs font-semibold uppercase tracking-wider text-[#A1A1B5]">
-              Full Name
-            </label>
-            <div className="relative flex items-center">
-              <User className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
-              <input
-                id="profile-fullname"
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Your full name"
-                required
-                className="w-full bg-[#0A0A12]/90 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20 transition-all placeholder:text-gray-500"
-              />
-            </div>
-            {profileErrors.fullName && (
-              <p className="text-xs text-red-400 flex items-center gap-1 mt-1">
-                <AlertCircle className="w-3.5 h-3.5" /> {profileErrors.fullName}
-              </p>
-            )}
+        {/* Info */}
+        <div className="flex-1 min-w-0 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 mb-1">
+            <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight truncate">{user.fullName}</h2>
+            <span className="badge badge-violet uppercase text-[10px]">{user.role}</span>
           </div>
-
-          <div className="space-y-1.5 text-left">
-            <label htmlFor="profile-email-input" className="block text-xs font-semibold uppercase tracking-wider text-[#A1A1B5]">
-              Work Email Address
-            </label>
-            <div className="relative flex items-center">
-              <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
-              <input
-                id="profile-email-input"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                required
-                className="w-full bg-[#0A0A12]/90 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20 transition-all placeholder:text-gray-500"
-              />
-            </div>
-            {profileErrors.email && (
-              <p className="text-xs text-red-400 flex items-center gap-1 mt-1">
-                <AlertCircle className="w-3.5 h-3.5" /> {profileErrors.email}
-              </p>
-            )}
-            <p className="text-xs text-emerald-400/90 flex items-center gap-1.5 pt-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span>Email verified for automated deployments &amp; alerts</span>
-            </p>
-          </div>
-
-          <div className="pt-3 flex justify-end">
-            <button
-              type="submit"
-              disabled={isSavingProfile}
-              className="relative inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold tracking-wide hover:shadow-[0_0_20px_rgba(139,92,246,0.5)] active:scale-[0.99] transition duration-150 disabled:opacity-50"
-            >
-              <Check className="w-4 h-4 text-white" />
-              <span>{isSavingProfile ? 'Saving...' : 'Save changes'}</span>
-            </button>
-          </div>
-        </form>
-      </section>
-
-      {/* Card 2: Change password */}
-      <section className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[#13131F]/80 border border-white/10 backdrop-blur-md shadow-xl relative overflow-hidden transition duration-200">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
-
-        <div className="flex items-center gap-3 pb-4 border-b border-white/5">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 shadow-inner">
-            <Key className="w-5 h-5 text-violet-300" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-white">Change password</h2>
-            <p className="text-xs text-[#A1A1B5]">Ensure your account is using a long, random password.</p>
-          </div>
-        </div>
-
-        {passwordSuccess && (
-          <div className="mt-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 flex items-center gap-2.5 text-emerald-300 text-xs animate-fadeIn">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Password updated successfully. Next session will require new credentials.</span>
-          </div>
-        )}
-
-        <form onSubmit={handleUpdatePassword} className="space-y-4 pt-4">
-          {/* Current password */}
-          <div className="space-y-1.5 text-left">
-            <label htmlFor="current-pass-input" className="block text-xs font-semibold uppercase tracking-wider text-[#A1A1B5]">
-              Current Password
-            </label>
-            <div className="relative flex items-center">
-              <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
-              <input
-                id="current-pass-input"
-                type={showCurrentPassword ? 'text' : 'password'}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
-                required
-                className="w-full bg-[#0A0A12]/90 border border-white/10 rounded-xl pl-10 pr-11 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20 transition-all placeholder:text-gray-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                aria-label="Toggle current password visibility"
-                className="absolute right-3 text-gray-400 hover:text-white p-1 rounded-md transition duration-150"
-              >
-                {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {passwordErrors.currentPassword && (
-              <p className="text-xs text-red-400 flex items-center gap-1 mt-1">
-                <AlertCircle className="w-3.5 h-3.5" /> {passwordErrors.currentPassword}
-              </p>
-            )}
-          </div>
-
-          {/* New password */}
-          <div className="space-y-1.5 text-left">
-            <label htmlFor="new-pass-input" className="block text-xs font-semibold uppercase tracking-wider text-[#A1A1B5]">
-              New Password
-            </label>
-            <div className="relative flex items-center">
-              <Key className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
-              <input
-                id="new-pass-input"
-                type={showNewPassword ? 'text' : 'password'}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter strong new password"
-                required
-                minLength={8}
-                className="w-full bg-[#0A0A12]/90 border border-white/10 rounded-xl pl-10 pr-11 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20 transition-all placeholder:text-gray-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowNewPassword(!showNewPassword)}
-                aria-label="Toggle new password visibility"
-                className="absolute right-3 text-gray-400 hover:text-white p-1 rounded-md transition duration-150"
-              >
-                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {passwordErrors.newPassword && (
-              <p className="text-xs text-red-400 flex items-center gap-1 mt-1">
-                <AlertCircle className="w-3.5 h-3.5" /> {passwordErrors.newPassword}
-              </p>
-            )}
-          </div>
-
-          {/* Confirm new password */}
-          <div className="space-y-1.5 text-left">
-            <label htmlFor="confirm-pass-input" className="block text-xs font-semibold uppercase tracking-wider text-[#A1A1B5]">
-              Confirm New Password
-            </label>
-            <div className="relative flex items-center">
-              <Shield className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
-              <input
-                id="confirm-pass-input"
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter new password"
-                required
-                minLength={8}
-                className="w-full bg-[#0A0A12]/90 border border-white/10 rounded-xl pl-10 pr-11 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20 transition-all placeholder:text-gray-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                aria-label="Toggle confirm password visibility"
-                className="absolute right-3 text-gray-400 hover:text-white p-1 rounded-md transition duration-150"
-              >
-                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {passwordErrors.confirmPassword && (
-              <p className="text-xs text-red-400 flex items-center gap-1 mt-1">
-                <AlertCircle className="w-3.5 h-3.5" /> {passwordErrors.confirmPassword}
-              </p>
-            )}
-          </div>
-
-          {/* Password policy indicator chips */}
-          <div className="pt-1 flex flex-wrap gap-2 text-xs">
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-mono text-[11px] transition-colors ${
-                hasMinLength
-                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                  : 'bg-white/[0.03] border-white/10 text-[#A1A1B5]'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${hasMinLength ? 'bg-emerald-400' : 'bg-gray-500'}`} />
-              8+ chars
+          <p className="text-xs sm:text-[13px] text-[#A1A1B5] truncate">{user.email}</p>
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mt-2">
+            <span className="flex items-center gap-1.5 text-xs text-[#A1A1B5]">
+              <Shield className="w-3.5 h-3.5 text-violet-400" />
+              Role: <strong className="text-white font-mono text-xs">{user.role}</strong>
             </span>
-
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-mono text-[11px] transition-colors ${
-                hasSymbol
-                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                  : 'bg-white/[0.03] border-white/10 text-[#A1A1B5]'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${hasSymbol ? 'bg-emerald-400' : 'bg-gray-500'}`} />
-              1 symbol
-            </span>
-
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-mono text-[11px] transition-colors ${
-                hasNumber
-                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                  : 'bg-white/[0.03] border-white/10 text-[#A1A1B5]'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${hasNumber ? 'bg-emerald-400' : 'bg-gray-500'}`} />
-              1 number
-            </span>
-          </div>
-
-          <div className="pt-3 flex justify-end">
-            <button
-              type="submit"
-              disabled={isUpdatingPassword}
-              className="relative inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-semibold tracking-wide hover:shadow-[0_0_20px_rgba(139,92,246,0.5)] active:scale-[0.99] transition duration-150 disabled:opacity-50"
-            >
-              <Shield className="w-4 h-4 text-white" />
-              <span>{isUpdatingPassword ? 'Updating...' : 'Update password'}</span>
-            </button>
-          </div>
-        </form>
-      </section>
-
-      {/* Card 3: Active Session */}
-      <section className="rounded-2xl p-5 bg-[#171724]/70 border border-white/10 backdrop-blur-md shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[#A1A1B5] shrink-0">
-            <Laptop className="w-4 h-4 text-sky-400" />
-          </div>
-          <div className="text-left">
-            <h3 className="text-sm font-semibold text-white">Active Session</h3>
-            <p className="text-xs text-[#A1A1B5]">Sign out of your session on this device</p>
+            {user.status && (
+              <span className="flex items-center gap-1.5 text-xs text-[#A1A1B5]">
+                <span className="status-dot-pulse w-2 h-2 bg-emerald-400 inline-block" />
+                Status: <strong className="text-emerald-400 font-mono text-xs">{user.status}</strong>
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center justify-end">
+        {/* Right actions */}
+        <div className="flex flex-row sm:flex-col gap-2 flex-shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+          <div
+            className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 px-3 py-1.5 rounded-lg"
+            style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}
+          >
+            <span className="status-dot-pulse w-1.5 h-1.5 bg-emerald-400 inline-block" />
+            Session Active
+          </div>
           <button
             type="button"
-            onClick={onSignOut}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-gray-200 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 active:scale-[0.98] transition duration-150"
+            onClick={() => onShowToast('info', 'Photo Upload', 'Photo upload feature coming soon')}
+            className="flex items-center gap-1.5 text-[11px] font-medium text-[#C4C4D4] hover:text-white px-3 py-1.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
           >
-            <LogOut className="w-4 h-4 text-rose-400" />
-            <span>Sign out</span>
+            <Camera className="w-3.5 h-3.5" />
+            Change photo
           </button>
         </div>
-      </section>
+      </div>
+
+      {/* ── Tab Navigation ── */}
+      <div role="tablist" aria-label="Profile Sections" className="mb-6 flex gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl text-xs font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+              activeTab === tab.id
+                ? 'bg-violet-900/50 text-white border border-violet-500/40 shadow-sm'
+                : 'text-gray-300 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <span className={activeTab === tab.id ? 'text-violet-300' : 'text-gray-400'}>
+              {tab.icon}
+            </span>
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── PROFILE TAB ── */}
+      {activeTab === 'profile' && (
+        <GlassCard glow="violet" size="lg" className="p-6 sm:p-8 animate-fadeIn">
+          {/* Section header */}
+          <div className="flex items-center gap-3 mb-6 pb-5 border-b border-white/10">
+            <div className="p-2 rounded-xl bg-violet-950/60 border border-violet-500/30">
+              <User className="w-4 h-4 text-violet-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-white">Profile Details</h3>
+              <p className="text-xs text-[#A1A1B5] mt-0.5">Update your display name, email, and workspace info.</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveProfile} noValidate className="space-y-5">
+            {/* Row 1 — Name & Email */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InputField
+                label="Full Name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                error={profileErrors.fullName}
+                placeholder="Alex Morgan"
+                required
+              />
+
+              {/* Email with verified badge */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label htmlFor="profile-email" className="text-xs font-semibold uppercase tracking-wider text-gray-200">
+                    Work Email
+                  </label>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Verified
+                  </span>
+                </div>
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="profile-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    aria-invalid={!!profileErrors.email}
+                    className={`glass-input w-full text-white placeholder-gray-400 text-sm rounded-xl py-2.5 pl-10 pr-3.5 ${
+                      profileErrors.email ? '!border-red-500/70' : ''
+                    }`}
+                  />
+                </div>
+                {profileErrors.email && (
+                  <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    {profileErrors.email}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Row 2 — User ID, Platform Role & Account Status (read-only from database) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-gray-300">User ID</label>
+                <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-input bg-black/40 border border-white/10 cursor-not-allowed opacity-70">
+                  <Fingerprint className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                  <span className="text-xs font-mono text-white/80 truncate">{user.id}</span>
+                </div>
+                <p className="text-[11px] text-[#A1A1B5]/70">Database UUID</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-gray-300">Platform Role</label>
+                <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-input bg-black/40 border border-white/10 cursor-not-allowed opacity-70">
+                  <Shield className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                  <span className="text-xs font-mono text-white/80">{user.role?.toUpperCase()}</span>
+                </div>
+                <p className="text-[11px] text-[#A1A1B5]/70">Role defined in DB</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-gray-300">Account Status</label>
+                <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-input bg-black/40 border border-white/10 cursor-not-allowed opacity-70">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                  <span className="text-xs font-mono text-emerald-400 font-semibold">{user.status || 'ACTIVE'}</span>
+                </div>
+                <p className="text-[11px] text-[#A1A1B5]/70">Current account state</p>
+              </div>
+            </div>
+
+            {/* Save footer */}
+            <div className="pt-2 flex items-center justify-between border-t border-white/10">
+              <p className="text-[11px] text-gray-400">Changes apply immediately to your workspace identity.</p>
+              <Button type="submit" isLoading={isSavingProfile} loadingText="Saving…">
+                Save changes
+              </Button>
+            </div>
+          </form>
+        </GlassCard>
+      )}
+
+      {/* ── SECURITY TAB ── */}
+      {activeTab === 'security' && (
+        <GlassCard glow="cyan" size="lg" className="p-6 sm:p-8 animate-fadeIn">
+          <div className="flex items-center gap-3 mb-6 pb-5 border-b border-white/10">
+            <div className="p-2 rounded-xl bg-cyan-950/50 border border-cyan-500/25">
+              <Key className="w-4 h-4 text-cyan-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-white">Change Password</h3>
+              <p className="text-xs text-gray-300 mt-0.5">Use a strong, unique password for your account.</p>
+            </div>
+          </div>
+
+          {passwordSuccess && (
+            <div className="mb-5 p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/30 flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-emerald-300">Password updated successfully</p>
+                <p className="text-xs text-emerald-400/70 mt-0.5">All active API sessions have been refreshed.</p>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleUpdatePassword} noValidate className="space-y-4">
+            <PasswordInput
+              label="Current Password"
+              placeholder="Enter your current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              error={passwordErrors.currentPassword}
+              required
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <PasswordInput
+                label="New Password"
+                placeholder="Minimum 8 characters"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                error={passwordErrors.newPassword}
+                helperText="At least 8 characters"
+                required
+              />
+              <PasswordInput
+                label="Confirm New Password"
+                placeholder="Re-enter new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                error={passwordErrors.confirmPassword}
+                required
+              />
+            </div>
+
+            <div className="pt-2 flex items-center justify-between border-t border-white/10">
+              <p className="text-[11px] text-gray-400">You'll be asked to sign in again after updating.</p>
+              <Button
+                type="submit"
+                variant="primary"
+                isLoading={isUpdatingPassword}
+                loadingText="Updating…"
+              >
+                Update password
+              </Button>
+            </div>
+          </form>
+        </GlassCard>
+      )}
+
     </div>
   );
 };
-export default ProfilePage;
