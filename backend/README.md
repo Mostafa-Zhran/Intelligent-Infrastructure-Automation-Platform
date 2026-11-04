@@ -1,10 +1,10 @@
-# ΓÜÖ∩╕Å Backend ΓÇö Intelligent Infrastructure Automation Platform
+# ⚙️ Backend — Intelligent Infrastructure Automation Platform
 
 > Node.js + Express 5 + Prisma ORM + PostgreSQL REST API
 
 ---
 
-## ≡ƒôï Table of Contents
+## 📋 Table of Contents
 
 - [Overview](#overview)
 - [Tech Stack](#tech-stack)
@@ -21,7 +21,7 @@
 
 ---
 
-## ≡ƒîƒ Overview
+## 🌟 Overview
 
 The backend is a RESTful API built with **Express 5** and **Prisma ORM**. It handles all authentication flows (sign up, sign in, sign out, forgot/reset password, profile management), and is architected using a clean modular MVC pattern.
 
@@ -29,7 +29,7 @@ The API is connected to a **PostgreSQL** database (hosted on Supabase or any Pos
 
 ---
 
-## ≡ƒ¢á∩╕Å Tech Stack
+## 🛠️ Tech Stack
 
 | Technology | Version | Role |
 |---|---|---|
@@ -51,63 +51,63 @@ The API is connected to a **PostgreSQL** database (hosted on Supabase or any Pos
 
 ---
 
-## ≡ƒôü Project Structure
+## 📁 Project Structure
 
 ```
 backend/
-Γö£ΓöÇΓöÇ ≡ƒôä server.js              # Entry point ΓÇö starts HTTP server
-Γö£ΓöÇΓöÇ ≡ƒôä package.json           # Dependencies & npm scripts
-Γö£ΓöÇΓöÇ ≡ƒôä prisma.config.js       # Prisma configuration
-Γö£ΓöÇΓöÇ ≡ƒôä .env.example           # Environment variable template
-Γö£ΓöÇΓöÇ ≡ƒôä .gitignore
-Γöé
-Γö£ΓöÇΓöÇ ≡ƒôé prisma/
-Γöé   Γö£ΓöÇΓöÇ ≡ƒôä schema.prisma      # Complete database schema (all models)
-Γöé   ΓööΓöÇΓöÇ ≡ƒôé migrations/        # Prisma migration history
-Γöé
-Γö£ΓöÇΓöÇ ≡ƒôé generated/
-Γöé   ΓööΓöÇΓöÇ ≡ƒôé prisma/            # Auto-generated Prisma Client (gitignored)
-Γöé
-ΓööΓöÇΓöÇ ≡ƒôé src/
-    Γö£ΓöÇΓöÇ ≡ƒôä app.js             # Express app: middleware, routes, error handlers
-    Γö£ΓöÇΓöÇ ≡ƒôä server.js          # HTTP server bootstrap
-    Γöé
-    Γö£ΓöÇΓöÇ ≡ƒôé config/
-    Γöé   ΓööΓöÇΓöÇ ≡ƒôä cors.js        # CORS origin whitelist configuration
-    Γöé
-    Γö£ΓöÇΓöÇ ≡ƒôé db/
-    Γöé   ΓööΓöÇΓöÇ ≡ƒôä prisma.js      # Prisma client singleton instance
-    Γöé
-    Γö£ΓöÇΓöÇ ≡ƒôé middleware/
-    Γöé   Γö£ΓöÇΓöÇ ≡ƒôä authenticate.js    # JWT verification middleware
-    Γöé   Γö£ΓöÇΓöÇ ≡ƒôä validateRequest.js # Joi schema validation middleware
-    Γöé   Γö£ΓöÇΓöÇ ≡ƒôä notFound.js        # 404 handler
-    Γöé   ΓööΓöÇΓöÇ ≡ƒôä globalError.js     # Global error handler
-    Γöé
-    Γö£ΓöÇΓöÇ ≡ƒôé modules/
-    Γöé   ΓööΓöÇΓöÇ ≡ƒôé auth/
-    Γöé       Γö£ΓöÇΓöÇ ≡ƒôä auth.routes.js          # Express router
-    Γöé       Γö£ΓöÇΓöÇ ≡ƒôä auth.controller.js      # Request handlers
-    Γöé       Γö£ΓöÇΓöÇ ≡ƒôä auth.service.js         # Business logic
-    Γöé       Γö£ΓöÇΓöÇ ≡ƒôä auth.repository.js      # Database queries
-    Γöé       Γö£ΓöÇΓöÇ ≡ƒôä auth.validation.js      # Joi validation schemas
-    Γöé       Γö£ΓöÇΓöÇ ≡ƒôä password.service.js     # Password hashing helpers
-    Γöé       Γö£ΓöÇΓöÇ ≡ƒôä password-reset.service.js # Reset token logic
-    Γöé       Γö£ΓöÇΓöÇ ≡ƒôä session.service.js      # JWT session management
-    Γöé       ΓööΓöÇΓöÇ ≡ƒôä token.service.js        # JWT sign/verify utilities
-    Γöé
-    ΓööΓöÇΓöÇ ≡ƒôé utils/             # Shared utility functions
+├── 📄 server.js              # Entry point — starts HTTP server
+├── 📄 package.json           # Dependencies & npm scripts
+├── 📄 prisma.config.js       # Prisma configuration
+├── 📄 .env.example           # Environment variable template
+├── 📄 .gitignore
+│
+├── 📂 prisma/
+│   ├── 📄 schema.prisma      # Complete database schema (all models)
+│   └── 📂 migrations/        # Prisma migration history
+│
+├── 📂 generated/
+│   └── 📂 prisma/            # Auto-generated Prisma Client (gitignored)
+│
+└── 📂 src/
+    ├── 📄 app.js             # Express app: middleware, routes, error handlers
+    ├── 📄 server.js          # HTTP server bootstrap
+    │
+    ├── 📂 config/
+    │   └── 📄 cors.js        # CORS origin whitelist configuration
+    │
+    ├── 📂 db/
+    │   └── 📄 prisma.js      # Prisma client singleton instance
+    │
+    ├── 📂 middleware/
+    │   ├── 📄 authenticate.js    # JWT verification middleware
+    │   ├── 📄 validateRequest.js # Joi schema validation middleware
+    │   ├── 📄 notFound.js        # 404 handler
+    │   └── 📄 globalError.js     # Global error handler
+    │
+    ├── 📂 modules/
+    │   └── 📂 auth/
+    │       ├── 📄 auth.routes.js          # Express router
+    │       ├── 📄 auth.controller.js      # Request handlers
+    │       ├── 📄 auth.service.js         # Business logic
+    │       ├── 📄 auth.repository.js      # Database queries
+    │       ├── 📄 auth.validation.js      # Joi validation schemas
+    │       ├── 📄 password.service.js     # Password hashing helpers
+    │       ├── 📄 password-reset.service.js # Reset token logic
+    │       ├── 📄 session.service.js      # JWT session management
+    │       └── 📄 token.service.js        # JWT sign/verify utilities
+    │
+    └── 📂 utils/             # Shared utility functions
 ```
 
 ---
 
-## ≡ƒÅù∩╕Å Architecture
+## 🏗️ Architecture
 
 The backend follows a **layered MVC architecture**:
 
 ```
-Request ΓåÆ Router ΓåÆ Controller ΓåÆ Service ΓåÆ Repository ΓåÆ Database
-                       Γåô
+Request → Router → Controller → Service → Repository → Database
+                       ↓
                   Middleware
               (Auth / Validation)
 ```
@@ -123,7 +123,7 @@ Request ΓåÆ Router ΓåÆ Controller ΓåÆ Service ΓåÆ Repository ΓåÆ 
 
 ---
 
-## ≡ƒöî API Reference
+## 🔌 API Reference
 
 **Base URL:** `http://localhost:3000`
 **API Prefix:** `/api/v1`
@@ -133,11 +133,11 @@ Request ΓåÆ Router ΓåÆ Controller ΓåÆ Service ΓåÆ Repository ΓåÆ 
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/` | API info & available endpoints |
-| `GET` | `/health` | Health check ΓÇö returns `{ "status": "ok" }` |
+| `GET` | `/health` | Health check — returns `{ "status": "ok" }` |
 
 ---
 
-### Auth Endpoints ΓÇö `/api/v1/auth`
+### Auth Endpoints — `/api/v1/auth`
 
 #### `POST /api/v1/auth/signup`
 Register a new user account.
@@ -232,7 +232,7 @@ Reset the password using a valid reset token.
 
 ---
 
-#### `GET /api/v1/auth/profile` ≡ƒöÆ
+#### `GET /api/v1/auth/profile` 🔒
 Get the authenticated user's profile.
 
 **Headers:** `Authorization: Bearer <token>` or JWT cookie
@@ -254,7 +254,7 @@ Get the authenticated user's profile.
 
 ---
 
-#### `PATCH /api/v1/auth/profile` ≡ƒöÆ
+#### `PATCH /api/v1/auth/profile` 🔒
 Update the authenticated user's profile.
 
 **Request Body:**
@@ -276,7 +276,7 @@ Update the authenticated user's profile.
 
 ---
 
-#### `PATCH /api/v1/auth/change-password` ≡ƒöÆ
+#### `PATCH /api/v1/auth/change-password` 🔒
 Change the password while authenticated.
 
 **Request Body:**
@@ -309,16 +309,16 @@ All errors follow a consistent format:
 
 | Status Code | Meaning |
 |---|---|
-| `400` | Bad Request ΓÇö validation failed |
-| `401` | Unauthorized ΓÇö missing or invalid JWT |
-| `403` | Forbidden ΓÇö insufficient permissions |
+| `400` | Bad Request — validation failed |
+| `401` | Unauthorized — missing or invalid JWT |
+| `403` | Forbidden — insufficient permissions |
 | `404` | Not Found |
-| `409` | Conflict ΓÇö e.g., email already registered |
+| `409` | Conflict — e.g., email already registered |
 | `500` | Internal Server Error |
 
 ---
 
-## ≡ƒùä∩╕Å Database Schema
+## 🗄️ Database Schema
 
 The database uses a PostgreSQL `app` schema with Row-Level Security. Key models include:
 
@@ -336,7 +336,7 @@ The database uses a PostgreSQL `app` schema with Row-Level Security. Key models 
 
 ---
 
-## ΓÜÖ∩╕Å Installation & Setup
+## ⚙️ Installation & Setup
 
 ### Prerequisites
 - Node.js v18+
@@ -370,7 +370,7 @@ npm run dev
 
 ---
 
-## ≡ƒöæ Environment Variables
+## 🔑 Environment Variables
 
 Create a `.env` file in the `backend/` directory based on `.env.example`:
 
@@ -390,14 +390,14 @@ JWT_ACCESS_EXPIRES_IN=15m
 # Password Reset
 PASSWORD_RESET_TOKEN_TTL_MINUTES=15
 
-# Email ΓÇö SMTP (Gmail recommended)
+# Email — SMTP (Gmail recommended)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_USER=your_email@gmail.com
 SMTP_PASS=your_16_char_app_password
 SMTP_FROM="Intelligent Platform <your_email@gmail.com>"
 
-# Email ΓÇö Resend (optional alternative)
+# Email — Resend (optional alternative)
 # RESEND_API_KEY=re_your_api_key_here
 # RESEND_FROM=onboarding@resend.dev
 ```
@@ -406,7 +406,7 @@ SMTP_FROM="Intelligent Platform <your_email@gmail.com>"
 
 ---
 
-## ≡ƒô£ Available Scripts
+## 📜 Available Scripts
 
 Run these from the `backend/` directory:
 
@@ -434,25 +434,25 @@ npx prisma migrate dev --name your_migration_name
 
 ---
 
-## ≡ƒ¢í∩╕Å Middleware
+## 🛡️ Middleware
 
 | Middleware | File | Description |
 |---|---|---|
 | `authenticate` | `middleware/authenticate.js` | Verifies JWT from cookie or `Authorization` header. Attaches `req.user` to the request. |
 | `validateRequest` | `middleware/validateRequest.js` | Takes a Joi schema, validates `req.body`, and returns `400` on failure. |
 | `notFound` | `middleware/notFound.js` | Catches unmatched routes and returns `404`. |
-| `globalError` | `middleware/globalError.js` | Centralized error handler ΓÇö catches all thrown errors and formats the response. |
+| `globalError` | `middleware/globalError.js` | Centralized error handler — catches all thrown errors and formats the response. |
 
 ---
 
-## ≡ƒôº Email Configuration
+## 📧 Email Configuration
 
 The platform supports two email providers:
 
-### Option A ΓÇö Gmail SMTP (Recommended for development)
+### Option A — Gmail SMTP (Recommended for development)
 
 1. Enable **2-Step Verification** on your Google account
-2. Go to **Google Account ΓåÆ Security ΓåÆ App Passwords**
+2. Go to **Google Account → Security → App Passwords**
 3. Generate a new app password for "Mail"
 4. Use the 16-character password as `SMTP_PASS`
 
@@ -464,7 +464,7 @@ SMTP_PASS=xxxx xxxx xxxx xxxx
 SMTP_FROM="Intelligent Platform <you@gmail.com>"
 ```
 
-### Option B ΓÇö Resend (Recommended for production)
+### Option B — Resend (Recommended for production)
 
 1. Create an account at [resend.com](https://resend.com)
 2. Generate an API key
@@ -477,7 +477,7 @@ RESEND_FROM=onboarding@resend.dev
 
 ---
 
-## ≡ƒÜÇ Deployment
+## 🚀 Deployment
 
 ### Railway (Recommended)
 
@@ -487,7 +487,7 @@ RESEND_FROM=onboarding@resend.dev
 4. Set **Root Directory** to `backend`
 5. Set **Start Command** to `npm start`
 6. Add all environment variables from `.env.example`
-7. Railway runs `npm install` ΓåÆ `postinstall` auto-generates Prisma client
+7. Railway runs `npm install` → `postinstall` auto-generates Prisma client
 
 ### Render
 
