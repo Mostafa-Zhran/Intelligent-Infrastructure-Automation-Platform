@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const githubConfig = require('./github.config');
 const githubRepository = require('./github.repository');
 const { encryptToken, decryptToken } = require('./github.crypto');
+const githubApiService = require('./github.api.service');
 const {
   validateToken,
   fetchUserOrganizations,
@@ -10,7 +11,7 @@ const {
   fetchRepository,
   fetchRepositoryBranches,
   fetchRepositoryContents,
-} = require('./github.api.service');
+} = githubApiService;
 const ApiError = require('../../../utils/ApiError');
 
 function generateState() {
@@ -75,7 +76,7 @@ async function getConnectionStatus(userId) {
     return { connected: false, reason: 'decryption_failed' };
   }
 
-  const validation = await validateToken(accessToken);
+  const validation = await githubApiService.validateToken(accessToken);
 
   if (validation.valid === false) {
     await githubRepository.markConnectionRevoked(connection.id, 'TOKEN_REVOKED');
@@ -135,7 +136,7 @@ async function getOrganizations(userId, expect = []) {
     throw new ApiError(409, 'GitHub connection must be re-established');
   }
 
-  const userValidation = await validateToken(accessToken);
+  const userValidation = await githubApiService.validateToken(accessToken);
   if (userValidation.valid === false) {
     await githubRepository.markConnectionRevoked(connection.id, 'TOKEN_REVOKED');
     throw new ApiError(401, 'GitHub token has been revoked. Please reconnect.');
@@ -144,7 +145,7 @@ async function getOrganizations(userId, expect = []) {
     throw new ApiError(502, 'GitHub is temporarily unavailable. Please retry shortly.');
   }
 
-  const orgsResult = await fetchUserOrganizations(accessToken);
+  const orgsResult = await githubApiService.fetchUserOrganizations(accessToken);
 
   let organizations = [];
   let canReadOrgs = false;
@@ -228,7 +229,7 @@ async function resolveAccessContext(userId, owner) {
     throw new ApiError(409, 'GitHub connection must be re-established');
   }
 
-  const userValidation = await validateToken(accessToken);
+  const userValidation = await githubApiService.validateToken(accessToken);
   if (userValidation.valid === false) {
     await githubRepository.markConnectionRevoked(connection.id, 'TOKEN_REVOKED');
     throw new ApiError(401, 'GitHub token has been revoked. Please reconnect.');
@@ -246,7 +247,7 @@ async function resolveAccessContext(userId, owner) {
   if (isPersonalOwner) {
     ownerType = 'user';
   } else {
-    const orgsResult = await fetchUserOrganizations(accessToken);
+    const orgsResult = await githubApiService.fetchUserOrganizations(accessToken);
 
     if (orgsResult.reason === 'token_revoked') {
       await githubRepository.markConnectionRevoked(connection.id, 'TOKEN_REVOKED');
@@ -280,7 +281,7 @@ async function resolveAccessContext(userId, owner) {
 async function getRepositories(userId, { owner, page = 1, perPage = 100 }) {
   const ctx = await resolveAccessContext(userId, owner);
 
-  const result = await fetchRepositories({
+  const result = await githubApiService.fetchRepositories({
     accessToken: ctx.accessToken,
     owner: ctx.owner,
     ownerType: ctx.ownerType,
@@ -350,7 +351,7 @@ async function getRepositoryBranches(userId, { owner, repo, page = 1, perPage = 
   const ctx = await resolveAccessContext(userId, owner);
   const repoName = repo.trim();
 
-  const repoResult = await fetchRepository({
+  const repoResult = await githubApiService.fetchRepository({
     accessToken: ctx.accessToken,
     owner: ctx.owner,
     repo: repoName,
@@ -378,7 +379,7 @@ async function getRepositoryBranches(userId, { owner, repo, page = 1, perPage = 
   const repository = repoResult.repository;
   const defaultBranch = repository.default_branch || null;
 
-  const branchesResult = await fetchRepositoryBranches({
+  const branchesResult = await githubApiService.fetchRepositoryBranches({
     accessToken: ctx.accessToken,
     owner: ctx.owner,
     repo: repoName,
@@ -532,7 +533,7 @@ async function analyzeRepository({
   const ctx = await resolveAccessContext(userId, owner);
 
   // 1. Verify repository exists
-  const repoResult = await fetchRepository({
+  const repoResult = await githubApiService.fetchRepository({
     accessToken: ctx.accessToken,
     owner: ctx.owner,
     repo: repo.trim(),
@@ -557,7 +558,7 @@ async function analyzeRepository({
   const targetBranch = branch ? branch.trim() : (repoResult.repository.default_branch || 'main');
 
   // 2. Fetch root directory contents
-  const contentsResult = await fetchRepositoryContents({
+  const contentsResult = await githubApiService.fetchRepositoryContents({
     accessToken: ctx.accessToken,
     owner: ctx.owner,
     repo: repo.trim(),
@@ -599,6 +600,67 @@ async function analyzeRepository({
     }
   }
 
+  // C# / .NET project & manifest detection
+  const DOTNET_FILE_REGEX = /\.(csproj|sln|slnx|fsproj|vbproj)$/i;
+  const DOTNET_CONFIG_REGEX = /^(global\.json|Directory\.Build\.props|Directory\.Build\.targets|nuget\.config)$/i;
+
+  const dotnetFiles = rootFiles.filter(
+    (f) => DOTNET_FILE_REGEX.test(f) || DOTNET_CONFIG_REGEX.test(f)
+  );
+
+  for (const file of dotnetFiles) {
+    if (!detectedFiles.includes(file)) {
+      detectedFiles.push(file);
+    }
+    if (!detectedManifests.includes(file)) {
+      detectedManifests.push(file);
+    }
+    if (!detectedFramework) {
+      detectedFramework = 'C# / .NET';
+    }
+  }
+
+  // Include appsettings.json if .NET project detected
+  if (detectedFramework === 'C# / .NET' && rootFiles.includes('appsettings.json')) {
+    if (!detectedFiles.includes('appsettings.json')) {
+      detectedFiles.push('appsettings.json');
+    }
+  }
+
+  // If no framework detected at root, check if C#/.NET project files exist in common src directory
+  if (!detectedFramework && dotnetFiles.length === 0) {
+    const rootDirs = rootEntries.filter((e) => e.type === 'dir').map((e) => e.name);
+    const candidateDir = rootDirs.find((d) => /^(src|source)$/i.test(d));
+    if (candidateDir) {
+      try {
+        const subContents = await githubApiService.fetchRepositoryContents({
+          accessToken: ctx.accessToken,
+          owner: ctx.owner,
+          repo: repo.trim(),
+          path: candidateDir,
+          ref: targetBranch,
+        });
+        if (subContents.ok && subContents.isDirectory && subContents.entries) {
+          const subDotnet = subContents.entries
+            .map((e) => e.name)
+            .filter((f) => DOTNET_FILE_REGEX.test(f));
+          if (subDotnet.length > 0) {
+            for (const f of subDotnet) {
+              const relPath = `${candidateDir}/${f}`;
+              if (!detectedFiles.includes(relPath)) detectedFiles.push(relPath);
+              if (!detectedManifests.includes(relPath)) detectedManifests.push(relPath);
+            }
+            if (!detectedFramework) {
+              detectedFramework = 'C# / .NET';
+            }
+          }
+        }
+      } catch {
+        // Non-blocking fallback for subfolder probe
+      }
+    }
+  }
+
   // Check docker-compose or compose files
   if (rootFiles.includes('docker-compose.yml')) detectedFiles.push('docker-compose.yml');
   if (rootFiles.includes('docker-compose.yaml')) detectedFiles.push('docker-compose.yaml');
@@ -627,7 +689,7 @@ async function analyzeRepository({
       }
     }
   } else {
-    const customResult = await fetchRepositoryContents({
+    const customResult = await githubApiService.fetchRepositoryContents({
       accessToken: ctx.accessToken,
       owner: ctx.owner,
       repo: repo.trim(),

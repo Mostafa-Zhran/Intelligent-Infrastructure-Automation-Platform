@@ -1,5 +1,4 @@
 // backend/src/modules/integrations/github/github.api.service.js
-// التعامل مع GitHub API: تبادل الكود وجلب هوية المستخدم
 const githubConfig = require('./github.config');
 
 const REQUEST_TIMEOUT_MS = 10000;
