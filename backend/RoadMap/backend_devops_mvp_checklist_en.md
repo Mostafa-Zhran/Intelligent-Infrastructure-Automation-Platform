@@ -228,3 +228,37 @@
 5. [ ] Configure Jenkins to check out a repository, build and push a Docker image, run Terraform and Ansible, and deploy to Kubernetes.
 6. [x] Connect Jenkins stage callbacks and redacted logs to the Backend status model.
 7. [ ] Validate the end-to-end flow from Dashboard deployment request to healthy Kubernetes rollout.
+
+---
+
+## 2. Is What We Must Build Next True?
+
+Yes, absolutely. The backend and frontend foundations are 100% complete. What remains in backend_devops_mvp_checklist_en.md breaks down into 3 concrete implementation targets:
+
+```text
+                       CURRENT STATE: APP LAYER COMPLETE
+                                     │
+           ┌─────────────────────────┼─────────────────────────┐
+           ▼                         ▼                         ▼
+      STEP 1 (API)             STEP 2 (CI/CD)            STEP 3 (IaC)
+   SETUP-02: Analyze         Declarative Jenkinsfile     Terraform & Ansible
+   Repository Endpoint      (Checkout → Docker → K8s)    AWS EKS & Server Config
+```
+
+### Priority 1: SETUP-02 — Repository Analysis API (Quick Backend Win)
+- **Endpoint:** `POST /api/projects/analyze-repository`
+- Automatically inspects the user's selected GitHub repo via GitHub REST API to detect:
+  - `Dockerfile` (required for MVP)
+  - Manifests (`package.json`, `requirements.txt`, `pom.xml`, etc.)
+- Returns `{ supported: true, dockerfilePath: "Dockerfile", detectedFiles: [...] }`.
+
+### Priority 2: PIPE-04..07 — Jenkins CI/CD Pipeline (Jenkinsfile)
+The pipeline definition that executes the contract payload sent by our backend:
+- **Checkout:** Git pull at exact `commitSha`.
+- **Docker Build & Push:** Build container image from `Dockerfile` and push to registry.
+- **Kubernetes Deploy:** Apply Deployment, Service, and Ingress manifests.
+- **Status Webhook:** POST step status, timestamps, and logs back to `POST /api/deployments/:id/status`.
+
+### Priority 3: AWS-01, AWS-02, ANS-01 — Terraform & Ansible Baseline
+- `terraform/`: AWS VPC, EKS cluster, ECR repository, S3 state backend.
+- `ansible/`: Server configuration and build agent provisioning.
