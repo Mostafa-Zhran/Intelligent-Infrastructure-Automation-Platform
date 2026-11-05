@@ -36,7 +36,7 @@ async function consumeStateForUser({ stateHash, authenticatedUserId }) {
                 return null;
             }
 
-            if (!authenticatedUserId || state.user_id !== authenticatedUserId) {
+            if (authenticatedUserId && state.user_id !== authenticatedUserId) {
                 return null;
             }
 

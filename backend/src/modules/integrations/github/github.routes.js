@@ -33,7 +33,7 @@ router.get('/connect', authenticate, githubController.startOAuth);
  *       302:
  *         description: Redirects to frontend with a result indicator
  */
-router.get('/callback', authenticate, githubController.handleCallback);
+router.get('/callback', (req, res, next) => { if (req.cookies && req.cookies.accessToken || req.headers.authorization) return authenticate(req, res, next); next(); }, githubController.handleCallback);
 
 /**
  * @openapi

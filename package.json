@@ -1,14 +1,45 @@
 {
-  "name": "intelligent-infrastructure-automation-platform-root",
+  "name": "intelligent-infrastructure-automation-platform",
   "version": "1.0.0",
-  "private": true,
-  "description": "Root workspace runner for Intelligent Infrastructure Automation Platform",
+  "description": "Intelligent Infrastructure Automation Platform Backend API",
+  "main": "src/server.js",
   "scripts": {
-    "dev": "npm run dev --prefix frontend",
-    "dev:frontend": "npm run dev --prefix frontend",
-    "dev:backend": "npm run dev --prefix backend",
-    "build:frontend": "npm run build --prefix frontend",
-    "build:backend": "npm run build --prefix backend",
-    "start:backend": "npm run start --prefix backend"
+    "build": "npx prisma generate",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "postinstall": "npx prisma generate",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform/issues"
+  },
+  "homepage": "https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform#readme",
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "joi": "^18.2.9",
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^10.1.1",
+    "pg": "^8.23.1",
+    "prisma": "^7.10.0",
+    "resend": "^6.33.0",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

@@ -1,21 +1,25 @@
 //  src/app.js 
 const express = require('express');
 const cookieParser = require('cookie-parser');
+const cors = require('cors');
 
 const authRoutes = require('./modules/auth/auth.routes');
 const githubRoutes = require('./modules/integrations/github/github.routes');
+const projectsRoutes = require('./modules/projects/projects.routes');
+const correlationId = require('./middleware/correlationId');
 const notFound = require('./middleware/notFound');
 const globalError = require('./middleware/globalError');
-const cors = require('cors');
 const corsOptions = require('./config/cors');
-const setupSwagger = require('./config/swagger'); // جديد
+const setupSwagger = require('./config/swagger');
+
 const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors(corsOptions));
+app.use(correlationId);
 
-// إعداد توثيق OpenAPI قبل المسارات
+// OpenAPI Swagger Documentation
 setupSwagger(app);
 
 app.get('/', (req, res) => {
@@ -27,8 +31,9 @@ app.get('/', (req, res) => {
             health: '/health',
             auth: '/api/v1/auth',
             github: '/api/v1/integrations/github',
-            docs: '/api-docs', // جديد
-            openapi: '/api-docs.json', // جديد
+            projects: '/api/projects',
+            docs: '/api-docs',
+            openapi: '/api-docs.json',
             frontend: process.env.FRONTEND_URL || 'http://localhost:5173',
         },
     });
@@ -42,6 +47,7 @@ app.get('/health', (req, res) => {
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/integrations/github', githubRoutes);
+app.use('/api/projects', projectsRoutes);
 
 app.use(notFound);
 app.use(globalError);

@@ -16,81 +16,12 @@ interface ProjectsPageProps {
   onShowToast?: (type: 'success' | 'error' | 'info', title: string, message: string) => void;
 }
 
-const DEFAULT_PROJECTS: ProjectItem[] = [
-  {
-    id: 'api-gateway',
-    name: 'api-gateway',
-    repository: 'automated-devops/api-gateway',
-    environment: 'Development',
-    status: 'Succeeded',
-    branch: 'main',
-    lastDeployment: '25 min ago',
-    buildCommand: 'npm run build',
-    outputDirectory: 'dist',
-  },
-  {
-    id: 'auth-service',
-    name: 'auth-service',
-    repository: 'automated-devops/auth-service',
-    environment: 'Development',
-    status: 'Running',
-    branch: 'feat/jwt-refresh',
-    lastDeployment: '12 min ago',
-    buildCommand: 'npm run build',
-    outputDirectory: 'dist',
-  },
-  {
-    id: 'web-client',
-    name: 'web-client',
-    repository: 'automated-devops/web-client',
-    environment: 'Development',
-    status: 'Succeeded',
-    branch: 'main',
-    lastDeployment: '2 hours ago',
-    buildCommand: 'npm run build',
-    outputDirectory: 'dist',
-  },
-  {
-    id: 'payment-worker',
-    name: 'payment-worker',
-    repository: 'automated-devops/payment-worker',
-    environment: 'Development',
-    status: 'Failed',
-    branch: 'fix/stripe-webhook',
-    lastDeployment: '48 min ago',
-    buildCommand: 'npm run build',
-    outputDirectory: 'build',
-  },
-  {
-    id: 'notification-hub',
-    name: 'notification-hub',
-    repository: 'automated-devops/notification-hub',
-    environment: 'Development',
-    status: 'Queued',
-    branch: 'main',
-    lastDeployment: '1 hour ago',
-    buildCommand: 'npm run build',
-    outputDirectory: 'dist',
-  },
-  {
-    id: 'inventory-service',
-    name: 'inventory-service',
-    repository: 'automated-devops/inventory-service',
-    environment: 'Development',
-    status: 'Running',
-    branch: 'release/v1.4',
-    lastDeployment: '2 min ago',
-    buildCommand: 'npm run build',
-    outputDirectory: 'dist',
-  },
-];
-
 export const ProjectsPage: React.FC<ProjectsPageProps> = ({
   onNavigate,
   onSelectProject,
   onShowToast,
 }) => {
-  const [projects] = useState<ProjectItem[]>(DEFAULT_PROJECTS);
+  const [projects] = useState<ProjectItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredProjects = projects.filter(

@@ -26,7 +26,7 @@ const handleCallback = asyncHandler(async (req, res) => {
             state: typeof state === 'string' ? state : undefined,
             error: typeof error === 'string' ? error : undefined,
             errorDescription: typeof errorDescription === 'string' ? errorDescription : undefined,
-            authenticatedUserId: req.user.id,
+            authenticatedUserId: req.user ? req.user.id : undefined,
         });
 
         const redirectUrl = new URL('/profile', frontendUrl);

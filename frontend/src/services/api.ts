@@ -156,3 +156,87 @@ export const authApi = {
     });
   },
 };
+
+export interface GitHubStatus {
+  connected: boolean;
+  githubLogin?: string;
+  githubUserId?: string;
+  scopes?: string[];
+  connectedAt?: string;
+}
+
+export interface GitHubAccountOption {
+  type: 'user' | 'organization';
+  login: string;
+  id: string;
+  avatarUrl?: string;
+}
+
+export interface GitHubRepoOption {
+  id: string;
+  name: string;
+  fullName: string;
+  isPrivate: boolean;
+  defaultBranch?: string;
+  updatedAt?: string;
+  htmlUrl?: string;
+}
+
+export interface GitHubBranchOption {
+  name: string;
+  isDefault: boolean;
+  protected: boolean;
+}
+
+const GITHUB_API_BASE = `${BACKEND_URL}/api/v1/integrations/github`;
+
+async function githubRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers as Record<string, string>),
+  };
+
+  const response = await fetch(`${GITHUB_API_BASE}${endpoint}`, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const errorMsg = data.message || data.error || `Request failed with status ${response.status}`;
+    throw new Error(errorMsg);
+  }
+
+  return data as T;
+}
+
+export const githubApi = {
+  async getStatus(): Promise<GitHubStatus> {
+    const res = await githubRequest<ApiResponse<GitHubStatus>>('/status', { method: 'GET' });
+    return res.data!;
+  },
+
+  async startConnect(returnTo = '/new-project'): Promise<{ authorizationUrl: string; expiresAt: string; scopes: string[] }> {
+    const res = await githubRequest<ApiResponse<{ authorizationUrl: string; expiresAt: string; scopes: string[] }>>(`/connect?returnTo=${encodeURIComponent(returnTo)}`, { method: 'GET' });
+    return res.data!;
+  },
+
+  async getOrganizations(): Promise<{ account: GitHubAccountOption; organizations: GitHubAccountOption[] }> {
+    const res = await githubRequest<ApiResponse<{ account: GitHubAccountOption; organizations: GitHubAccountOption[] }>>('/organizations', { method: 'GET' });
+    return res.data!;
+  },
+
+  async getRepositories(owner: string, page = 1, perPage = 100): Promise<{ repositories: GitHubRepoOption[]; totalCount?: number }> {
+    const res = await githubRequest<ApiResponse<{ repositories: GitHubRepoOption[]; totalCount?: number }>>(`/repositories?owner=${encodeURIComponent(owner)}&page=${page}&per_page=${perPage}`, { method: 'GET' });
+    return res.data!;
+  },
+
+  async getBranches(owner: string, repo: string): Promise<{ repository: any; branches: GitHubBranchOption[]; emptyRepository: boolean }> {
+    const res = await githubRequest<ApiResponse<{ repository: any; branches: GitHubBranchOption[]; emptyRepository: boolean }>>(`/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches`, { method: 'GET' });
+    return res.data!;
+  },
+};
