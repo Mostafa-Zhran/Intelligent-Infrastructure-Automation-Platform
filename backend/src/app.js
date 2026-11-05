@@ -7,6 +7,7 @@ const authRoutes = require('./modules/auth/auth.routes');
 const githubRoutes = require('./modules/integrations/github/github.routes');
 const projectsRoutes = require('./modules/projects/projects.routes');
 const deploymentsRoutes = require('./modules/deployments/deployments.routes');
+const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const correlationId = require('./middleware/correlationId');
 const notFound = require('./middleware/notFound');
 const globalError = require('./middleware/globalError');
@@ -34,6 +35,7 @@ app.get('/', (req, res) => {
             github: '/api/v1/integrations/github',
             projects: '/api/projects',
             deployments: '/api/deployments',
+            dashboard: '/api/dashboard',
             docs: '/api-docs',
             openapi: '/api-docs.json',
             frontend: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -51,6 +53,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/integrations/github', githubRoutes);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/deployments', deploymentsRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.use(notFound);
 app.use(globalError);

@@ -481,3 +481,79 @@ export const deploymentsApi = {
     return res.data!;
   },
 };
+
+
+export interface DashboardMetrics {
+  totalProjects: number;
+  runningDeployments: number;
+  failedDeployments: number;
+  succeededDeployments: number;
+}
+
+export interface DashboardRecentDeployment {
+  id: string;
+  projectId: string;
+  projectName: string;
+  repository: string;
+  environment: string;
+  status: string;
+  branch: string;
+  commitSha?: string | null;
+  errorSummary?: string | null;
+  author: string;
+  startedAt: string;
+  finishedAt?: string | null;
+  createdAt: string;
+}
+
+export interface DashboardSummaryData {
+  metrics: DashboardMetrics;
+  projects: Project[];
+  recentDeployments: DashboardRecentDeployment[];
+}
+
+const DASHBOARD_API_BASE = `${BACKEND_URL}/api/dashboard`;
+
+async function dashboardRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers as Record<string, string>),
+  };
+
+  const response = await fetch(`${DASHBOARD_API_BASE}${endpoint}`, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const errorMsg = data.message || data.error || `Request failed with status ${response.status}`;
+    throw new Error(errorMsg);
+  }
+
+  return data as T;
+}
+
+export const dashboardApi = {
+  async getSummary(): Promise<DashboardSummaryData> {
+    const res = await dashboardRequest<ApiResponse<DashboardSummaryData>>('/', { method: 'GET' });
+    return res.data!;
+  },
+
+  async getRecentDeployments(limit = 10): Promise<{
+    total: number;
+    limit: number;
+    deployments: DashboardRecentDeployment[];
+  }> {
+    const res = await dashboardRequest<ApiResponse<{
+      total: number;
+      limit: number;
+      deployments: DashboardRecentDeployment[];
+    }>>(`/recent-deployments?limit=${limit}`, { method: 'GET' });
+    return res.data!;
+  },
+};

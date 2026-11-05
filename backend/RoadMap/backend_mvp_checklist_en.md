@@ -51,19 +51,19 @@
 
 ### DASH-01 — Dashboard summary
 **Proposed API:** `GET /api/dashboard`
-- [ ] Return projects visible to the current user.
-- [ ] Return a simple project count.
-- [ ] Return the latest deployment summary for each displayed project where available.
-- [ ] Include project name, repository name, environment, and latest deployment status.
-- [ ] Test empty Dashboard data and user-level authorization.
+- [x] Return projects visible to the current user.
+- [x] Return a simple project count.
+- [x] Return the latest deployment summary for each displayed project where available.
+- [x] Include project name, repository name, environment, and latest deployment status.
+- [x] Test empty Dashboard data and user-level authorization.
 
 ### DASH-02 — Recent deployments
 **Proposed API:** `GET /api/dashboard/recent-deployments?limit=10`
-- [ ] Return the most recent deployments visible to the current user.
-- [ ] Sort by creation time, newest first.
-- [ ] Include deployment ID, project ID/name, environment, status, and timestamps.
-- [ ] Include a safe error summary when a deployment fails.
-- [ ] Cap the requested limit.
+- [x] Return the most recent deployments visible to the current user.
+- [x] Sort by creation time, newest first.
+- [x] Include deployment ID, project ID/name, environment, status, and timestamps.
+- [x] Include a safe error summary when a deployment fails.
+- [x] Cap the requested limit.
 
 ## 3. Projects and Git Repositories
 
@@ -250,5 +250,5 @@
 4. [x] Implement project creation and project-details APIs.
 5. [x] Define and implement the Backend-to-Jenkins/worker deployment contract.
 6. [x] Implement deployment request, state updates, history, details, and logs APIs.
-7. [ ] Connect Dashboard APIs to persisted project and deployment data.
+7. [x] Connect Dashboard APIs to persisted project and deployment data.
 8. [ ] Complete security, integration, and API documentation tests.
