@@ -337,6 +337,96 @@ async function fetchRepositoryBranches({
     };
 }
 
+async function fetchRepositoryContents({
+    accessToken,
+    owner,
+    repo,
+    path = '',
+    ref = 'main',
+}) {
+    const cleanPath = path ? String(path).replace(/^\/+/, '') : '';
+    const encodedPath = cleanPath
+        .split('/')
+        .map(encodeURIComponent)
+        .join('/');
+
+    const url =
+        `${githubConfig.apiBaseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodedPath}` +
+        `?ref=${encodeURIComponent(ref)}`;
+
+    let response;
+    try {
+        response = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+            },
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
+    } catch (err) {
+        return { ok: false, reason: 'network_error' };
+    }
+
+    if (response.status === 401) {
+        return { ok: false, reason: 'token_revoked' };
+    }
+
+    if (response.status === 403) {
+        const remaining = response.headers.get('x-ratelimit-remaining');
+        const resetEpoch = Number(response.headers.get('x-ratelimit-reset') || 0);
+        if (remaining === '0') {
+            return {
+                ok: false,
+                reason: 'rate_limited',
+                rateLimitReset: resetEpoch > 0 ? new Date(resetEpoch * 1000) : null,
+            };
+        }
+        return { ok: false, reason: 'forbidden' };
+    }
+
+    if (response.status === 404) {
+        return { ok: false, reason: 'not_found' };
+    }
+
+    if (response.status === 409) {
+        return {
+            ok: true,
+            emptyRepository: true,
+            entries: [],
+        };
+    }
+
+    if (!response.ok) {
+        return { ok: false, reason: `github_unavailable_${response.status}` };
+    }
+
+    const data = await response.json();
+
+    if (Array.isArray(data)) {
+        // Directory listing - map only metadata, limit to first 100 entries for safety
+        const entries = data.slice(0, 100).map((item) => ({
+            name: item.name,
+            path: item.path,
+            type: item.type, // 'file', 'dir', 'symlink', 'submodule'
+            size: item.size || 0,
+        }));
+        return { ok: true, isDirectory: true, entries };
+    }
+
+    // Single file
+    return {
+        ok: true,
+        isDirectory: false,
+        file: {
+            name: data.name,
+            path: data.path,
+            type: data.type,
+            size: data.size || 0,
+        },
+    };
+}
+
 module.exports = {
     exchangeCodeForToken,
     fetchGitHubUser,
@@ -345,4 +435,5 @@ module.exports = {
     fetchRepositories,
     fetchRepository,
     fetchRepositoryBranches,
+    fetchRepositoryContents,
 };

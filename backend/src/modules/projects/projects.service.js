@@ -663,6 +663,25 @@ async function createProject(user, projectData) {
     };
 }
 
+/**
+ * SETUP-02: Inspects repository metadata and root manifests via GitHub API.
+ * Detects Dockerfile and application manifests (Node.js, Python, Java, Go, Rust, etc.)
+ * Returns supported: true only if a valid Dockerfile is detected.
+ */
+async function analyzeRepository(user, { owner, repo, branch = 'main', dockerfilePath = 'Dockerfile' }) {
+    if (!user || !user.id) {
+        throw new ApiError(401, 'Authentication required');
+    }
+
+    return githubService.analyzeRepository({
+        userId: user.id,
+        owner,
+        repo,
+        branch,
+        dockerfilePath,
+    });
+}
+
 module.exports = {
     listProjects,
     createProject,
@@ -671,4 +690,5 @@ module.exports = {
     getProjectOverview,
     getDeploymentHistory,
     submitDeploymentRequest,
+    analyzeRepository,
 };

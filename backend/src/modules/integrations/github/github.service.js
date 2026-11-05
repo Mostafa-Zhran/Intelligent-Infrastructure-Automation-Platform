@@ -9,6 +9,7 @@ const {
   fetchRepositories,
   fetchRepository,
   fetchRepositoryBranches,
+  fetchRepositoryContents,
 } = require('./github.api.service');
 const ApiError = require('../../../utils/ApiError');
 
@@ -485,6 +486,178 @@ async function resolveBranchCommit({ userId, ownerUserId, owner, repo, branch = 
   throw new ApiError(404, `Branch '${branch}' not found in repository '${owner}/${repo}'`);
 }
 
+const KNOWN_MANIFEST_MAP = [
+  { file: 'package.json', framework: 'Node.js' },
+  { file: 'requirements.txt', framework: 'Python' },
+  { file: 'pyproject.toml', framework: 'Python' },
+  { file: 'Pipfile', framework: 'Python' },
+  { file: 'pom.xml', framework: 'Java' },
+  { file: 'build.gradle', framework: 'Java' },
+  { file: 'build.gradle.kts', framework: 'Java' },
+  { file: 'go.mod', framework: 'Go' },
+  { file: 'Cargo.toml', framework: 'Rust' },
+  { file: 'composer.json', framework: 'PHP' },
+  { file: 'Gemfile', framework: 'Ruby' },
+];
+
+/**
+ * Analyzes a GitHub repository for supported MVP build patterns (SETUP-02).
+ * Inspects root files and manifests without executing repository code.
+ * Requires a Dockerfile to mark the repository supported for the MVP.
+ */
+async function analyzeRepository({
+  userId,
+  owner,
+  repo,
+  branch = 'main',
+  dockerfilePath = 'Dockerfile',
+}) {
+  if (!owner || typeof owner !== 'string' || !owner.trim()) {
+    throw new ApiError(400, 'Repository owner is required');
+  }
+  if (!repo || typeof repo !== 'string' || !repo.trim()) {
+    throw new ApiError(400, 'Repository name is required');
+  }
+
+  // Path traversal check
+  const cleanDockerfilePath = (dockerfilePath || 'Dockerfile').trim();
+  if (
+    cleanDockerfilePath.startsWith('/') ||
+    cleanDockerfilePath.includes('..') ||
+    cleanDockerfilePath.includes('\\')
+  ) {
+    throw new ApiError(400, 'Invalid dockerfilePath: Directory traversal not allowed');
+  }
+
+  const ctx = await resolveAccessContext(userId, owner);
+
+  // 1. Verify repository exists
+  const repoResult = await fetchRepository({
+    accessToken: ctx.accessToken,
+    owner: ctx.owner,
+    repo: repo.trim(),
+  });
+
+  if (!repoResult.ok) {
+    if (repoResult.reason === 'not_found') {
+      throw new ApiError(404, `Repository '${owner}/${repo}' not found on GitHub`);
+    }
+    if (repoResult.reason === 'token_revoked') {
+      await githubRepository.markConnectionRevoked(ctx.connection.id, 'TOKEN_REVOKED');
+      throw new ApiError(401, 'GitHub token has been revoked. Please reconnect.');
+    }
+    if (repoResult.reason === 'rate_limited') {
+      const err = new ApiError(429, 'GitHub rate limit exceeded. Please retry later.');
+      err.rateLimitReset = repoResult.rateLimitReset;
+      throw err;
+    }
+    throw new ApiError(502, 'GitHub is temporarily unavailable. Please retry shortly.');
+  }
+
+  const targetBranch = branch ? branch.trim() : (repoResult.repository.default_branch || 'main');
+
+  // 2. Fetch root directory contents
+  const contentsResult = await fetchRepositoryContents({
+    accessToken: ctx.accessToken,
+    owner: ctx.owner,
+    repo: repo.trim(),
+    path: '',
+    ref: targetBranch,
+  });
+
+  if (!contentsResult.ok) {
+    if (contentsResult.reason === 'not_found') {
+      throw new ApiError(404, `Branch '${targetBranch}' not found in repository '${owner}/${repo}'`);
+    }
+    if (contentsResult.reason === 'token_revoked') {
+      await githubRepository.markConnectionRevoked(ctx.connection.id, 'TOKEN_REVOKED');
+      throw new ApiError(401, 'GitHub token has been revoked. Please reconnect.');
+    }
+    if (contentsResult.reason === 'rate_limited') {
+      const err = new ApiError(429, 'GitHub rate limit exceeded. Please retry later.');
+      err.rateLimitReset = contentsResult.rateLimitReset;
+      throw err;
+    }
+    throw new ApiError(502, 'GitHub is temporarily unavailable. Please retry shortly.');
+  }
+
+  const rootEntries = contentsResult.entries || [];
+  const rootFiles = rootEntries.map((e) => e.name);
+
+  // 3. Detect manifests & framework
+  const detectedFiles = [];
+  const detectedManifests = [];
+  let detectedFramework = null;
+
+  for (const item of KNOWN_MANIFEST_MAP) {
+    if (rootFiles.includes(item.file)) {
+      detectedFiles.push(item.file);
+      detectedManifests.push(item.file);
+      if (!detectedFramework) {
+        detectedFramework = item.framework;
+      }
+    }
+  }
+
+  // Check docker-compose or compose files
+  if (rootFiles.includes('docker-compose.yml')) detectedFiles.push('docker-compose.yml');
+  if (rootFiles.includes('docker-compose.yaml')) detectedFiles.push('docker-compose.yaml');
+  if (rootFiles.includes('compose.yaml')) detectedFiles.push('compose.yaml');
+
+  // 4. Check Dockerfile presence
+  let hasDockerfile = false;
+  let resolvedDockerfilePath = null;
+
+  if (cleanDockerfilePath === 'Dockerfile') {
+    const found = rootFiles.find((f) => f.toLowerCase() === 'dockerfile');
+    if (found) {
+      hasDockerfile = true;
+      resolvedDockerfilePath = found;
+      if (!detectedFiles.includes(found)) {
+        detectedFiles.unshift(found);
+      }
+    }
+  } else if (!cleanDockerfilePath.includes('/')) {
+    const found = rootFiles.find((f) => f.toLowerCase() === cleanDockerfilePath.toLowerCase());
+    if (found) {
+      hasDockerfile = true;
+      resolvedDockerfilePath = found;
+      if (!detectedFiles.includes(found)) {
+        detectedFiles.unshift(found);
+      }
+    }
+  } else {
+    const customResult = await fetchRepositoryContents({
+      accessToken: ctx.accessToken,
+      owner: ctx.owner,
+      repo: repo.trim(),
+      path: cleanDockerfilePath,
+      ref: targetBranch,
+    });
+    if (customResult.ok && !customResult.isDirectory && customResult.file) {
+      hasDockerfile = true;
+      resolvedDockerfilePath = cleanDockerfilePath;
+      detectedFiles.unshift(cleanDockerfilePath);
+    }
+  }
+
+  const supported = Boolean(hasDockerfile);
+
+  return {
+    supported,
+    repository: `${owner}/${repo}`,
+    branch: targetBranch,
+    dockerfilePath: hasDockerfile ? resolvedDockerfilePath : null,
+    detectedFiles,
+    manifests: detectedManifests,
+    framework: detectedFramework,
+    reason: supported
+      ? null
+      : 'No Dockerfile detected. The MVP deployment pipeline requires a Dockerfile to build and deploy your application.',
+    analyzedAt: new Date().toISOString(),
+  };
+}
+
 module.exports = {
   resolveBranchCommit,
   startConnection,
@@ -493,4 +666,5 @@ module.exports = {
   getOrganizations,
   getRepositories,
   getRepositoryBranches,
+  analyzeRepository,
 };

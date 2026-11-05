@@ -37,13 +37,13 @@
 
 ### SETUP-02 — Analyze repository for the supported MVP pattern
 **Proposed API:** `POST /api/projects/analyze-repository`
-- [ ] Fetch repository metadata through GitHub API or a controlled isolated checkout.
-- [ ] Detect a `Dockerfile` in the approved repository path.
-- [ ] Detect basic application manifests such as `package.json`, `requirements.txt`, or `pyproject.toml` for display only.
-- [ ] Return detected file paths and a clear supported/unsupported result.
-- [ ] Do not execute repository code during analysis.
-- [ ] Limit file count, file size, execution time, and network access.
-- [ ] Test repositories with a valid Dockerfile, no Dockerfile, and inaccessible branches.
+- [x] Fetch repository metadata through GitHub API or a controlled isolated checkout.
+- [x] Detect a `Dockerfile` in the approved repository path.
+- [x] Detect basic application manifests such as `package.json`, `requirements.txt`, or `pyproject.toml` for display only.
+- [x] Return detected file paths and a clear supported/unsupported result.
+- [x] Do not execute repository code during analysis.
+- [x] Limit file count, file size, execution time, and network access.
+- [x] Test repositories with a valid Dockerfile, no Dockerfile, and inaccessible branches.
 
 ### SETUP-03 — Validate MVP build strategy
 - [x] Support Dockerfile-based builds only for the MVP.

@@ -15,7 +15,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { PageId } from '../types';
-import { githubApi, projectsApi, GitHubRepoOption, GitHubAccountOption, GitHubBranchOption } from '../services/api';
+import { githubApi, projectsApi, GitHubRepoOption, GitHubAccountOption, GitHubBranchOption, AnalyzeRepositoryResult } from '../services/api';
 
 const GithubIcon: React.FC<{ className?: string }> = ({ className = 'w-5 h-5' }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -70,6 +70,25 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
   ]);
 
   const [isDeploying, setIsDeploying] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalyzeRepositoryResult | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+
+  const runRepositoryAnalysis = async (owner: string, repo: string, branch: string) => {
+    setIsAnalyzing(true);
+    try {
+      const result = await projectsApi.analyzeRepository({
+        owner,
+        repo,
+        branch,
+      });
+      setAnalysisResult(result);
+    } catch (err: any) {
+      console.warn('Repository analysis note:', err.message);
+      setAnalysisResult(null);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   // Check GitHub integration status on mount
   useEffect(() => {
@@ -155,14 +174,16 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
 
     // Fetch live branches
     setIsLoadingBranches(true);
+    const owner = selectedOwner || repo.fullName.split('/')[0];
     try {
-      const owner = selectedOwner || repo.fullName.split('/')[0];
       const branchData = await githubApi.getBranches(owner, repo.name);
       setBranches(branchData.branches || []);
       const def = branchData.branches?.find((b) => b.isDefault)?.name || repo.defaultBranch || 'main';
       setSelectedBranch(def);
+      runRepositoryAnalysis(owner, repo.name, def);
     } catch {
       setBranches([{ name: repo.defaultBranch || 'main', isDefault: true, protected: false }]);
+      runRepositoryAnalysis(owner, repo.name, repo.defaultBranch || 'main');
     } finally {
       setIsLoadingBranches(false);
     }
@@ -555,7 +576,14 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
               <div className="relative">
                 <select
                   value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  onChange={(e) => {
+                    const newBranch = e.target.value;
+                    setSelectedBranch(newBranch);
+                    if (selectedRepo) {
+                      const owner = selectedOwner || selectedRepo.fullName.split('/')[0];
+                      runRepositoryAnalysis(owner, selectedRepo.name, newBranch);
+                    }
+                  }}
                   disabled={isLoadingBranches}
                   className="w-full h-11 px-3.5 bg-[#0A0A12] border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-violet-500"
                 >
@@ -573,6 +601,71 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
                   <RefreshCw className="w-4 h-4 animate-spin text-gray-400 absolute right-3 top-3.5 pointer-events-none" />
                 )}
               </div>
+            </div>
+
+            {/* SETUP-02: Repository Analysis Result Card */}
+            <div className="col-span-1 md:col-span-2">
+              {isAnalyzing ? (
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 flex items-center gap-3 animate-pulse">
+                  <RefreshCw className="w-4 h-4 text-violet-400 animate-spin" />
+                  <span className="text-xs text-[#A1A1B5]">
+                    Analyzing repository structure &amp; manifests on branch <code className="text-white font-mono">{selectedBranch}</code>...
+                  </span>
+                </div>
+              ) : analysisResult ? (
+                analysisResult.supported ? (
+                  <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                        <CheckCircle2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-emerald-300">Dockerfile Verified</span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                            {analysisResult.dockerfilePath}
+                          </span>
+                          {analysisResult.framework && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-white/10 text-white/90">
+                              {analysisResult.framework}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#A1A1B5] mt-0.5">
+                          Detected files: {analysisResult.detectedFiles.join(', ')}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/15 px-2.5 py-1 rounded-lg border border-emerald-500/30 shrink-0">
+                      MVP Build Ready
+                    </span>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                        <AlertTriangle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-amber-300">No Dockerfile Found</span>
+                          {analysisResult.framework && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-white/10 text-white/90">
+                              {analysisResult.framework}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-amber-200/80 mt-0.5">
+                          {analysisResult.reason || 'The MVP deployment pipeline requires a Dockerfile to build and deploy containerized workloads.'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-semibold text-amber-400 bg-amber-500/15 px-2.5 py-1 rounded-lg border border-amber-500/30 shrink-0">
+                      Action Needed
+                    </span>
+                  </div>
+                )
+              ) : null}
             </div>
 
             <div className="space-y-1.5 text-left">

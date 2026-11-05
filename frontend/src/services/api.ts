@@ -349,7 +349,32 @@ export const projectsApi = {
     const res = await projectsRequest<ApiResponse<any>>(endpoint, { method: 'GET' });
     return res.data!;
   },
+
+  async analyzeRepository(payload: {
+    owner: string;
+    repo: string;
+    branch?: string;
+    dockerfilePath?: string;
+  }): Promise<AnalyzeRepositoryResult> {
+    const res = await projectsRequest<ApiResponse<AnalyzeRepositoryResult>>('/analyze-repository', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return res.data!;
+  },
 };
+
+export interface AnalyzeRepositoryResult {
+  supported: boolean;
+  repository: string;
+  branch: string;
+  dockerfilePath: string | null;
+  detectedFiles: string[];
+  manifests: string[];
+  framework: string | null;
+  reason: string | null;
+  analyzedAt: string;
+}
 
 
 export interface ApiDeployment {

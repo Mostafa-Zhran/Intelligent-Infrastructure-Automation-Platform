@@ -8,6 +8,7 @@ const {
     projectIdParamSchema,
     deploymentHistoryQuerySchema,
     submitDeploymentSchema,
+    analyzeRepositorySchema,
     validateIdempotencyHeader,
 } = require('./projects.validation');
 
@@ -21,6 +22,98 @@ router.get('/', projectsController.listProjects);
 router.post('/',
     validateRequest(createProjectSchema),
     projectsController.createProject
+);
+/**
+ * @openapi
+ * /api/projects/analyze-repository:
+ *   post:
+ *     tags: [Projects]
+ *     summary: SETUP-02 — Analyze Repository for Supported MVP Pattern
+ *     description: >
+ *       Inspects the user's selected GitHub repository metadata and root manifests via GitHub REST API
+ *       without executing code. Detects Dockerfile (mandatory for MVP build) and framework manifests
+ *       (package.json, requirements.txt, pom.xml, etc.).
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - owner
+ *               - repo
+ *             properties:
+ *               owner:
+ *                 type: string
+ *                 example: acme-corp
+ *               repo:
+ *                 type: string
+ *                 example: web-service
+ *               branch:
+ *                 type: string
+ *                 example: main
+ *                 default: main
+ *               dockerfilePath:
+ *                 type: string
+ *                 example: Dockerfile
+ *                 default: Dockerfile
+ *     responses:
+ *       200:
+ *         description: Repository analyzed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     supported:
+ *                       type: boolean
+ *                       example: true
+ *                     repository:
+ *                       type: string
+ *                       example: acme-corp/web-service
+ *                     branch:
+ *                       type: string
+ *                       example: main
+ *                     dockerfilePath:
+ *                       type: string
+ *                       example: Dockerfile
+ *                     detectedFiles:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["Dockerfile", "package.json"]
+ *                     manifests:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["package.json"]
+ *                     framework:
+ *                       type: string
+ *                       example: Node.js
+ *                     reason:
+ *                       type: string
+ *                       nullable: true
+ *                       example: null
+ *       400:
+ *         description: Bad Request — Validation or directory traversal error
+ *       401:
+ *         description: Unauthorized — Missing or invalid bearer token
+ *       404:
+ *         description: Not Found — Repository or branch not found
+ *       409:
+ *         description: Conflict — GitHub account not connected
+ */
+router.post('/analyze-repository',
+    validateRequest(analyzeRepositorySchema),
+    projectsController.analyzeRepository
 );
 
 

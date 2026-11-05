@@ -794,4 +794,110 @@ describe('Projects & Deployments Service Unit Tests', () => {
             assert.equal(path, 'infrastructure/job/production/job/deploy-app');
         });
     });
+
+    describe('SETUP-02: Repository Analysis API', () => {
+        const testUser = { id: mockOwnerId, role: 'USER' };
+
+        it('should return supported: true when Dockerfile and package.json are present', async () => {
+            mock.method(githubService, 'analyzeRepository', async () => ({
+                supported: true,
+                repository: 'acme-corp/web-service',
+                branch: 'main',
+                dockerfilePath: 'Dockerfile',
+                detectedFiles: ['Dockerfile', 'package.json'],
+                manifests: ['package.json'],
+                framework: 'Node.js',
+                reason: null,
+                analyzedAt: '2026-11-05T06:00:00.000Z',
+            }));
+
+            const result = await projectsService.analyzeRepository(testUser, {
+                owner: 'acme-corp',
+                repo: 'web-service',
+                branch: 'main',
+                dockerfilePath: 'Dockerfile',
+            });
+
+            assert.equal(result.supported, true);
+            assert.equal(result.dockerfilePath, 'Dockerfile');
+            assert.deepEqual(result.detectedFiles, ['Dockerfile', 'package.json']);
+            assert.equal(result.framework, 'Node.js');
+            assert.equal(result.reason, null);
+        });
+
+        it('should return supported: false when repository lacks a Dockerfile', async () => {
+            mock.method(githubService, 'analyzeRepository', async () => ({
+                supported: false,
+                repository: 'acme-corp/python-api',
+                branch: 'main',
+                dockerfilePath: null,
+                detectedFiles: ['requirements.txt'],
+                manifests: ['requirements.txt'],
+                framework: 'Python',
+                reason: 'No Dockerfile detected. The MVP deployment pipeline requires a Dockerfile to build and deploy your application.',
+                analyzedAt: '2026-11-05T06:00:00.000Z',
+            }));
+
+            const result = await projectsService.analyzeRepository(testUser, {
+                owner: 'acme-corp',
+                repo: 'python-api',
+                branch: 'main',
+            });
+
+            assert.equal(result.supported, false);
+            assert.equal(result.dockerfilePath, null);
+            assert.equal(result.framework, 'Python');
+            assert.match(result.reason, /No Dockerfile detected/);
+        });
+
+        it('should reject unauthenticated request with 401', async () => {
+            await assert.rejects(
+                projectsService.analyzeRepository(null, {
+                    owner: 'acme-corp',
+                    repo: 'web-service',
+                }),
+                (err) => err instanceof ApiError && err.statusCode === 401
+            );
+        });
+
+        it('should handle custom Dockerfile path in a subdirectory', async () => {
+            mock.method(githubService, 'analyzeRepository', async ({ dockerfilePath }) => ({
+                supported: true,
+                repository: 'acme-corp/monorepo',
+                branch: 'dev',
+                dockerfilePath: 'apps/backend/Dockerfile',
+                detectedFiles: ['apps/backend/Dockerfile', 'package.json'],
+                manifests: ['package.json'],
+                framework: 'Node.js',
+                reason: null,
+                analyzedAt: '2026-11-05T06:00:00.000Z',
+            }));
+
+            const result = await projectsService.analyzeRepository(testUser, {
+                owner: 'acme-corp',
+                repo: 'monorepo',
+                branch: 'dev',
+                dockerfilePath: 'apps/backend/Dockerfile',
+            });
+
+            assert.equal(result.supported, true);
+            assert.equal(result.dockerfilePath, 'apps/backend/Dockerfile');
+        });
+
+        it('should throw 404 when branch does not exist', async () => {
+            mock.method(githubService, 'analyzeRepository', async () => {
+                throw new ApiError(404, "Branch 'non-existent' not found in repository 'acme-corp/web-service'");
+            });
+
+            await assert.rejects(
+                projectsService.analyzeRepository(testUser, {
+                    owner: 'acme-corp',
+                    repo: 'web-service',
+                    branch: 'non-existent',
+                }),
+                (err) => err instanceof ApiError && err.statusCode === 404
+            );
+        });
+    });
+
 });

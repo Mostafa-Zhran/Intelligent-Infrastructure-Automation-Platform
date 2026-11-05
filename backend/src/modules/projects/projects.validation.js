@@ -89,10 +89,28 @@ function validateIdempotencyHeader(req, res, next) {
     next();
 }
 
+const analyzeRepositorySchema = Joi.object({
+    owner: Joi.string().trim().max(100).required().messages({
+        'any.required': 'Repository owner is required.',
+        'string.empty': 'Repository owner cannot be empty.',
+    }),
+    repo: Joi.string().trim().max(100).required().messages({
+        'any.required': 'Repository name is required.',
+        'string.empty': 'Repository name cannot be empty.',
+    }),
+    branch: Joi.string().trim().max(255).default('main'),
+    dockerfilePath: Joi.string().trim().max(255).default('Dockerfile')
+        .pattern(/^(?!\/)(?!.*(?:\.\/|\.\.\/|\/\.\.|\/\.\/|\\)).+$/)
+        .messages({
+            'string.pattern.base': 'dockerfilePath must be a safe relative path without directory traversal (..).',
+        }),
+}).unknown(false);
+
 module.exports = {
     projectIdParamSchema,
     deploymentHistoryQuerySchema,
     submitDeploymentSchema,
     createProjectSchema,
+    analyzeRepositorySchema,
     validateIdempotencyHeader,
 };
