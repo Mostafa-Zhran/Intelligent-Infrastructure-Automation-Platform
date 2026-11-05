@@ -1,135 +1,132 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
   GitBranch,
   Play,
   Terminal,
-  Activity,
   Layers,
   Clock,
   ChevronRight,
   ShieldCheck,
   Settings,
+  RefreshCw,
+  GitCommit,
+  ExternalLink,
+  AlertTriangle,
 } from 'lucide-react';
-import { PageId, ProjectItem, DeploymentRecord, DeploymentStatus } from '../types';
+import { PageId } from '../types';
+import { projectsApi, deploymentsApi, Project, ApiDeployment } from '../services/api';
 
 interface ProjectDetailsPageProps {
-  project?: ProjectItem;
+  project?: any;
   onNavigate: (page: PageId) => void;
+  onSelectDeployment?: (deployment: any) => void;
   onShowToast?: (type: 'success' | 'error' | 'info', title: string, message: string) => void;
 }
 
-const DEFAULT_PROJECT_DETAILS: ProjectItem = {
-  id: 'api-gateway',
-  name: 'api-gateway',
-  repository: 'automated-devops/api-gateway',
-  environment: 'Development',
-  status: 'Succeeded',
-  branch: 'main',
-  lastDeployment: '25 min ago',
-  buildCommand: 'npm run build',
-  outputDirectory: 'dist',
-  envVars: [
-    { key: 'NODE_ENV', value: 'production' },
-    { key: 'PORT', value: '8080' },
-    { key: 'CACHE_TTL', value: '3600' },
-  ],
-};
-
-const PROJECT_DEPLOYMENTS: DeploymentRecord[] = [
-  {
-    id: '#28',
-    project: 'api-gateway',
-    environment: 'Development',
-    status: 'Succeeded',
-    startedAt: '25 min ago',
-    branch: 'main',
-    commitHash: '7f9c2a1',
-    commitMessage: 'feat: add rate limiting middleware for public endpoints',
-    author: 'Alex Morgan',
-    duration: '1m 38s',
-  },
-  {
-    id: '#23',
-    project: 'api-gateway',
-    environment: 'Development',
-    status: 'Succeeded',
-    startedAt: '4 hours ago',
-    branch: 'main',
-    commitHash: '3b81ef0',
-    commitMessage: 'refactor: split router modules and optimize cold start',
-    author: 'Alex Morgan',
-    duration: '1m 45s',
-  },
-  {
-    id: '#19',
-    project: 'api-gateway',
-    environment: 'Development',
-    status: 'Failed',
-    startedAt: '1 day ago',
-    branch: 'fix/cors-headers',
-    commitHash: '9a10cb4',
-    commitMessage: 'fix: allow wildcard subdomains for preview ingress',
-    author: 'Taylor Chen',
-    duration: '2m 10s',
-    errorDetails: 'Unit test suite failed in auth integration test',
-  },
-  {
-    id: '#15',
-    project: 'api-gateway',
-    environment: 'Development',
-    status: 'Succeeded',
-    startedAt: '2 days ago',
-    branch: 'main',
-    commitHash: 'e50c412',
-    commitMessage: 'chore: upgrade docker base image to alpine-node 20',
-    author: 'Alex Morgan',
-    duration: '1m 29s',
-  },
-];
-
 export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
-  project = DEFAULT_PROJECT_DETAILS,
+  project: initialProject,
   onNavigate,
+  onSelectDeployment,
   onShowToast,
 }) => {
+  const [project, setProject] = useState<Project | null>(initialProject || null);
+  const [deployments, setDeployments] = useState<ApiDeployment[]>([]);
   const [activeTab, setActiveTab] = useState<'deployments' | 'config' | 'settings'>('deployments');
-  const [isDeploying, setIsDeploying] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(!initialProject);
+  const [isLoadingDeployments, setIsLoadingDeployments] = useState<boolean>(true);
+  const [isDeploying, setIsDeploying] = useState<boolean>(false);
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState<boolean>(false);
+  const [deployBranch, setDeployBranch] = useState<string>('main');
 
-  const handleTriggerDeploy = () => {
-    setIsDeploying(true);
-    setTimeout(() => {
-      setIsDeploying(false);
-      onShowToast?.('success', 'Pipeline Triggered', `New deployment run initiated for ${project.name} on branch main.`);
-      onNavigate('deployment-logs');
-    }, 900);
+  const projectId = initialProject?.id;
+
+  useEffect(() => {
+    if (projectId) {
+      loadProjectData(projectId);
+      loadDeployments(projectId);
+    } else {
+      setIsLoading(false);
+      setIsLoadingDeployments(false);
+    }
+  }, [projectId]);
+
+  const loadProjectData = async (id: string) => {
+    try {
+      const data = await projectsApi.getById(id);
+      if (data.project) {
+        setProject(data.project);
+        setDeployBranch(data.project.repositoryBranch || 'main');
+      }
+    } catch (err: any) {
+      onShowToast?.('error', 'Project Load Error', err.message || 'Failed to load project details');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const renderStatusBadge = (status: DeploymentStatus) => {
-    switch (status) {
-      case 'Succeeded':
+  const loadDeployments = async (id: string) => {
+    setIsLoadingDeployments(true);
+    try {
+      const data = await projectsApi.getDeployments(id);
+      setDeployments(data.deployments || []);
+    } catch {
+      // Non-blocking for page view
+    } finally {
+      setIsLoadingDeployments(false);
+    }
+  };
+
+  const handleTriggerDeploy = async () => {
+    if (!project?.id) return;
+    setIsDeploying(true);
+    try {
+      const res = await deploymentsApi.submit(project.id, {
+        branch: deployBranch || project.repositoryBranch || 'main',
+        environment: project.defaultEnvironment || 'development',
+      });
+      setIsDeployModalOpen(false);
+      onShowToast?.('success', 'Pipeline Triggered', `Deployment #${res.deploymentId.substring(0, 8)} queued!`);
+      await loadDeployments(project.id);
+    } catch (err: any) {
+      onShowToast?.('error', 'Deploy Request Failed', err.message || 'Failed to submit deployment');
+    } finally {
+      setIsDeploying(false);
+    }
+  };
+
+  const renderStatusBadge = (status: string | undefined | null) => {
+    switch ((status || '').toUpperCase()) {
+      case 'SUCCEEDED':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>Succeeded</span>
           </span>
         );
-      case 'Running':
+      case 'RUNNING':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/15 text-sky-300 border border-sky-500/30 shadow-[0_0_12px_-2px_rgba(56,189,248,0.4)]">
             <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
             <span>Running</span>
           </span>
         );
-      case 'Failed':
+      case 'FAILED':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/15 border border-rose-500/30 text-rose-400">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
             <span>Failed</span>
           </span>
         );
-      case 'Queued':
+      case 'READY':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Ready</span>
+          </span>
+        );
+      case 'QUEUED':
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-[#A1A1B5]">
@@ -139,6 +136,46 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
         );
     }
   };
+
+  const formatDate = (dateStr?: string | null) => {
+    if (!dateStr) return '—';
+    try {
+      return new Date(dateStr).toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return '—';
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center gap-3">
+        <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
+        <p className="text-sm text-[#A1A1B5]">Loading project overview…</p>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6">
+        <AlertTriangle className="w-12 h-12 text-amber-400 mb-3" />
+        <h2 className="text-xl font-bold text-white mb-2">Project not selected</h2>
+        <p className="text-sm text-[#A1A1B5] mb-6">Please select a project from the catalog.</p>
+        <button
+          type="button"
+          onClick={() => onNavigate('projects')}
+          className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-500 transition-colors"
+        >
+          Back to Projects
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-8 sm:py-10 max-w-7xl mx-auto flex flex-col gap-8 animate-slideUpFade">
@@ -159,181 +196,348 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
           </button>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tracking-tight text-white">{project.name}</h1>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono bg-white/5 border border-white/10 text-[#A1A1B5]">
-              {project.environment}
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono bg-white/5 border border-white/10 text-[#A1A1B5] capitalize">
+              {project.defaultEnvironment}
             </span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Healthy
-            </span>
+            {renderStatusBadge(project.setupStatus)}
           </div>
           <div className="flex items-center gap-2 mt-1.5 text-xs text-[#A1A1B5] font-mono">
             <GitBranch className="w-3.5 h-3.5 text-violet-400" />
-            <span>Branch: <code className="text-white">main</code></span>
+            <span>
+              Branch: <code className="text-white">{project.repositoryBranch || 'main'}</code>
+            </span>
             <span>·</span>
-            <span>{project.repository}</span>
+            <span className="truncate max-w-sm">
+              {project.githubRepoFullName || project.repositoryUrl || 'Configured Git Repo'}
+            </span>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={() => onNavigate('deployment-logs')}
+            onClick={() => onNavigate('deployments')}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/10 text-xs font-medium transition-colors"
           >
             <Terminal className="w-3.5 h-3.5 text-[#A1A1B5]" />
-            <span>Live Logs</span>
+            <span>Deployments</span>
           </button>
 
           <button
             type="button"
-            onClick={handleTriggerDeploy}
+            onClick={() => setIsDeployModalOpen(true)}
             disabled={isDeploying}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-500 text-xs font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.5)] hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50"
           >
             <Play className={`w-3.5 h-3.5 fill-current ${isDeploying ? 'animate-spin' : ''}`} />
-            <span>{isDeploying ? 'Deploying...' : 'Deploy Now'}</span>
+            <span>{isDeploying ? 'Triggering...' : 'Deploy Now'}</span>
           </button>
         </div>
       </div>
 
-      {/* 3 Telemetry Metrics Cards */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 z-10">
-        <div className="p-5 rounded-2xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">Success Rate</p>
-            <p className="text-2xl font-bold text-white mt-0.5">98.2%</p>
-            <p className="text-xs text-emerald-400 mt-0.5 flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3" /> 23 of 24 deploys clean
-            </p>
+      {/* 3 Telemetry Summary Cards */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-5 z-10">
+        <div className="rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10 shadow-lg">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">
+            Target Environment
+          </span>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-2xl font-bold text-white capitalize">{project.defaultEnvironment}</span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              Active
+            </span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
+          <p className="text-xs text-[#A1A1B5] mt-1">Automatic container ingress enabled</p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">Avg Build Time</p>
-            <p className="text-2xl font-bold text-white mt-0.5">1m 42s</p>
-            <p className="text-xs text-[#A1A1B5] mt-0.5">Compiled &amp; containerized</p>
+        <div className="rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10 shadow-lg">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">
+            Total Deployments
+          </span>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-2xl font-bold text-white">{deployments.length}</span>
+            <span className="text-xs text-[#A1A1B5]">pipeline runs</span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
-            <Clock className="w-6 h-6" />
-          </div>
+          <p className="text-xs text-[#A1A1B5] mt-1">
+            Latest: {project.latestDeployment ? renderStatusBadge(project.latestDeployment.status) : 'None'}
+          </p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">Total Runs</p>
-            <p className="text-2xl font-bold text-white mt-0.5">24</p>
-            <p className="text-xs text-[#A1A1B5] mt-0.5">Automated webhooks active</p>
+        <div className="rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10 shadow-lg">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">
+            Repository Setup
+          </span>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-2xl font-bold text-white">{project.setupStatus}</span>
+            <ShieldCheck className="w-5 h-5 text-emerald-400" />
           </div>
-          <div className="w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
-            <Activity className="w-6 h-6" />
-          </div>
+          <p className="text-xs text-[#A1A1B5] mt-1 truncate">
+            {project.githubRepoFullName || 'Linked via platform'}
+          </p>
         </div>
       </section>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-white/10 pb-1 z-10">
-        {[
-          { id: 'deployments', label: 'Deployments History', icon: <Layers className="w-4 h-4" /> },
-          { id: 'config', label: 'Configuration & Env', icon: <Settings className="w-4 h-4" /> },
-        ].map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setActiveTab(t.id as any)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-              activeTab === t.id
-                ? 'bg-white/10 text-white shadow-[inset_0_-2px_0_0_#8B5CF6]'
-                : 'text-[#A1A1B5] hover:text-white hover:bg-white/5'
-            }`}
-          >
-            {t.icon}
-            <span>{t.label}</span>
-          </button>
-        ))}
+      {/* Navigation Tabs */}
+      <div className="border-b border-white/10 flex items-center gap-6 z-10 text-xs font-medium">
+        <button
+          type="button"
+          onClick={() => setActiveTab('deployments')}
+          className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'deployments'
+              ? 'border-violet-500 text-white font-semibold'
+              : 'border-transparent text-[#A1A1B5] hover:text-white'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>Deployment History ({deployments.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('config')}
+          className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'config'
+              ? 'border-violet-500 text-white font-semibold'
+              : 'border-transparent text-[#A1A1B5] hover:text-white'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span>Configuration</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('settings')}
+          className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'settings'
+              ? 'border-violet-500 text-white font-semibold'
+              : 'border-transparent text-[#A1A1B5] hover:text-white'
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          <span>Project Settings</span>
+        </button>
       </div>
 
-      {/* Tab 1: Deployments History Table */}
+      {/* TAB 1: Deployments History */}
       {activeTab === 'deployments' && (
-        <div className="rounded-3xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 p-6 z-10 shadow-xl overflow-hidden">
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-left text-sm border-collapse min-w-[700px]">
-              <thead>
-                <tr className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5] bg-white/[0.02] border-b border-white/5">
-                  <th className="py-3 px-4">Run</th>
-                  <th className="py-3 px-4">Commit</th>
-                  <th className="py-3 px-4">Branch</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Duration</th>
-                  <th className="py-3 px-4">Started</th>
-                  <th className="py-3 px-4 text-right">Details</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5 text-xs">
-                {PROJECT_DEPLOYMENTS.map((d) => (
-                  <tr
-                    key={d.id}
-                    onClick={() => onNavigate('deployment-details')}
-                    className="group hover:bg-white/[0.03] transition-colors cursor-pointer"
-                  >
-                    <td className="py-3.5 px-4 font-mono font-bold text-white">
-                      {d.id}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <code className="text-violet-300 font-mono text-[11px]">{d.commitHash}</code>
-                        <span className="text-[#A1A1B5] truncate max-w-[260px]">{d.commitMessage}</span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-[#A1A1B5]">
-                      {d.branch}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      {renderStatusBadge(d.status)}
-                    </td>
-                    <td className="py-3.5 px-4 text-[#A1A1B5]">
-                      {d.duration}
-                    </td>
-                    <td className="py-3.5 px-4 text-[#A1A1B5]">
-                      {d.startedAt}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <ChevronRight className="w-4 h-4 text-[#A1A1B5] group-hover:text-violet-300 transition-all inline-block" />
-                    </td>
+        <div className="rounded-2xl sm:rounded-3xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 overflow-hidden z-10 shadow-xl">
+          <div className="p-4 sm:p-5 border-b border-white/5 flex items-center justify-between">
+            <h3 className="text-sm font-bold text-white">Pipeline Executions</h3>
+            <button
+              type="button"
+              onClick={() => loadDeployments(project.id)}
+              disabled={isLoadingDeployments}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] text-xs text-[#A1A1B5] hover:text-white border border-white/10"
+            >
+              <RefreshCw className={`w-3 h-3 ${isLoadingDeployments ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+          </div>
+
+          {isLoadingDeployments && (
+            <div className="py-12 flex flex-col items-center justify-center gap-2 text-[#A1A1B5]">
+              <RefreshCw className="w-6 h-6 animate-spin text-violet-400" />
+              <p className="text-xs">Loading execution history…</p>
+            </div>
+          )}
+
+          {!isLoadingDeployments && deployments.length === 0 && (
+            <div className="py-16 flex flex-col items-center justify-center text-center p-6">
+              <Clock className="w-10 h-10 text-[#A1A1B5] mb-2" />
+              <p className="text-sm font-semibold text-white">No deployments triggered yet</p>
+              <p className="text-xs text-[#A1A1B5] mb-4">
+                Launch your first pipeline build to view execution milestones and live logs.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsDeployModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-semibold shadow-md"
+              >
+                Trigger Deployment
+              </button>
+            </div>
+          )}
+
+          {!isLoadingDeployments && deployments.length > 0 && (
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5] bg-white/[0.02] border-b border-white/5">
+                    <th className="py-3 px-4">Deployment ID</th>
+                    <th className="py-3 px-4">Branch / Commit</th>
+                    <th className="py-3 px-4">Environment</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Timestamp</th>
+                    <th className="py-3 px-4 text-right">Details</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-xs">
+                  {deployments.map((d) => (
+                    <tr
+                      key={d.id}
+                      onClick={() => {
+                        if (onSelectDeployment) onSelectDeployment(d);
+                        onNavigate('deployment-details');
+                      }}
+                      className="group hover:bg-white/[0.03] transition-colors cursor-pointer"
+                    >
+                      <td className="py-3.5 px-4 font-mono font-bold text-white">
+                        {d.id.substring(0, 8)}…
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-[#A1A1B5]">
+                        <div className="flex items-center gap-1.5">
+                          <GitCommit className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                          <span>{d.branch || 'main'}</span>
+                          {d.commitSha && (
+                            <span className="text-violet-300 text-[11px]">
+                              ({d.commitSha.substring(0, 7)})
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[11px] bg-white/[0.04] text-[#A1A1B5] border border-white/5 capitalize">
+                          {d.environment}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">{renderStatusBadge(d.status)}</td>
+                      <td className="py-3.5 px-4 text-[#A1A1B5]">{formatDate(d.startedAt || d.createdAt)}</td>
+                      <td className="py-3.5 px-4 text-right">
+                        <ChevronRight className="w-4 h-4 text-[#A1A1B5] group-hover:text-violet-300 transition-all inline-block" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: Configuration */}
+      {activeTab === 'config' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 z-10">
+          <div className="rounded-2xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 p-6 space-y-4">
+            <h3 className="text-sm font-bold text-white">Build & Container Spec</h3>
+            <div className="space-y-3 text-xs">
+              <div>
+                <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">Default Branch</p>
+                <p className="text-white font-mono mt-0.5">{project.repositoryBranch || 'main'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">Default Environment</p>
+                <p className="text-emerald-400 font-mono mt-0.5 capitalize">{project.defaultEnvironment}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">GitHub Full Name</p>
+                <p className="text-violet-300 font-mono mt-0.5">{project.githubRepoFullName || '—'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 p-6 space-y-4">
+            <h3 className="text-sm font-bold text-white">Repository Link</h3>
+            <p className="text-xs text-[#A1A1B5]">
+              Source repository linked for continuous delivery container builds.
+            </p>
+            {project.repositoryUrl ? (
+              <a
+                href={project.repositoryUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/10 text-xs font-medium transition-colors"
+              >
+                <span>View on GitHub</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            ) : (
+              <p className="text-xs text-[#A1A1B5] font-mono">No external URL provided</p>
+            )}
           </div>
         </div>
       )}
 
-      {/* Tab 2: Configuration & Env */}
-      {activeTab === 'config' && (
-        <div className="rounded-3xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 p-6 space-y-6 z-10 shadow-xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5">
-              <p className="text-xs font-mono text-[#A1A1B5] uppercase">Build Command</p>
-              <code className="text-sm font-mono text-white block mt-1">{project.buildCommand || 'npm run build'}</code>
+      {/* TAB 3: Settings */}
+      {activeTab === 'settings' && (
+        <div className="rounded-2xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 p-6 space-y-4 z-10 max-w-2xl">
+          <h3 className="text-sm font-bold text-white">Project Identity & Metadata</h3>
+          <div className="space-y-3 text-xs">
+            <div>
+              <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">Project UUID</p>
+              <code className="text-violet-300 font-mono text-xs select-all">{project.id}</code>
             </div>
-            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5">
-              <p className="text-xs font-mono text-[#A1A1B5] uppercase">Output Directory</p>
-              <code className="text-sm font-mono text-white block mt-1">{project.outputDirectory || 'dist'}</code>
+            <div>
+              <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">Project Slug</p>
+              <code className="text-white font-mono text-xs">{project.slug}</code>
+            </div>
+            <div>
+              <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">Created At</p>
+              <p className="text-[#A1A1B5]">{formatDate(project.createdAt)}</p>
             </div>
           </div>
+        </div>
+      )}
 
-          <div>
-            <h3 className="text-sm font-bold text-white mb-3">Injected Environment Variables</h3>
-            <div className="space-y-2">
-              {(project.envVars || DEFAULT_PROJECT_DETAILS.envVars!).map((ev, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-[#09090F] border border-white/5 font-mono text-xs">
-                  <span className="text-violet-300 font-bold">{ev.key}</span>
-                  <span className="text-gray-400">•••••••••••• ({ev.value.slice(0, 4)}...)</span>
-                </div>
-              ))}
+      {/* Trigger Deployment Modal */}
+      {isDeployModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-md rounded-2xl bg-[#13131F] border border-white/15 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <h3 className="text-base font-bold text-white">Trigger Pipeline Deployment</h3>
+              <button
+                type="button"
+                onClick={() => setIsDeployModalOpen(false)}
+                className="text-gray-400 hover:text-white text-xs px-2 py-1 rounded"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">
+                  Project Name
+                </label>
+                <p className="text-white font-semibold mt-1">{project.name}</p>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">
+                  Target Environment
+                </label>
+                <p className="text-emerald-400 font-mono mt-1 capitalize">{project.defaultEnvironment}</p>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">
+                  Git Branch
+                </label>
+                <input
+                  type="text"
+                  value={deployBranch}
+                  onChange={(e) => setDeployBranch(e.target.value)}
+                  className="w-full h-9 px-3 mt-1 bg-black/50 border border-white/15 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-violet-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setIsDeployModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs text-[#A1A1B5] hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleTriggerDeploy}
+                disabled={isDeploying}
+                className="px-5 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md hover:brightness-110 disabled:opacity-50"
+              >
+                {isDeploying ? 'Deploying...' : 'Confirm & Deploy'}
+              </button>
             </div>
           </div>
         </div>
@@ -341,4 +545,5 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
     </div>
   );
 };
+
 export default ProjectDetailsPage;

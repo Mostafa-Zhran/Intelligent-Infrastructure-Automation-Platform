@@ -325,6 +325,30 @@ export const projectsApi = {
     const res = await projectsRequest<ApiResponse<{ project: Project }>>(`/${projectId}`, { method: 'GET' });
     return res.data!;
   },
+
+  async getDeployments(
+    projectId: string,
+    params: { page?: number; per_page?: number; environment?: string; status?: string } = {}
+  ): Promise<{
+    deployments: ApiDeployment[];
+    pagination: {
+      page: number;
+      perPage: number;
+      total: number;
+      totalPages: number;
+    };
+  }> {
+    const query = new URLSearchParams();
+    if (params.page) query.set('page', String(params.page));
+    if (params.per_page) query.set('per_page', String(params.per_page));
+    if (params.environment) query.set('environment', params.environment);
+    if (params.status) query.set('status', params.status);
+
+    const qs = query.toString();
+    const endpoint = `/${projectId}/deployments${qs ? `?${qs}` : ''}`;
+    const res = await projectsRequest<ApiResponse<any>>(endpoint, { method: 'GET' });
+    return res.data!;
+  },
 };
 
 

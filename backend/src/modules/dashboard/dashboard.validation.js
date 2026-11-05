@@ -8,3 +8,4 @@ const recentDeploymentsQuerySchema = Joi.object({
 module.exports = {
     recentDeploymentsQuerySchema,
 };
+

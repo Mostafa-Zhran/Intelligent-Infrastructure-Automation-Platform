@@ -1,62 +1,153 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
-  Clock,
   GitBranch,
   GitCommit,
   RotateCcw,
   Terminal,
   XCircle,
-  Play,
   Layers,
-  ChevronRight,
   ShieldAlert,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
-import { PageId, DeploymentRecord, PipelineStage } from '../types';
+import { PageId } from '../types';
+import { deploymentsApi } from '../services/api';
 
 interface DeploymentDetailsPageProps {
-  deployment?: DeploymentRecord;
+  deployment?: any;
   onNavigate: (page: PageId) => void;
   onShowToast?: (type: 'success' | 'error' | 'info', title: string, message: string) => void;
 }
 
-const DEFAULT_DEPLOYMENT: DeploymentRecord = {
-  id: '#27',
-  project: 'payment-worker',
-  environment: 'Development',
-  status: 'Failed',
-  startedAt: '48 min ago',
-  branch: 'fix/stripe-webhook',
-  commitHash: '41fe829',
-  commitMessage: 'fix: parse raw body for signature verification',
-  author: 'Taylor Chen',
-  duration: '2m 14s',
-  errorDetails: 'Pod payment-worker-6f987d65f-kq92l in CrashLoopBackOff. Deployment timeout threshold exceeded (300s).',
-};
-
-const STAGES: PipelineStage[] = [
-  { id: 'stg-1', stepNumber: 1, name: 'Source Checkout', status: 'completed', duration: '4s' },
-  { id: 'stg-2', stepNumber: 2, name: 'Dependency Resolution', status: 'completed', duration: '18s' },
-  { id: 'stg-3', stepNumber: 3, name: 'Build & Compile', status: 'completed', duration: '42s' },
-  { id: 'stg-4', stepNumber: 4, name: 'Security & Linting', status: 'completed', duration: '25s' },
-  { id: 'stg-5', stepNumber: 5, name: 'Dockerize & Push', status: 'completed', duration: '35s' },
-  { id: 'stg-6', stepNumber: 6, name: 'Kubernetes Deploy', status: 'failed', duration: '10s' },
-];
-
 export const DeploymentDetailsPage: React.FC<DeploymentDetailsPageProps> = ({
-  deployment = DEFAULT_DEPLOYMENT,
+  deployment: initialDeployment,
   onNavigate,
   onShowToast,
 }) => {
-  const handleRerun = () => {
-    onShowToast?.('info', 'Re-run Triggered', `Re-executing pipeline for deployment ${deployment.id}...`);
-    onNavigate('deployment-logs');
+  const [deployment, setDeployment] = useState<any>(initialDeployment || null);
+  const [steps, setSteps] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(!initialDeployment);
+  const [isRerunning, setIsRerunning] = useState<boolean>(false);
+
+  const deploymentId = initialDeployment?.id;
+
+  useEffect(() => {
+    if (deploymentId) {
+      loadDeploymentDetails(deploymentId);
+    } else {
+      setIsLoading(false);
+    }
+  }, [deploymentId]);
+
+  const loadDeploymentDetails = async (id: string) => {
+    try {
+      const data = await deploymentsApi.getById(id);
+      if (data.deployment) {
+        setDeployment(data.deployment);
+        setSteps(data.deployment.steps || []);
+        setEvents(data.deployment.events || []);
+      }
+    } catch (err: any) {
+      onShowToast?.('error', 'Load Failed', err.message || 'Could not fetch deployment details');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleRollback = () => {
-    onShowToast?.('success', 'Rollback Initialized', 'Targeting last healthy release #25 (web-client / payment-worker).');
+  const handleRerun = async () => {
+    if (!deployment?.projectId) return;
+    setIsRerunning(true);
+    try {
+      const res = await deploymentsApi.submit(deployment.projectId, {
+        branch: deployment.branch || 'main',
+        commitSha: deployment.commitSha || undefined,
+        environment: deployment.environment || 'development',
+      });
+      onShowToast?.('success', 'Pipeline Re-run Queued', `Created deployment #${res.deploymentId.substring(0, 8)}`);
+      onNavigate('deployments');
+    } catch (err: any) {
+      onShowToast?.('error', 'Re-run Failed', err.message || 'Failed to trigger re-run');
+    } finally {
+      setIsRerunning(false);
+    }
   };
+
+  const renderStatusBadge = (status: string | undefined | null) => {
+    switch ((status || '').toUpperCase()) {
+      case 'SUCCEEDED':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Succeeded</span>
+          </span>
+        );
+      case 'RUNNING':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/30">
+            <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+            <span>Running</span>
+          </span>
+        );
+      case 'FAILED':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30">
+            <XCircle className="w-3.5 h-3.5 text-rose-400" />
+            <span>Failed</span>
+          </span>
+        );
+      case 'QUEUED':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/5 border border-white/10 text-[#A1A1B5]">
+            <span className="w-2 h-2 rounded-full bg-gray-400" />
+            <span>Queued</span>
+          </span>
+        );
+    }
+  };
+
+  const formatDate = (dateStr?: string | null) => {
+    if (!dateStr) return '—';
+    try {
+      return new Date(dateStr).toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return '—';
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center gap-3">
+        <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
+        <p className="text-sm text-[#A1A1B5]">Loading deployment metrics…</p>
+      </div>
+    );
+  }
+
+  if (!deployment) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6">
+        <AlertTriangle className="w-12 h-12 text-amber-400 mb-3" />
+        <h2 className="text-xl font-bold text-white mb-2">No Deployment Selected</h2>
+        <p className="text-sm text-[#A1A1B5] mb-6">Select a deployment from the history table to view details.</p>
+        <button
+          type="button"
+          onClick={() => onNavigate('deployments')}
+          className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-500 transition-colors"
+        >
+          View Deployments
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-8 sm:py-10 max-w-7xl mx-auto flex flex-col gap-8 animate-slideUpFade">
@@ -76,174 +167,129 @@ export const DeploymentDetailsPage: React.FC<DeploymentDetailsPageProps> = ({
             <span>Back to deployments</span>
           </button>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight text-white">
-              Deployment {deployment.id}
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white font-mono">
+              Deployment #{deployment.id.substring(0, 8)}
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30">
-              <XCircle className="w-3.5 h-3.5 text-rose-400" />
-              <span>{deployment.status}</span>
-            </span>
+            {renderStatusBadge(deployment.status)}
             <span className="font-mono text-xs text-[#A1A1B5] px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10">
-              {deployment.project}
+              {deployment.project?.name || deployment.project || 'Project'}
             </span>
           </div>
-          <p className="text-xs text-[#A1A1B5] mt-1">
-            Triggered by <span className="text-white font-medium">{deployment.author}</span> · {deployment.startedAt} · Duration: {deployment.duration}
+          <p className="text-xs text-[#A1A1B5] mt-1 font-mono">
+            Environment: <span className="text-emerald-400 capitalize">{deployment.environment}</span> · Triggered {formatDate(deployment.startedAt || deployment.createdAt)}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={handleRollback}
+            onClick={() => onNavigate('deployment-logs')}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/10 text-xs font-medium transition-colors"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-            <span>Rollback</span>
+            <Terminal className="w-3.5 h-3.5 text-[#A1A1B5]" />
+            <span>View Logs</span>
           </button>
 
           <button
             type="button"
             onClick={handleRerun}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-500 text-xs font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.5)] hover:brightness-110 active:scale-[0.98] transition-all"
+            disabled={isRerunning}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-500 text-xs font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.5)] hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50"
           >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Re-run Pipeline</span>
+            <RotateCcw className={`w-3.5 h-3.5 ${isRerunning ? 'animate-spin' : ''}`} />
+            <span>{isRerunning ? 'Queueing...' : 'Re-run Pipeline'}</span>
           </button>
         </div>
       </div>
 
-      {/* Commit & Pipeline Metadata Card */}
-      <div className="p-5 rounded-2xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 z-10 text-xs">
-        <div>
-          <span className="font-mono uppercase text-[#A1A1B5] text-[10px]">Commit Hash</span>
-          <div className="flex items-center gap-1.5 mt-1">
-            <GitCommit className="w-3.5 h-3.5 text-violet-400" />
-            <code className="text-white font-mono">{deployment.commitHash}</code>
-          </div>
-        </div>
-
-        <div>
-          <span className="font-mono uppercase text-[#A1A1B5] text-[10px]">Target Branch</span>
-          <div className="flex items-center gap-1.5 mt-1">
-            <GitBranch className="w-3.5 h-3.5 text-sky-400" />
-            <span className="text-white font-mono">{deployment.branch}</span>
-          </div>
-        </div>
-
-        <div>
-          <span className="font-mono uppercase text-[#A1A1B5] text-[10px]">Target Cluster</span>
-          <div className="flex items-center gap-1.5 mt-1">
-            <Layers className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-white font-mono">us-east-prod-01</span>
-          </div>
-        </div>
-
-        <div>
-          <span className="font-mono uppercase text-[#A1A1B5] text-[10px]">Total Execution Time</span>
-          <div className="flex items-center gap-1.5 mt-1">
-            <Clock className="w-3.5 h-3.5 text-violet-400" />
-            <span className="text-white font-mono">{deployment.duration}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Visual Pipeline DAG Flow (Matching Stitch DAG stages) */}
-      <div className="rounded-3xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 p-6 sm:p-8 space-y-6 z-10 shadow-xl">
-        <div className="flex items-center justify-between pb-4 border-b border-white/5">
-          <div>
-            <h2 className="text-lg font-bold text-white">Pipeline Execution Graph</h2>
-            <p className="text-xs text-[#A1A1B5]">Directed stage graph executed on runner worker-node-88.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => onNavigate('deployment-logs')}
-            className="inline-flex items-center gap-1 text-xs text-violet-300 hover:text-white"
-          >
-            <span>View Raw Logs</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* 6 Stage Nodes in Responsive Flow */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-          {STAGES.map((stg) => {
-            const isCompleted = stg.status === 'completed';
-            const isFailed = stg.status === 'failed';
-            return (
-              <div
-                key={stg.id}
-                className={`p-4 rounded-2xl border flex flex-col justify-between transition-all ${
-                  isFailed
-                    ? 'bg-rose-950/20 border-rose-500/40 ring-1 ring-rose-500/20'
-                    : isCompleted
-                    ? 'bg-white/[0.03] border-emerald-500/30'
-                    : 'bg-white/[0.02] border-white/10'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-mono font-bold text-[#A1A1B5]">
-                    0{stg.stepNumber}
-                  </span>
-                  {isCompleted && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-                  {isFailed && <XCircle className="w-4 h-4 text-rose-400" />}
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold text-white leading-tight">{stg.name}</p>
-                  <p className="text-[11px] font-mono text-[#A1A1B5] mt-1">{stg.duration}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Error Diagnostic Panel (From Screen 18) */}
-        {deployment.errorDetails && deployment.errorDetails !== '-' && (
-          <div className="p-4 rounded-2xl bg-rose-950/30 border border-rose-500/30 space-y-2">
-            <div className="flex items-center gap-2 text-rose-300 text-xs font-bold">
-              <ShieldAlert className="w-4 h-4 text-rose-400" />
-              <span>Failure Diagnostic — Stage 06 Kubernetes Deploy</span>
-            </div>
-            <p className="font-mono text-xs text-rose-200 leading-relaxed pl-6">
-              {deployment.errorDetails}
+      {/* Failure Banner (if failed) */}
+      {deployment.status === 'FAILED' && deployment.errorMessage && (
+        <div className="rounded-2xl bg-rose-500/10 border border-rose-500/20 p-5 flex items-start gap-3.5 z-10">
+          <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold text-rose-300">Execution Error Summary</h4>
+            <p className="text-xs font-mono text-rose-200/90 whitespace-pre-wrap break-all">
+              {deployment.errorMessage}
             </p>
-            <div className="pl-6 pt-1 flex items-center gap-3 text-xs">
-              <button
-                type="button"
-                onClick={() => onNavigate('deployment-logs')}
-                className="text-white underline hover:text-rose-200"
-              >
-                Inspect stack trace in terminal logs →
-              </button>
-            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Terminal Preview Snippet */}
-      <div className="rounded-3xl bg-[#09090F] border border-white/10 p-5 font-mono text-xs text-gray-300 space-y-1.5 shadow-2xl z-10">
-        <div className="flex items-center justify-between pb-3 mb-2 border-b border-white/5 font-sans">
-          <div className="flex items-center gap-2">
-            <Terminal className="w-4 h-4 text-violet-400" />
-            <span className="text-xs font-bold text-white">Log Stream Summary</span>
+      {/* Telemetry Overview Cards */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 z-10">
+        <div className="rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">Git Branch</span>
+          <div className="flex items-center gap-1.5 mt-2 text-white font-mono text-sm">
+            <GitBranch className="w-4 h-4 text-violet-400" />
+            <span>{deployment.branch || 'main'}</span>
           </div>
-          <button
-            type="button"
-            onClick={() => onNavigate('deployment-logs')}
-            className="text-xs text-violet-300 hover:text-white"
-          >
-            Open Interactive Console
-          </button>
         </div>
 
-        <p className="text-gray-500">14:26:20 [controller] Initiating deployment rollout for pod payment-worker...</p>
-        <p className="text-emerald-400">14:26:22 [build] Container image pushed: registry.devops.internal/payment-worker:41fe829</p>
-        <p className="text-rose-400">14:26:25 WARN [readinessProbe] HTTP GET http://10.244.2.84:8080/healthz failed: 503 Service Unavailable</p>
-        <p className="text-rose-400">14:26:38 ERROR [runtime] UnhandledPromiseRejection: ConnectionRefused at RedisPool.connect</p>
-        <p className="text-rose-500 font-bold">14:26:45 [controller] Pod in CrashLoopBackOff. Deployment timeout threshold exceeded (300s).</p>
-      </div>
+        <div className="rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">Commit Reference</span>
+          <div className="flex items-center gap-1.5 mt-2 text-white font-mono text-sm">
+            <GitCommit className="w-4 h-4 text-violet-400" />
+            <span className="text-violet-300">{deployment.commitSha ? deployment.commitSha.substring(0, 10) : 'HEAD'}</span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">Container Replicas</span>
+          <div className="flex items-center gap-1.5 mt-2 text-white font-mono text-sm">
+            <Layers className="w-4 h-4 text-sky-400" />
+            <span>{deployment.replicas || 1} instance(s)</span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">Triggered By</span>
+          <div className="mt-2 text-white text-sm font-medium truncate">
+            {deployment.createdBy?.name || deployment.createdBy?.email || 'System / CI Webhook'}
+          </div>
+        </div>
+      </section>
+
+            {/* Pipeline Steps Section */}
+      {steps.length > 0 && (
+        <section className="rounded-2xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 p-6 z-10 space-y-4">
+          <h3 className="text-sm font-bold text-white">Pipeline Execution Steps</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 font-mono text-xs">
+            {steps.map((st: any) => (
+              <div key={st.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-white font-semibold">#{st.order} {st.name}</span>
+                  <span className="text-[10px] text-violet-300 uppercase">{st.status}</span>
+                </div>
+                {st.errorMessage && (
+                  <p className="text-rose-400 text-[11px] truncate">{st.errorMessage}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Timeline Events Section */}
+      {events.length > 0 && (
+        <section className="rounded-2xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 p-6 z-10 space-y-4">
+          <h3 className="text-sm font-bold text-white">State Transition Milestones</h3>
+          <div className="space-y-3 font-mono text-xs">
+            {events.map((ev: any) => (
+              <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <span className="text-[#A1A1B5] shrink-0 text-[11px]">
+                  {formatDate(ev.createdAt)}
+                </span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                  {ev.stage || 'STAGE'}
+                </span>
+                <span className="text-white flex-1">{ev.message}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };
+
 export default DeploymentDetailsPage;

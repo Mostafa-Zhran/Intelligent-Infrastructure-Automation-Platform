@@ -212,18 +212,18 @@
 ## 7. Backend Testing and API Delivery
 
 ### TEST-01 — Unit tests
-- [ ] Test project creation and deployment-request validation.
+- [x] Test project creation and deployment-request validation.
 - [x] Test GitHub integration behavior using mocked provider responses.
 - [x] Test project-level authorization.
-- [ ] Test deployment state transitions.
-- [ ] Test log redaction.
+- [x] Test deployment state transitions.
+- [x] Test log redaction.
 
 ### TEST-02 — Backend integration tests
 - [x] Test API and database operations against a clean database.
 - [x] Test database migrations.
 - [x] Test GitHub OAuth and repository API contracts with safe test doubles.
 - [x] Test deployment-job publishing and worker status-update contracts.
-- [ ] Test deployment-log persistence and retrieval.
+- [x] Test deployment-log persistence and retrieval.
 
 ### TEST-03 — API documentation
 - [x] Document request and response DTOs.
@@ -251,4 +251,4 @@
 5. [x] Define and implement the Backend-to-Jenkins/worker deployment contract.
 6. [x] Implement deployment request, state updates, history, details, and logs APIs.
 7. [x] Connect Dashboard APIs to persisted project and deployment data.
-8. [ ] Complete security, integration, and API documentation tests.
+8. [x] Complete security, integration, and API documentation tests.
