@@ -69,11 +69,11 @@
 
 ### PROJ-01 — List projects
 **Proposed API:** `GET /api/projects`
-- [ ] Return projects visible to the current user.
-- [ ] Include project ID, name, repository URL, selected branch, environment, and current status.
-- [ ] Return the latest deployment status when available.
-- [ ] Define a default sort order.
-- [ ] Test empty project lists.
+- [x] Return projects visible to the current user.
+- [x] Include project ID, name, repository URL, selected branch, environment, and current status.
+- [x] Return the latest deployment status when available.
+- [x] Define a default sort order.
+- [x] Test empty project lists.
 
 ### PROJ-02 — Get project details
 **Proposed API:** `GET /api/projects/{projectId}`
@@ -86,13 +86,13 @@
 
 ### PROJ-03 — Create project record
 **Proposed API:** `POST /api/projects`
-- [ ] Define the create-project request DTO.
-- [ ] Require a project name, authorized repository, selected branch, and development environment.
-- [ ] Confirm that the connected GitHub account can access the selected repository.
-- [ ] Persist the project and ownership/access information.
-- [ ] Create the initial project setup status.
-- [ ] Prevent duplicate project creation for the same repository and environment.
-- [ ] Return the new project ID and initial status.
+- [x] Define the create-project request DTO.
+- [x] Require a project name, authorized repository, selected branch, and development environment.
+- [x] Confirm that the connected GitHub account can access the selected repository.
+- [x] Persist the project and ownership/access information.
+- [x] Create the initial project setup status.
+- [x] Prevent duplicate project creation for the same repository and environment.
+- [x] Return the new project ID and initial status.
 - [ ] Test invalid input, duplicate creation, and unauthorized repository access.
 
 ## 4. GitHub Integration
@@ -176,38 +176,38 @@
 
 ### DEP-01 — List deployments
 **Proposed API:** `GET /api/deployments`
-- [ ] Return deployments visible to the current user.
-- [ ] Include deployment ID, project name/ID, environment, status, and timestamps.
-- [ ] Sort newest first.
-- [ ] Test empty results and authorization.
+- [x] Return deployments visible to the current user.
+- [x] Include deployment ID, project name/ID, environment, status, and timestamps.
+- [x] Sort newest first.
+- [x] Test empty results and authorization.
 
 ### DEP-02 — Deployment details
 **Proposed API:** `GET /api/deployments/{deploymentId}`
-- [ ] Validate the deployment ID and confirm that the record exists.
-- [ ] Enforce access through the associated project.
-- [ ] Return branch, commit SHA, environment, status, timestamps, and current pipeline stage.
-- [ ] Return a safe failure summary when the deployment fails.
-- [ ] Return the deployment URL if it is available.
-- [ ] Never return credentials or secret values.
+- [x] Validate the deployment ID and confirm that the record exists.
+- [x] Enforce access through the associated project.
+- [x] Return branch, commit SHA, environment, status, timestamps, and current pipeline stage.
+- [x] Return a safe failure summary when the deployment fails.
+- [x] Return the deployment URL if it is available.
+- [x] Never return credentials or secret values.
 
 ### DEP-03 — Deployment logs
 **Proposed API:** `GET /api/deployments/{deploymentId}/logs`
-- [ ] Return logs for an authorized deployment.
-- [ ] Support retrieval by deployment and pipeline stage.
-- [ ] Redact tokens, passwords, private keys, and environment secrets.
-- [ ] Limit response size to protect the API and UI.
-- [ ] Return a clear response when logs are not yet available.
-- [ ] Test secret redaction and unauthorized access.
+- [x] Return logs for an authorized deployment.
+- [x] Support retrieval by deployment and pipeline stage.
+- [x] Redact tokens, passwords, private keys, and environment secrets.
+- [x] Limit response size to protect the API and UI.
+- [x] Return a clear response when logs are not yet available.
+- [x] Test secret redaction and unauthorized access.
 
 ### DEP-04 — Deployment state updates
 **Integration endpoint or queue consumer:** `POST /api/deployments/{deploymentId}/status`
-- [ ] Accept status updates only from the authorized Jenkins/worker integration.
-- [ ] Support the MVP states: `Queued`, `Running`, `Succeeded`, and `Failed`.
-- [ ] Record state-change timestamps and pipeline stage updates.
-- [ ] Reject invalid state transitions.
-- [ ] Prevent stale or duplicate worker updates from overwriting a newer state.
-- [ ] Persist safe failure details and log references when supplied by the worker.
-- [ ] Test valid, invalid, duplicate, and out-of-order status updates.
+- [x] Accept status updates only from the authorized Jenkins/worker integration.
+- [x] Support the MVP states: `Queued`, `Running`, `Succeeded`, and `Failed`.
+- [x] Record state-change timestamps and pipeline stage updates.
+- [x] Reject invalid state transitions.
+- [x] Prevent stale or duplicate worker updates from overwriting a newer state.
+- [x] Persist safe failure details and log references when supplied by the worker.
+- [x] Test valid, invalid, duplicate, and out-of-order status updates.
 
 ## 7. Backend Testing and API Delivery
 
@@ -247,8 +247,8 @@
 1. [x] Define entities, deployment status enum, DTOs, and API conventions.
 2. [x] Implement authentication, project authorization, migrations, validation, and shared error handling.
 3. [x] Implement GitHub OAuth plus repository and branch listing.
-4. [ ] Implement project creation and project-details APIs.
+4. [x] Implement project creation and project-details APIs.
 5. [x] Define and implement the Backend-to-Jenkins/worker deployment contract.
-6. [ ] Implement deployment request, state updates, history, details, and logs APIs.
+6. [x] Implement deployment request, state updates, history, details, and logs APIs.
 7. [ ] Connect Dashboard APIs to persisted project and deployment data.
 8. [ ] Complete security, integration, and API documentation tests.

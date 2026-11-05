@@ -326,3 +326,158 @@ export const projectsApi = {
     return res.data!;
   },
 };
+
+
+export interface ApiDeployment {
+  id: string;
+  projectId: string;
+  project?: {
+    id: string;
+    name: string;
+    slug: string;
+    githubRepoFullName?: string;
+  } | null;
+  environment: string;
+  status: string;
+  branch?: string | null;
+  commitSha?: string | null;
+  repositoryUrl?: string | null;
+  replicas: number;
+  errorMessage?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  ciJob?: {
+    id: string;
+    provider: string;
+    jobName: string;
+    externalJobId?: string | null;
+    status: string;
+    url?: string | null;
+  } | null;
+}
+
+const DEPLOYMENTS_API_BASE = `${BACKEND_URL}/api/deployments`;
+
+async function deploymentsRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers as Record<string, string>),
+  };
+
+  const response = await fetch(`${DEPLOYMENTS_API_BASE}${endpoint}`, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const errorMsg = data.message || data.error || `Request failed with status ${response.status}`;
+    throw new Error(errorMsg);
+  }
+
+  return data as T;
+}
+
+export const deploymentsApi = {
+  async list(params: {
+    page?: number;
+    per_page?: number;
+    status?: string;
+    environment?: string;
+  } = {}): Promise<{
+    deployments: ApiDeployment[];
+    pagination: {
+      page: number;
+      perPage: number;
+      total: number;
+      totalPages: number;
+    };
+  }> {
+    const query = new URLSearchParams();
+    if (params.page) query.set('page', String(params.page));
+    if (params.per_page) query.set('per_page', String(params.per_page));
+    if (params.status && params.status !== 'ALL') query.set('status', params.status);
+    if (params.environment) query.set('environment', params.environment);
+
+    const qs = query.toString();
+    const endpoint = qs ? `/?${qs}` : '/';
+    const res = await deploymentsRequest<ApiResponse<{
+      deployments: ApiDeployment[];
+      pagination: {
+        page: number;
+        perPage: number;
+        total: number;
+        totalPages: number;
+      };
+    }>>(endpoint, { method: 'GET' });
+    return res.data!;
+  },
+
+  async getById(deploymentId: string): Promise<{ deployment: ApiDeployment & { steps: any[]; events: any[] } }> {
+    const res = await deploymentsRequest<ApiResponse<{ deployment: ApiDeployment & { steps: any[]; events: any[] } }>>(
+      `/${deploymentId}`,
+      { method: 'GET' }
+    );
+    return res.data!;
+  },
+
+  async getLogs(
+    deploymentId: string,
+    params: { limit?: number; level?: string; step_id?: string } = {}
+  ): Promise<{
+    deploymentId: string;
+    status: string;
+    totalReturned: number;
+    truncated: boolean;
+    logs: {
+      id: string;
+      stepId?: string;
+      source: string;
+      level: string;
+      message: string;
+      loggedAt: string;
+    }[];
+  }> {
+    const query = new URLSearchParams();
+    if (params.limit) query.set('limit', String(params.limit));
+    if (params.level) query.set('level', params.level);
+    if (params.step_id) query.set('step_id', params.step_id);
+
+    const qs = query.toString();
+    const endpoint = `/${deploymentId}/logs${qs ? `?${qs}` : ''}`;
+    const res = await deploymentsRequest<ApiResponse<any>>(endpoint, { method: 'GET' });
+    return res.data!;
+  },
+
+  async submit(
+    projectId: string,
+    payload: {
+      branch?: string;
+      commitSha?: string;
+      environment?: string;
+    } = {}
+  ): Promise<{
+    deploymentId: string;
+    status: string;
+    environment: string;
+    branch?: string;
+    commitSha?: string;
+  }> {
+    const res = await projectsRequest<ApiResponse<any>>(`/${projectId}/deployments`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return res.data!;
+  },
+};
