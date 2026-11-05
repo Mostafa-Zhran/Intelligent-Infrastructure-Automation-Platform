@@ -13,10 +13,10 @@
 ## 1. Shared Security and Execution Boundaries
 
 ### SEC-01 — Secure repository and deployment input
-- [ ] Validate repository identifiers, repository URLs, branch names, and Dockerfile paths.
-- [ ] Resolve repository metadata from GitHub instead of trusting client-supplied metadata.
-- [ ] Do not accept arbitrary external URLs, cluster endpoints, shell commands, or host addresses from users.
-- [ ] Reject unsupported repository or build configurations with actionable errors.
+- [x] Validate repository identifiers, repository URLs, branch names, and Dockerfile paths.
+- [x] Resolve repository metadata from GitHub instead of trusting client-supplied metadata.
+- [x] Do not accept arbitrary external URLs, cluster endpoints, shell commands, or host addresses from users.
+- [x] Reject unsupported repository or build configurations with actionable errors.
 
 ### SEC-02 — Isolated execution baseline
 - [ ] Run repository checkout, build, Terraform, Ansible, and deployment work in an isolated execution environment.
@@ -24,16 +24,16 @@
 - [ ] Use safe argument passing for all Git, Terraform, Ansible, Docker, Jenkins, and Kubernetes commands.
 - [ ] Apply timeouts and CPU, memory, disk, and network limits to each execution stage.
 - [ ] Clean temporary workspaces after pipeline completion or failure.
-- [ ] Ensure secrets are not written to application logs, Jenkins console logs, or queue messages.
+- [x] Ensure secrets are not written to application logs, Jenkins console logs, or queue messages.
 
 ## 2. Project Setup and Repository Analysis
 
 ### SETUP-01 — Validate repository selection
-- [ ] Accept an authorized GitHub repository ID/full name and branch.
-- [ ] Verify that the user can access the selected repository.
-- [ ] Verify that the selected branch exists.
-- [ ] Capture the commit SHA selected for setup or deployment.
-- [ ] Return field-level validation errors when repository selection is invalid.
+- [x] Accept an authorized GitHub repository ID/full name and branch.
+- [x] Verify that the user can access the selected repository.
+- [x] Verify that the selected branch exists.
+- [x] Capture the commit SHA selected for setup or deployment.
+- [x] Return field-level validation errors when repository selection is invalid.
 
 ### SETUP-02 — Analyze repository for the supported MVP pattern
 **Proposed API:** `POST /api/projects/analyze-repository`
@@ -46,18 +46,18 @@
 - [ ] Test repositories with a valid Dockerfile, no Dockerfile, and inaccessible branches.
 
 ### SETUP-03 — Validate MVP build strategy
-- [ ] Support Dockerfile-based builds only for the MVP.
-- [ ] Validate that the selected Dockerfile path remains inside the checked-out repository workspace.
-- [ ] Reject missing, invalid, or unsupported Dockerfile paths.
-- [ ] Save the approved Dockerfile path with the project configuration.
-- [ ] Do not expose arbitrary build-command input in the MVP UI or API.
+- [x] Support Dockerfile-based builds only for the MVP.
+- [x] Validate that the selected Dockerfile path remains inside the checked-out repository workspace.
+- [x] Reject missing, invalid, or unsupported Dockerfile paths.
+- [x] Save the approved Dockerfile path with the project configuration.
+- [x] Do not expose arbitrary build-command input in the MVP UI or API.
 
 ### SETUP-04 — Save approved project configuration
-- [ ] Save project name, repository, branch, Dockerfile path, and approved Development target.
-- [ ] Store non-secret project configuration separately from secret references.
-- [ ] Record who created the project and when.
-- [ ] Create the project with an initial setup status.
-- [ ] Return a summary safe for the UI to display.
+- [x] Save project name, repository, branch, Dockerfile path, and approved Development target.
+- [x] Store non-secret project configuration separately from secret references.
+- [x] Record who created the project and when.
+- [x] Create the project with an initial setup status.
+- [x] Return a summary safe for the UI to display.
 
 ### SETUP-05 — Start and track setup
 **Proposed APIs:** `POST /api/projects/{projectId}/setup` and `GET /api/projects/{projectId}/setup-status`
@@ -102,25 +102,25 @@
 ## 5. Jenkins Pipeline and Background Execution
 
 ### PIPE-01 — Pipeline and stage data model
-- [ ] Define Pipeline and PipelineStage entities.
-- [ ] Link each pipeline to a project and setup or deployment operation.
-- [ ] Support the MVP pipeline states: `Queued`, `Running`, `Succeeded`, and `Failed`.
-- [ ] Store stage order, status, timestamps, safe failure summary, and log reference.
-- [ ] Create migrations and indexes required for project and deployment status lookups.
+- [x] Define Pipeline and PipelineStage entities.
+- [x] Link each pipeline to a project and setup or deployment operation.
+- [x] Support the MVP pipeline states: `Queued`, `Running`, `Succeeded`, and `Failed`.
+- [x] Store stage order, status, timestamps, safe failure summary, and log reference.
+- [x] Create migrations and indexes required for project and deployment status lookups.
 
 ### PIPE-02 — Backend-to-Jenkins job contract
-- [ ] Define a versioned payload for setup and deployment jobs.
-- [ ] Include project ID, pipeline/deployment ID, repository identifier, commit SHA, branch, Dockerfile path, target metadata, and correlation ID.
-- [ ] Pass secret references only; never place raw secret values in the payload.
-- [ ] Validate the job payload before Jenkins execution.
-- [ ] Document the job parameters and expected Jenkins callback/status contract.
+- [x] Define a versioned payload for setup and deployment jobs.
+- [x] Include project ID, pipeline/deployment ID, repository identifier, commit SHA, branch, Dockerfile path, target metadata, and correlation ID.
+- [x] Pass secret references only; never place raw secret values in the payload.
+- [x] Validate the job payload before Jenkins execution.
+- [x] Document the job parameters and expected Jenkins callback/status contract.
 
 ### PIPE-03 — Trigger Jenkins safely
-- [ ] Configure a server-side Jenkins integration using a protected service credential.
-- [ ] Start a parameterized Jenkins job only after Backend authorization and configuration validation succeed.
-- [ ] Prevent duplicate Jenkins jobs for the same active setup or deployment request.
-- [ ] Record the Jenkins build reference against the pipeline record.
-- [ ] Handle Jenkins submission failure and update the pipeline with a safe failure state.
+- [x] Configure a server-side Jenkins integration using a protected service credential.
+- [x] Start a parameterized Jenkins job only after Backend authorization and configuration validation succeed.
+- [x] Prevent duplicate Jenkins jobs for the same active setup or deployment request.
+- [x] Record the Jenkins build reference against the pipeline record.
+- [x] Handle Jenkins submission failure and update the pipeline with a safe failure state.
 
 ### PIPE-04 — Repository checkout stage
 - [ ] Check out the exact approved repository and commit SHA for the pipeline.
@@ -156,34 +156,34 @@
 - [ ] Update the deployment to `Succeeded` only after the rollout health check passes.
 
 ### PIPE-08 — Failure behavior
-- [ ] Mark the pipeline and deployment as `Failed` when a required stage fails.
-- [ ] Store a safe failure summary and redacted logs.
-- [ ] Stop remaining required stages after a failure.
-- [ ] Ensure duplicate callbacks or retried messages cannot overwrite a newer terminal state.
-- [ ] Expose the failure status and logs to authorized users through the Backend APIs.
+- [x] Mark the pipeline and deployment as `Failed` when a required stage fails.
+- [x] Store a safe failure summary and redacted logs.
+- [x] Stop remaining required stages after a failure.
+- [x] Ensure duplicate callbacks or retried messages cannot overwrite a newer terminal state.
+- [x] Expose the failure status and logs to authorized users through the Backend APIs.
 
 ## 6. Deployment Status and Logs
 
 ### STAT-01 — Worker and Jenkins status updates
 **Integration endpoint or queue consumer:** `POST /api/deployments/{deploymentId}/status`
-- [ ] Accept status updates only from authorized internal Jenkins/worker integration.
-- [ ] Update pipeline stage status, overall deployment status, timestamps, and safe failure summary.
-- [ ] Validate state transitions.
-- [ ] Reject stale or duplicate updates that would overwrite newer data.
-- [ ] Include a correlation ID across API, Jenkins, Terraform, Ansible, and Kubernetes logs.
+- [x] Accept status updates only from authorized internal Jenkins/worker integration.
+- [x] Update pipeline stage status, overall deployment status, timestamps, and safe failure summary.
+- [x] Validate state transitions.
+- [x] Reject stale or duplicate updates that would overwrite newer data.
+- [x] Include a correlation ID across API, Jenkins, Terraform, Ansible, and Kubernetes logs.
 
 ### STAT-02 — Persist and retrieve deployment logs
-- [ ] Persist or reference redacted logs by deployment and stage.
-- [ ] Allow authorized users to retrieve logs through `GET /api/deployments/{deploymentId}/logs`.
-- [ ] Limit log response size and return a clear message when logs are not available yet.
-- [ ] Never expose passwords, tokens, private keys, kubeconfig content, or cloud credentials.
-- [ ] Test secret redaction for Jenkins, Terraform, Ansible, Docker, and Kubernetes output.
+- [x] Persist or reference redacted logs by deployment and stage.
+- [x] Allow authorized users to retrieve logs through `GET /api/deployments/{deploymentId}/logs`.
+- [x] Limit log response size and return a clear message when logs are not available yet.
+- [x] Never expose passwords, tokens, private keys, kubeconfig content, or cloud credentials.
+- [x] Test secret redaction for Jenkins, Terraform, Ansible, Docker, and Kubernetes output.
 
 ### STAT-03 — Display status through polling
-- [ ] Allow Dashboard and Project Details to poll persisted deployment and setup status.
-- [ ] Return current overall status, current stage, timestamps, and safe error summary.
-- [ ] Return the latest available log reference or log availability state.
-- [ ] Do not require real-time sockets or push notifications for the MVP.
+- [x] Allow Dashboard and Project Details to poll persisted deployment and setup status.
+- [x] Return current overall status, current stage, timestamps, and safe error summary.
+- [x] Return the latest available log reference or log availability state.
+- [x] Do not require real-time sockets or push notifications for the MVP.
 
 ## 7. MVP Integration Tests and Operational Readiness
 
@@ -221,10 +221,10 @@
 
 ## Suggested MVP Implementation Order
 
-1. [ ] Define project, pipeline, stage, status, and Backend-to-Jenkins contracts.
+1. [x] Define project, pipeline, stage, status, and Backend-to-Jenkins contracts.
 2. [ ] Prepare the approved AWS, Terraform state, Kubernetes Development target, secret references, and deployment permissions.
-3. [ ] Implement secure GitHub repository validation and Dockerfile-only repository analysis.
-4. [ ] Implement project setup, deployment request, status, and log APIs.
+3. [x] Implement secure GitHub repository validation and Dockerfile-only repository analysis.
+4. [x] Implement project setup, deployment request, status, and log APIs.
 5. [ ] Configure Jenkins to check out a repository, build and push a Docker image, run Terraform and Ansible, and deploy to Kubernetes.
-6. [ ] Connect Jenkins stage callbacks and redacted logs to the Backend status model.
+6. [x] Connect Jenkins stage callbacks and redacted logs to the Backend status model.
 7. [ ] Validate the end-to-end flow from Dashboard deployment request to healthy Kubernetes rollout.
