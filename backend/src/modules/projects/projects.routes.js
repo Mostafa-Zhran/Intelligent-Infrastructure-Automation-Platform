@@ -4,6 +4,7 @@ const authenticate = require('../../middleware/authenticate');
 const validateRequest = require('../../middleware/validateRequest');
 const projectsController = require('./projects.controller');
 const {
+    createProjectSchema,
     projectIdParamSchema,
     deploymentHistoryQuerySchema,
     submitDeploymentSchema,
@@ -14,6 +15,14 @@ const router = express.Router();
 
 // Require authentication for all project and deployment endpoints
 router.use(authenticate);
+
+router.get('/', projectsController.listProjects);
+
+router.post('/',
+    validateRequest(createProjectSchema),
+    projectsController.createProject
+);
+
 
 /**
  * @openapi

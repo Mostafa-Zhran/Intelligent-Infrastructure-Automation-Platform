@@ -40,6 +40,32 @@ const submitDeploymentSchema = Joi.object({
     idempotencyKey: Joi.string().trim().max(255),
 }).unknown(false);
 
+const createProjectSchema = Joi.object({
+    name: Joi.string().trim().min(2).max(100).required().messages({
+        'string.empty': 'Project name is required.',
+        'any.required': 'Project name is required.',
+        'string.min': 'Project name must be at least 2 characters long.',
+    }),
+    description: Joi.string().trim().max(500).allow('', null),
+    repositoryUrl: Joi.string().trim().uri().allow('', null),
+    repositoryBranch: Joi.string().trim().max(255).default('main'),
+    defaultEnvironment: Joi.string()
+        .trim()
+        .valid('development', 'staging', 'production', 'test', 'preview')
+        .default('development'),
+    githubRepoId: Joi.alternatives().try(Joi.string(), Joi.number()).allow(null),
+    githubRepoOwner: Joi.string().trim().max(100).allow('', null),
+    githubRepoFullName: Joi.string().trim().max(300).allow('', null),
+    buildCommand: Joi.string().trim().max(255).allow('', null),
+    outputDirectory: Joi.string().trim().max(255).allow('', null),
+    envVars: Joi.array().items(
+        Joi.object({
+            key: Joi.string().trim().required(),
+            value: Joi.string().trim().allow(''),
+        })
+    ).optional(),
+}).unknown(true);
+
 /**
  * Middleware validating the HTTP Idempotency-Key header before it reaches the controller/service.
  */
@@ -67,5 +93,6 @@ module.exports = {
     projectIdParamSchema,
     deploymentHistoryQuerySchema,
     submitDeploymentSchema,
+    createProjectSchema,
     validateIdempotencyHeader,
 };

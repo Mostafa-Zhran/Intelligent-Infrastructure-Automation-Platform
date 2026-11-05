@@ -15,7 +15,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { PageId } from '../types';
-import { githubApi, GitHubRepoOption, GitHubAccountOption, GitHubBranchOption } from '../services/api';
+import { githubApi, projectsApi, GitHubRepoOption, GitHubAccountOption, GitHubBranchOption } from '../services/api';
 
 const GithubIcon: React.FC<{ className?: string }> = ({ className = 'w-5 h-5' }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -182,17 +182,36 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
     setEnvVars(updated);
   };
 
-  const handleCompleteDeploy = () => {
+  const handleCompleteDeploy = async () => {
     if (!selectedRepo) {
       onShowToast('error', 'Missing Repository', 'Please select a repository to deploy');
       return;
     }
+    if (!projectName.trim()) {
+      onShowToast('error', 'Missing Project Name', 'Please enter a project name');
+      return;
+    }
     setIsDeploying(true);
-    setTimeout(() => {
+    try {
+      await projectsApi.create({
+        name: projectName.trim(),
+        repositoryUrl: selectedRepo.htmlUrl || undefined,
+        repositoryBranch: selectedBranch,
+        defaultEnvironment: environment.toLowerCase() as 'development' | 'staging' | 'production',
+        githubRepoId: selectedRepo.id,
+        githubRepoOwner: selectedOwner || selectedRepo.fullName.split('/')[0],
+        githubRepoFullName: selectedRepo.fullName,
+        buildCommand: buildCommand || undefined,
+        outputDirectory: outputDirectory || undefined,
+        envVars: envVars.filter((v) => v.key.trim()),
+      });
+      onShowToast('success', 'Project Created', `Project "${projectName}" has been created successfully!`);
+      onNavigate('projects');
+    } catch (err) {
+      onShowToast('error', 'Create Failed', (err instanceof Error ? err.message : null) || 'Failed to create project. Please try again.');
+    } finally {
       setIsDeploying(false);
-      onShowToast('success', 'Project Deployed', `Pipeline initialized for ${projectName}!`);
-      onNavigate('deployments');
-    }, 1200);
+    }
   };
 
   const filteredRepos = repositories.filter(

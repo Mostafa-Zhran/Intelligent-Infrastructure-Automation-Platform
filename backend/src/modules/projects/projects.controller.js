@@ -2,6 +2,29 @@
 const asyncHandler = require('../../utils/asyncHandler');
 const projectsService = require('./projects.service');
 
+const listProjects = asyncHandler(async (req, res) => {
+    const projects = await projectsService.listProjects(req.user);
+
+    res.status(200).json({
+        success: true,
+        data: {
+            projects,
+        },
+    });
+});
+
+const createProject = asyncHandler(async (req, res) => {
+    const project = await projectsService.createProject(req.user, req.body);
+
+    res.status(201).json({
+        success: true,
+        message: 'Project created successfully',
+        data: {
+            project,
+        },
+    });
+});
+
 const getProjectOverview = asyncHandler(async (req, res) => {
     const { projectId } = req.params;
     const project = await projectsService.getProjectOverview(projectId, req.user);
@@ -57,8 +80,9 @@ const submitDeploymentRequest = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+    listProjects,
+    createProject,
     getProjectOverview,
     getDeploymentHistory,
     submitDeploymentRequest,
 };
-

@@ -240,3 +240,89 @@ export const githubApi = {
     return res.data!;
   },
 };
+
+
+export interface Project {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  repositoryUrl?: string | null;
+  repositoryBranch?: string | null;
+  defaultEnvironment: string;
+  setupStatus: string;
+  githubRepoId?: string | null;
+  githubRepoOwner?: string | null;
+  githubRepoFullName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  latestDeployment?: {
+    id: string;
+    status: string;
+    environment: string;
+    commitSha?: string;
+    branch?: string;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+}
+
+export interface CreateProjectPayload {
+  name: string;
+  description?: string;
+  repositoryUrl?: string;
+  repositoryBranch?: string;
+  defaultEnvironment?: string;
+  githubRepoId?: string | number | null;
+  githubRepoOwner?: string | null;
+  githubRepoFullName?: string | null;
+  buildCommand?: string;
+  outputDirectory?: string;
+  envVars?: { key: string; value: string }[];
+}
+
+const PROJECTS_API_BASE = `${BACKEND_URL}/api/projects`;
+
+async function projectsRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers as Record<string, string>),
+  };
+
+  const response = await fetch(`${PROJECTS_API_BASE}${endpoint}`, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const errorMsg = data.message || data.error || `Request failed with status ${response.status}`;
+    throw new Error(errorMsg);
+  }
+
+  return data as T;
+}
+
+export const projectsApi = {
+  async list(): Promise<{ projects: Project[] }> {
+    const res = await projectsRequest<ApiResponse<{ projects: Project[] }>>('/', { method: 'GET' });
+    return res.data!;
+  },
+
+  async create(payload: CreateProjectPayload): Promise<{ project: Project }> {
+    const res = await projectsRequest<ApiResponse<{ project: Project }>>('/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return res.data!;
+  },
+
+  async getById(projectId: string): Promise<{ project: Project }> {
+    const res = await projectsRequest<ApiResponse<{ project: Project }>>(`/${projectId}`, { method: 'GET' });
+    return res.data!;
+  },
+};

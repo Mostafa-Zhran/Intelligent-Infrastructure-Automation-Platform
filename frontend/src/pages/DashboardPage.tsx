@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FolderGit2,
   RefreshCw,
@@ -9,8 +9,10 @@ import {
   Terminal,
   Search,
   Grid,
+  FolderX,
 } from 'lucide-react';
-import { PageId, UserProfile, ProjectItem, DeploymentRecord, DeploymentStatus } from '../types';
+import { PageId, UserProfile } from '../types';
+import { projectsApi, Project } from '../services/api';
 
 interface DashboardPageProps {
   user: UserProfile;
@@ -20,82 +22,96 @@ interface DashboardPageProps {
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   user: _user,
-  onNavigate: _onNavigate,
+  onNavigate,
   onShowToast,
 }) => {
-  const [projects] = useState<ProjectItem[]>([]);
-  const [deployments] = useState<DeploymentRecord[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [projectSearch, setProjectSearch] = useState('');
-  const [deploymentStatusFilter, setDeploymentStatusFilter] = useState<string>('ALL');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshedTime, setLastRefreshedTime] = useState('Just now');
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newProjectName, setNewProjectName] = useState('');
-  const [newProjectRepo, setNewProjectRepo] = useState('');
 
-  // Metrics computation
-  const totalProjects = projects.length;
-  const runningDeployments = deployments.filter((d) => d.status === 'Running').length;
-  const failedDeployments = deployments.filter((d) => d.status === 'Failed').length;
+  useEffect(() => {
+    fetchProjects();
+  }, []);
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      setLastRefreshedTime('Just now');
-      onShowToast('info', 'Telemetry Synced', 'Dashboard metrics and pipeline runs updated.');
-    }, 700);
+  const fetchProjects = async () => {
+    setIsLoadingProjects(true);
+    try {
+      const { projects: list } = await projectsApi.list();
+      setProjects(list || []);
+    } catch {
+      // silently fail on dashboard
+    } finally {
+      setIsLoadingProjects(false);
+    }
   };
 
-  const handleCreateProjectSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newProjectName.trim()) return;
-    setIsCreateModalOpen(false);
-    onShowToast('success', 'Project Initialized', `Project "${newProjectName}" registered with automated build trigger.`);
-    setNewProjectName('');
-    setNewProjectRepo('');
+  // Metrics
+  const totalProjects = projects.length;
+  const runningDeployments = projects.filter(
+    (p) => p.latestDeployment?.status === 'RUNNING'
+  ).length;
+  const failedDeployments = projects.filter(
+    (p) => p.latestDeployment?.status === 'FAILED'
+  ).length;
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchProjects();
+    setIsRefreshing(false);
+    setLastRefreshedTime('Just now');
+    onShowToast('info', 'Telemetry Synced', 'Dashboard metrics and pipeline runs updated.');
   };
 
   const filteredProjects = projects.filter(
     (p) =>
       p.name.toLowerCase().includes(projectSearch.toLowerCase()) ||
-      p.repository.toLowerCase().includes(projectSearch.toLowerCase())
+      (p.githubRepoFullName || '').toLowerCase().includes(projectSearch.toLowerCase())
   );
 
-  const filteredDeployments = deployments.filter((d) => {
-    if (deploymentStatusFilter === 'ALL') return true;
-    return d.status.toUpperCase() === deploymentStatusFilter.toUpperCase();
-  });
-
-  const renderStatusBadge = (status: DeploymentStatus) => {
-    switch (status) {
-      case 'Succeeded':
+  const renderDeployStatusBadge = (status: string | undefined | null) => {
+    switch ((status || '').toUpperCase()) {
+      case 'SUCCEEDED':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             <span>Succeeded</span>
           </span>
         );
-      case 'Running':
+      case 'RUNNING':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/15 text-sky-300 border border-sky-500/30 shadow-[0_0_12px_-2px_rgba(56,189,248,0.4)]">
             <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
             <span>Running</span>
           </span>
         );
-      case 'Failed':
+      case 'FAILED':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/15 border border-rose-500/30 text-rose-400">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
             <span>Failed</span>
           </span>
         );
-      case 'Queued':
+      case 'QUEUED':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 border border-amber-500/30 text-amber-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span>Queued</span>
+          </span>
+        );
+      case 'READY':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>Ready</span>
+          </span>
+        );
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-[#A1A1B5]">
             <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-            <span>Queued</span>
+            <span>Pending</span>
           </span>
         );
     }
@@ -131,7 +147,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           <button
             type="button"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => onNavigate('new-project')}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-500 text-xs font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.5)] hover:shadow-[0_4px_28px_0_rgba(139,92,246,0.7)] hover:brightness-110 active:scale-[0.98] transition-all"
           >
             <Plus className="w-4 h-4" />
@@ -149,7 +165,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               Total Projects
             </span>
             <span className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-              {totalProjects}
+              {isLoadingProjects ? '…' : totalProjects}
             </span>
             <span className="text-xs text-[#A1A1B5]">Active tracked repositories</span>
           </div>
@@ -166,11 +182,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </span>
             <div className="flex items-center gap-2">
               <span className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-                {runningDeployments}
+                {isLoadingProjects ? '…' : runningDeployments}
               </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-sky-500/15 text-sky-300 border border-sky-500/30 animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" /> Active
-              </span>
+              {runningDeployments > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-sky-500/15 text-sky-300 border border-sky-500/30 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400" /> Active
+                </span>
+              )}
             </div>
             <span className="text-xs text-[#A1A1B5]">Currently building &amp; syncing</span>
           </div>
@@ -187,11 +205,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </span>
             <div className="flex items-center gap-2">
               <span className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-                {failedDeployments}
+                {isLoadingProjects ? '…' : failedDeployments}
               </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30">
-                Attention
-              </span>
+              {failedDeployments > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                  Attention
+                </span>
+              )}
             </div>
             <span className="text-xs text-[#A1A1B5]">Last 24 hours</span>
           </div>
@@ -207,7 +227,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="flex items-center gap-2.5">
             <h2 className="text-xl font-bold text-white tracking-tight">Projects</h2>
             <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 border border-white/10 text-[#A1A1B5] font-mono">
-              {filteredProjects.length}
+              {isLoadingProjects ? '…' : filteredProjects.length}
             </span>
           </div>
 
@@ -225,7 +245,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             <button
               type="button"
-              onClick={() => onShowToast('info', 'Projects Catalog', 'Showing all configured repositories and workspaces.')}
+              onClick={() => onNavigate('projects')}
               className="inline-flex items-center gap-1 text-xs font-medium text-violet-300 hover:text-white transition-colors"
             >
               <span>View all</span>
@@ -234,35 +254,66 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
 
-        {/* 6 Project Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-          {filteredProjects.map((p) => (
-            <div
-              key={p.id}
-              onClick={() => onShowToast('info', p.name, `Active repository: ${p.repository} [${p.status}]`)}
-              className="group relative flex flex-col justify-between p-5 rounded-2xl bg-[#0F0F19]/80 hover:bg-[#161624] border border-white/10 hover:border-violet-500/30 transition-all duration-200 cursor-pointer shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:shadow-[0_12px_28px_-6px_rgba(139,92,246,0.18)]"
-            >
-              <div className="flex flex-col gap-1 mb-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-base font-semibold text-white group-hover:text-violet-300 transition-colors">
-                    {p.name}
-                  </span>
-                  <ArrowUpRight className="w-4 h-4 text-[#A1A1B5] group-hover:text-violet-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-                </div>
-                <span className="font-mono text-xs text-[#A1A1B5] truncate">
-                  {p.repository}
-                </span>
-              </div>
+        {/* Loading */}
+        {isLoadingProjects && (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <RefreshCw className="w-6 h-6 text-violet-400 animate-spin" />
+            <p className="text-xs text-[#A1A1B5]">Loading projects…</p>
+          </div>
+        )}
 
-              <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[11px] bg-white/[0.04] text-[#A1A1B5] border border-white/5">
-                  {p.environment}
-                </span>
-                {renderStatusBadge(p.status)}
-              </div>
+        {/* Empty state */}
+        {!isLoadingProjects && projects.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-[#A1A1B5]">
+              <FolderX className="w-6 h-6" />
             </div>
-          ))}
-        </div>
+            <p className="text-sm font-semibold text-white">No projects yet</p>
+            <p className="text-xs text-[#A1A1B5]">Create your first project to get started.</p>
+            <button
+              type="button"
+              onClick={() => onNavigate('new-project')}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-semibold shadow-md hover:brightness-110 transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create Project</span>
+            </button>
+          </div>
+        )}
+
+        {/* Projects grid */}
+        {!isLoadingProjects && projects.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {filteredProjects.slice(0, 6).map((p) => (
+              <div
+                key={p.id}
+                onClick={() => onNavigate('projects')}
+                className="group relative flex flex-col justify-between p-5 rounded-2xl bg-[#0F0F19]/80 hover:bg-[#161624] border border-white/10 hover:border-violet-500/30 transition-all duration-200 cursor-pointer shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:shadow-[0_12px_28px_-6px_rgba(139,92,246,0.18)]"
+              >
+                <div className="flex flex-col gap-1 mb-6">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-semibold text-white group-hover:text-violet-300 transition-colors">
+                      {p.name}
+                    </span>
+                    <ArrowUpRight className="w-4 h-4 text-[#A1A1B5] group-hover:text-violet-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                  </div>
+                  <span className="font-mono text-xs text-[#A1A1B5] truncate">
+                    {p.githubRepoFullName || p.repositoryUrl || '—'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[11px] bg-white/[0.04] text-[#A1A1B5] border border-white/5 capitalize">
+                    {p.defaultEnvironment}
+                  </span>
+                  {p.latestDeployment
+                    ? renderDeployStatusBadge(p.latestDeployment.status)
+                    : renderDeployStatusBadge(p.setupStatus)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Sub-block / Connect repo prompt */}
         <div className="mt-6 p-5 sm:p-6 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -278,7 +329,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           <button
             type="button"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => onNavigate('new-project')}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-semibold transition-colors whitespace-nowrap shrink-0 active:scale-[0.98]"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -287,148 +338,81 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </section>
 
-      {/* Bottom Section: Recent Deployments Table */}
+      {/* Bottom Section: Recent Deployments from projects */}
       <section className="relative rounded-2xl sm:rounded-3xl bg-[#13131F]/80 backdrop-blur-xl p-6 sm:p-8 border border-white/10 shadow-[0_20px_48px_-12px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.08)] z-10">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 mb-4 border-b border-white/5 gap-3">
           <div className="flex items-center gap-2.5">
             <h2 className="text-xl font-bold text-white tracking-tight">Recent deployments</h2>
-            <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 border border-white/10 text-[#A1A1B5] font-mono">
-              {filteredDeployments.length} entries
-            </span>
-          </div>
-
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {(['ALL', 'RUNNING', 'SUCCEEDED', 'FAILED'] as const).map((status) => (
-              <button
-                key={status}
-                type="button"
-                onClick={() => setDeploymentStatusFilter(status)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-colors ${
-                  deploymentStatusFilter === status
-                    ? 'bg-violet-600/30 text-white border border-violet-500/40 font-semibold'
-                    : 'bg-white/[0.03] text-[#A1A1B5] hover:text-white border border-transparent'
-                }`}
-              >
-                {status}
-              </button>
-            ))}
           </div>
         </div>
 
-        {/* Deployments Table */}
         <div className="overflow-x-auto w-full -mx-2 sm:mx-0">
-          <table className="w-full text-left text-sm border-collapse min-w-[700px]">
+          <table className="w-full text-left text-sm border-collapse min-w-[600px]">
             <thead>
               <tr className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5] bg-white/[0.02] border-b border-white/5">
-                <th className="py-3 px-4 rounded-l-xl">Deployment ID</th>
-                <th className="py-3 px-4">Project</th>
+                <th className="py-3 px-4 rounded-l-xl">Project</th>
                 <th className="py-3 px-4">Environment</th>
+                <th className="py-3 px-4">Branch</th>
                 <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Started</th>
-                <th className="py-3 px-4 rounded-r-xl">Safe Error Summary / Details</th>
+                <th className="py-3 px-4 rounded-r-xl">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-xs">
-              {filteredDeployments.map((d) => (
-                <tr
-                  key={d.id}
-                  onClick={() => onShowToast('info', `Deployment ${d.id}`, `${d.project} - ${d.status} (${d.startedAt})`)}
-                  className="group hover:bg-white/[0.03] transition-colors cursor-pointer"
-                >
-                  <td className="py-3.5 px-4 font-mono font-semibold text-white">
-                    {d.id}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span className="text-white group-hover:text-violet-300 font-medium transition-colors flex items-center gap-1.5">
-                      <Terminal className="w-3.5 h-3.5 text-[#A1A1B5]" />
-                      <span>{d.project}</span>
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[11px] bg-white/[0.04] text-[#A1A1B5] border border-white/5">
-                      {d.environment}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    {renderStatusBadge(d.status)}
-                  </td>
-                  <td className="py-3.5 px-4 text-[#A1A1B5]">
-                    {d.startedAt}
-                  </td>
-                  <td className={`py-3.5 px-4 ${d.errorDetails !== '-' ? 'text-rose-400 font-mono text-[11px]' : 'text-[#A1A1B5]'}`}>
-                    {d.errorDetails}
+              {isLoadingProjects ? (
+                <tr>
+                  <td colSpan={5} className="py-10 text-center text-[#A1A1B5]">
+                    <RefreshCw className="w-5 h-5 animate-spin inline-block mr-2" />
+                    Loading…
                   </td>
                 </tr>
-              ))}
+              ) : projects.filter((p) => p.latestDeployment).length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-10 text-center text-[#A1A1B5] text-xs">
+                    No deployments yet.
+                  </td>
+                </tr>
+              ) : (
+                projects
+                  .filter((p) => p.latestDeployment)
+                  .slice(0, 5)
+                  .map((p) => (
+                    <tr
+                      key={p.id}
+                      onClick={() => onNavigate('projects')}
+                      className="group hover:bg-white/[0.03] transition-colors cursor-pointer"
+                    >
+                      <td className="py-3.5 px-4">
+                        <span className="text-white group-hover:text-violet-300 font-medium transition-colors flex items-center gap-1.5">
+                          <Terminal className="w-3.5 h-3.5 text-[#A1A1B5]" />
+                          <span>{p.name}</span>
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[11px] bg-white/[0.04] text-[#A1A1B5] border border-white/5 capitalize">
+                          {p.latestDeployment!.environment}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-[#A1A1B5]">
+                        {p.latestDeployment!.branch || '—'}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {renderDeployStatusBadge(p.latestDeployment!.status)}
+                      </td>
+                      <td className="py-3.5 px-4 text-[#A1A1B5]">
+                        {new Date(p.latestDeployment!.createdAt).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </td>
+                    </tr>
+                  ))
+              )}
             </tbody>
           </table>
         </div>
       </section>
-
-      {/* New Project Modal */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-md rounded-2xl bg-[#13131F] border border-white/15 p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <h3 className="text-lg font-bold text-white">Register New Project</h3>
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(false)}
-                className="text-gray-400 hover:text-white text-xs px-2 py-1 rounded"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateProjectSubmit} className="space-y-4">
-              <div className="space-y-1 text-left">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#A1A1B5]">
-                  Project Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. billing-service"
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                  className="w-full h-10 px-3 bg-black/50 border border-white/15 rounded-xl text-white text-sm focus:outline-none focus:border-violet-500"
-                />
-              </div>
-
-              <div className="space-y-1 text-left">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#A1A1B5]">
-                  GitHub Repository (optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. automated-devops/billing-service"
-                  value={newProjectRepo}
-                  onChange={(e) => setNewProjectRepo(e.target.value)}
-                  className="w-full h-10 px-3 bg-black/50 border border-white/15 rounded-xl text-white text-sm focus:outline-none focus:border-violet-500"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs text-[#A1A1B5] hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md hover:brightness-110"
-                >
-                  Create Project
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
+
 export default DashboardPage;

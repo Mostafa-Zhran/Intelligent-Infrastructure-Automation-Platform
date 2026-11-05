@@ -324,7 +324,75 @@ async function markDeploymentDispatchUnknown(deploymentId, ciJobId, errorMessage
     });
 }
 
+
+async function listProjectsForUser(userId, isAdmin = false) {
+    const where = isAdmin
+        ? {}
+        : {
+              OR: [
+                  { owner_user_id: userId },
+                  {
+                      project_memberships: {
+                          some: {
+                              user_id: userId,
+                              status: 'ACTIVE',
+                          },
+                      },
+                  },
+              ],
+          };
+
+    return prisma.projects.findMany({
+        where,
+        orderBy: { created_at: 'desc' },
+        include: {
+            deployments: {
+                orderBy: [
+                    { created_at: 'desc' },
+                    { id: 'desc' },
+                ],
+                take: 1,
+            },
+        },
+    });
+}
+
+async function findProjectBySlug(slug) {
+    return prisma.projects.findUnique({
+        where: { slug },
+    });
+}
+
+async function findProjectByRepoAndEnv(githubRepoId, environment) {
+    if (!githubRepoId) return null;
+    return prisma.projects.findFirst({
+        where: {
+            github_repo_id: String(githubRepoId),
+            default_environment: environment,
+        },
+    });
+}
+
+async function createProjectRecord(projectData) {
+    return prisma.projects.create({
+        data: projectData,
+        include: {
+            deployments: {
+                orderBy: [
+                    { created_at: 'desc' },
+                    { id: 'desc' },
+                ],
+                take: 1,
+            },
+        },
+    });
+}
+
 module.exports = {
+    listProjectsForUser,
+    findProjectBySlug,
+    findProjectByRepoAndEnv,
+    createProjectRecord,
     findProjectById,
     findProjectWithMembership,
     getProjectOverview,

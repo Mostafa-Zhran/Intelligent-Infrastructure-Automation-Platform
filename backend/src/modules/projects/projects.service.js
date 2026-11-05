@@ -553,7 +553,119 @@ async function submitDeploymentRequest(projectId, user, input, correlationId) {
     };
 }
 
+
+async function listProjects(user) {
+    const isAdmin = user.role === 'ADMIN';
+    const projects = await projectsRepository.listProjectsForUser(user.id, isAdmin);
+
+    return projects.map((p) => {
+        const latestDeploy = p.deployments?.[0] || null;
+        return {
+            id: p.id,
+            name: p.name,
+            slug: p.slug,
+            description: p.description,
+            repositoryUrl: p.repository_url,
+            repositoryBranch: p.repository_branch,
+            defaultEnvironment: p.default_environment,
+            setupStatus: p.setup_status,
+            githubRepoId: p.github_repo_id,
+            githubRepoOwner: p.github_repo_owner,
+            githubRepoFullName: p.github_repo_full_name,
+            createdAt: p.created_at,
+            updatedAt: p.updated_at,
+            latestDeployment: latestDeploy
+                ? {
+                      id: latestDeploy.id,
+                      status: latestDeploy.status,
+                      environment: latestDeploy.environment,
+                      commitSha: latestDeploy.commit_sha,
+                      branch: latestDeploy.branch,
+                      createdAt: latestDeploy.created_at,
+                      updatedAt: latestDeploy.updated_at,
+                  }
+                : null,
+        };
+    });
+}
+
+async function createProject(user, projectData) {
+    const {
+        name,
+        slug: requestedSlug,
+        description,
+        repositoryUrl,
+        repositoryBranch = 'main',
+        defaultEnvironment = 'development',
+        githubRepoId,
+        githubRepoOwner,
+        githubRepoFullName,
+    } = projectData;
+
+    // Check if repo already registered for this environment
+    if (githubRepoId) {
+        const existing = await projectsRepository.findProjectByRepoAndEnv(
+            githubRepoId,
+            defaultEnvironment
+        );
+        if (existing) {
+            throw new ApiError(
+                409,
+                `A project connected to this GitHub repository in environment '${defaultEnvironment}' already exists.`
+            );
+        }
+    }
+
+    // Generate slug
+    let baseSlug = (requestedSlug || name)
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    if (!baseSlug) baseSlug = 'project';
+
+    let slug = baseSlug;
+    let counter = 1;
+    while (await projectsRepository.findProjectBySlug(slug)) {
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+    }
+
+    // Create project record
+    const newProject = await projectsRepository.createProjectRecord({
+        name: name.trim(),
+        slug,
+        description: description ? description.trim() : null,
+        owner_user_id: user.id,
+        repository_url: repositoryUrl ? repositoryUrl.trim() : null,
+        repository_branch: repositoryBranch ? repositoryBranch.trim() : 'main',
+        default_environment: defaultEnvironment,
+        setup_status: 'READY',
+        github_repo_id: githubRepoId ? String(githubRepoId) : null,
+        github_repo_owner: githubRepoOwner ? githubRepoOwner.trim() : null,
+        github_repo_full_name: githubRepoFullName ? githubRepoFullName.trim() : null,
+    });
+
+    return {
+        id: newProject.id,
+        name: newProject.name,
+        slug: newProject.slug,
+        description: newProject.description,
+        repositoryUrl: newProject.repository_url,
+        repositoryBranch: newProject.repository_branch,
+        defaultEnvironment: newProject.default_environment,
+        setupStatus: newProject.setup_status,
+        githubRepoId: newProject.github_repo_id,
+        githubRepoOwner: newProject.github_repo_owner,
+        githubRepoFullName: newProject.github_repo_full_name,
+        createdAt: newProject.created_at,
+        updatedAt: newProject.updated_at,
+    };
+}
+
 module.exports = {
+    listProjects,
+    createProject,
     ALLOWED_ENVIRONMENTS,
     verifyProjectAccess,
     getProjectOverview,
