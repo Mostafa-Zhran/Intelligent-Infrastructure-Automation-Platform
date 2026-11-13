@@ -20,7 +20,14 @@ const corsOptions = {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'Idempotency-Key',
+        'X-Worker-Api-Key',
+        'X-Correlation-Id',
+        'correlation-id',
+    ],
 };
 
 module.exports = corsOptions;
