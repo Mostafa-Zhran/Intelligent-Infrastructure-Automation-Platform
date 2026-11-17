@@ -1,4 +1,8 @@
+// backend/src/db/prisma.js
 require('dotenv').config();
+
+// Bypass Node.js strict CA validation for cloud poolers with intermediate / self-signed certs (e.g. Supabase, AWS RDS)
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const { PrismaClient } = require('../../generated/prisma');
 const { PrismaPg } = require('@prisma/adapter-pg');
@@ -7,28 +11,18 @@ const { Pool } = require('pg');
 const rawDbUrl = (process.env.DATABASE_URL || '').trim();
 let connectionString = rawDbUrl.replace(/^["']|["']$/g, '').trim();
 
-if (connectionString.includes('sslmode=require') && !connectionString.includes('sslaccept=')) {
-    const separator = connectionString.includes('?') ? '&' : '?';
-    connectionString = `${connectionString}${separator}sslaccept=accept_invalid_certs`;
-}
+// Strip sslmode from the connection string URL so pg-pool does not override programmatic ssl options
+const cleanConnectionString = connectionString
+    .replace(/([?&])sslmode=[^&]+(&|$)/, '$1')
+    .replace(/[?&]$/, '');
 
-const isRemoteOrSsl =
-    connectionString.includes('sslmode=require') ||
-    connectionString.includes('supabase.co') ||
-    connectionString.includes('railway') ||
-    (process.env.NODE_ENV === 'production' && !connectionString.includes('localhost'));
-
-const poolConfig = {
-    connectionString,
-};
-
-if (isRemoteOrSsl) {
-    poolConfig.ssl = {
+const pool = new Pool({
+    connectionString: cleanConnectionString,
+    ssl: {
         rejectUnauthorized: false,
-    };
-}
+    },
+});
 
-const pool = new Pool(poolConfig);
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
