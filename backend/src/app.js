@@ -25,6 +25,16 @@ app.use(correlationId);
 // OpenAPI Swagger Documentation
 setupSwagger(app);
 
+/**
+ * @openapi
+ * /:
+ *   get:
+ *     tags: [System]
+ *     summary: API root information and available endpoints
+ *     responses:
+ *       200:
+ *         description: Service status and endpoint directory
+ */
 app.get('/', (req, res) => {
     res.status(200).json({
         success: true,
@@ -44,6 +54,19 @@ app.get('/', (req, res) => {
     });
 });
 
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     tags: [System]
+ *     summary: Health and database connectivity probe
+ *     description: Executes a live ping against PostgreSQL / Supabase and returns server uptime.
+ *     responses:
+ *       200:
+ *         description: Server healthy and database connected
+ *       503:
+ *         description: Database unreachable or configuration error
+ */
 app.get('/health', async (req, res) => {
     try {
         await prisma.$queryRaw`SELECT 1`;

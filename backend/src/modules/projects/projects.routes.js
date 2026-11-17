@@ -17,6 +17,64 @@ const router = express.Router();
 // Require authentication for all project and deployment endpoints
 router.use(authenticate);
 
+/**
+ * @openapi
+ * /api/projects:
+ *   get:
+ *     tags: [Projects]
+ *     summary: List all projects accessible to the authenticated user
+ *     description: Returns projects owned by or shared with the authenticated user.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Projects list returned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     projects:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/ProjectOverview'
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     tags: [Projects]
+ *     summary: Create a new project
+ *     description: Creates a new infrastructure automation project with repository and deployment targets.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateProjectRequest'
+ *     responses:
+ *       201:
+ *         description: Project created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: 'Project created successfully' }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     project: { $ref: '#/components/schemas/ProjectOverview' }
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
 router.get('/', projectsController.listProjects);
 
 router.post('/',
