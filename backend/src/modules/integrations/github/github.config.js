@@ -1,13 +1,13 @@
 // backend/src/modules/integrations/github/github.config.js
-// إعدادات تكامل جيتهاب تُقرأ من متغيرات البيئة عند الاستخدام وليس عند التحميل
 require('dotenv').config();
+const ApiError = require('../../../utils/ApiError');
 
 function requireEnv(key) {
     const value = process.env[key];
-    if (!value) {
-        throw new Error(`Missing required environment variable: ${key}`);
+    if (!value || !value.trim()) {
+        throw new ApiError(500, `Missing required environment variable: ${key}. Please add it to your Railway Variables.`);
     }
-    return value;
+    return value.trim();
 }
 
 const githubConfig = {
