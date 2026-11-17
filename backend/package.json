@@ -4,10 +4,10 @@
   "description": "Intelligent Infrastructure Automation Platform Backend API",
   "main": "src/server.js",
   "scripts": {
-    "build": "npx prisma generate",
+    "build": "npx prisma generate --schema=prisma/schema.prisma",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "postinstall": "npx prisma generate",
+    "postinstall": "npx prisma generate --schema=prisma/schema.prisma",
     "test": "node --test tests/unit/*.test.js"
   },
   "repository": {
