@@ -76,8 +76,55 @@ pipeline {
         stage('PIPE-05: Docker Build & Publish') {
             steps {
                 script {
-                    echo "PIPE-05: Docker build stage placeholder (Next MVP Stage)"
-                    // Future: docker build -t ${IMAGE_TAG} -f ${WORKSPACE_DIR}/${DOCKERFILE_PATH}
+                    echo "Executing PIPE-05 Docker Build and Image Publishing..."
+
+                    // Parse project slug/name from repository URL or project ID
+                    def projectName = params.PROJECT_ID
+                    if (params.REPO_URL) {
+                        def parts = params.REPO_URL.tokenize('/')
+                        if (parts.size() > 0) {
+                            projectName = parts[-1].replaceAll('\\.git$', '')
+                        }
+                    }
+
+                    // Optional registry credential binding — degrades gracefully if credentials are not present
+                    try {
+                        withCredentials([
+                            usernamePassword(
+                                credentialsId: 'container-registry-credentials',
+                                usernameVariable: 'REGISTRY_USERNAME',
+                                passwordVariable: 'REGISTRY_PASSWORD'
+                            )
+                        ]) {
+                            sh """
+                                chmod +x jenkins/scripts/build-and-push.sh
+                                ./jenkins/scripts/build-and-push.sh \
+                                    "${WORKSPACE_DIR}" \
+                                    "${params.DOCKERFILE_PATH}" \
+                                    "${projectName}" \
+                                    "${params.COMMIT_SHA}" \
+                                    "${params.DEPLOYMENT_ID}" \
+                                    "${env.REGISTRY_URL ?: ''}"
+                            """
+                        }
+                    } catch (org.jenkinsci.plugins.credentialsbinding.impl.CredentialNotFoundException e) {
+                        echo "Notice: 'container-registry-credentials' not found; proceeding with ambient registry/agent credentials..."
+                        sh """
+                            chmod +x jenkins/scripts/build-and-push.sh
+                            ./jenkins/scripts/build-and-push.sh \
+                                "${WORKSPACE_DIR}" \
+                                "${params.DOCKERFILE_PATH}" \
+                                "${projectName}" \
+                                "${params.COMMIT_SHA}" \
+                                "${params.DEPLOYMENT_ID}" \
+                                "${env.REGISTRY_URL ?: ''}"
+                        """
+                    }
+
+                    // Archive build metadata for downstream stages and audit
+                    if (fileExists('build-metadata.json')) {
+                        archiveArtifacts artifacts: 'build-metadata.json', fingerprint: true
+                    }
                 }
             }
         }

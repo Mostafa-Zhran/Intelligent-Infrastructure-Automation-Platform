@@ -131,13 +131,13 @@
 - [x] Record checkout status and safe failure output.
 
 ### PIPE-05 — Docker build and image publishing stages
-- [ ] Build the Docker image from the approved Dockerfile.
-- [ ] Apply build timeout and resource limits.
-- [ ] Capture redacted stdout/stderr as pipeline logs.
-- [ ] Tag the image predictably using the project and commit or deployment ID.
-- [ ] Authenticate to the approved container registry using secure credentials.
-- [ ] Push the image and record its immutable digest.
-- [ ] Stop subsequent stages if image build or image push fails.
+- [x] Build the Docker image from the approved Dockerfile.
+- [x] Apply build timeout and resource limits.
+- [x] Capture redacted stdout/stderr as pipeline logs.
+- [x] Tag the image predictably using the project and commit or deployment ID.
+- [x] Authenticate to the approved container registry using secure credentials.
+- [x] Push the image and record its immutable digest.
+- [x] Stop subsequent stages if image build or image push fails.
 
 ### PIPE-06 — Terraform and Ansible stages
 - [ ] Run the approved Terraform plan/apply stage for the selected MVP target.
