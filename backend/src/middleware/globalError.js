@@ -50,9 +50,7 @@ function globalError(err, req, res, next) {
     if (!(error instanceof ApiError)) {
         error = new ApiError(
             500,
-            process.env.NODE_ENV === 'development'
-                ? error.message
-                : 'Internal server error'
+            error.message || 'Internal server error'
         );
 
         error.operational = false;

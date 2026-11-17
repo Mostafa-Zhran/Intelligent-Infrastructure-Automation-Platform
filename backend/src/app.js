@@ -70,9 +70,24 @@ app.get('/', (req, res) => {
 app.get('/health', async (req, res) => {
     try {
         await prisma.$queryRaw`SELECT 1`;
+
+        let githubStatesTable = 'ok';
+        try {
+            await prisma.github_oauth_states.count();
+        } catch (e) {
+            githubStatesTable = e.message;
+        }
+
         res.status(200).json({
             status: 'ok',
             database: 'connected',
+            githubConfig: {
+                githubStatesTable,
+                clientIdConfigured: Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_ID.trim()),
+                clientSecretConfigured: Boolean(process.env.GITHUB_CLIENT_SECRET && process.env.GITHUB_CLIENT_SECRET.trim()),
+                redirectUriConfigured: Boolean(process.env.GITHUB_OAUTH_REDIRECT_URI && process.env.GITHUB_OAUTH_REDIRECT_URI.trim()),
+                encryptionKeyConfigured: Boolean(process.env.GITHUB_TOKEN_ENCRYPTION_KEY && process.env.GITHUB_TOKEN_ENCRYPTION_KEY.trim()),
+            },
             uptime: Math.round(process.uptime()),
             timestamp: new Date().toISOString(),
         });
