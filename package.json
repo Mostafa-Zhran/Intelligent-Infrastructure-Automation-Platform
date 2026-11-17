@@ -4,7 +4,15 @@
   "description": "Monorepo root — backend lives in ./backend/",
   "private": true,
   "scripts": {
-    "start": "cd backend && node src/server.js",
-    "build": "cd backend && npx prisma generate --schema=prisma/schema.prisma"
+    "postinstall": "npm --prefix backend install",
+    "build": "npm --prefix backend run build",
+    "start": "npm --prefix backend start"
+  },
+  "prisma": {
+    "schema": "backend/prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.10.0",
+    "prisma": "^7.10.0"
   }
 }
