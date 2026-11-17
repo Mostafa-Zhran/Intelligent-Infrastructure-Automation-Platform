@@ -13,6 +13,7 @@ const notFound = require('./middleware/notFound');
 const globalError = require('./middleware/globalError');
 const corsOptions = require('./config/cors');
 const setupSwagger = require('./config/swagger');
+const prisma = require('./db/prisma');
 
 const app = express();
 
@@ -43,10 +44,23 @@ app.get('/', (req, res) => {
     });
 });
 
-app.get('/health', (req, res) => {
-    res.status(200).json({
-        status: 'ok',
-    });
+app.get('/health', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.status(200).json({
+            status: 'ok',
+            database: 'connected',
+            uptime: Math.round(process.uptime()),
+            timestamp: new Date().toISOString(),
+        });
+    } catch (err) {
+        res.status(503).json({
+            status: 'degraded',
+            database: 'disconnected',
+            error: err.message,
+            timestamp: new Date().toISOString(),
+        });
+    }
 });
 
 app.use('/api/v1/auth', authRoutes);
