@@ -34,7 +34,7 @@ const sendErrorProd = (err, res) => {
 
     return res.status(500).json({
         success: false,
-        message: err.message || 'Internal server error',
+        message: 'Internal server error',
     });
 };
 
@@ -50,7 +50,9 @@ function globalError(err, req, res, next) {
     if (!(error instanceof ApiError)) {
         error = new ApiError(
             500,
-            error.message || 'Internal server error'
+            process.env.NODE_ENV === 'development'
+                ? error.message
+                : 'Internal server error'
         );
 
         error.operational = false;

@@ -123,12 +123,12 @@
 - [x] Handle Jenkins submission failure and update the pipeline with a safe failure state.
 
 ### PIPE-04 — Repository checkout stage
-- [ ] Check out the exact approved repository and commit SHA for the pipeline.
-- [ ] Use GitHub credentials securely.
-- [ ] Use an isolated temporary workspace.
-- [ ] Avoid persisting credentials in Git configuration or logs.
-- [ ] Apply workspace disk limits and cleanup after completion.
-- [ ] Record checkout status and safe failure output.
+- [x] Check out the exact approved repository and commit SHA for the pipeline.
+- [x] Use GitHub credentials securely.
+- [x] Use an isolated temporary workspace.
+- [x] Avoid persisting credentials in Git configuration or logs.
+- [x] Apply workspace disk limits and cleanup after completion.
+- [x] Record checkout status and safe failure output.
 
 ### PIPE-05 — Docker build and image publishing stages
 - [ ] Build the Docker image from the approved Dockerfile.

@@ -1,20 +1,20 @@
 // backend/src/modules/integrations/github/github.crypto.js
+// تشفير وفك تشفير توكن GitHub باستخدام AES-256-GCM
 const crypto = require('crypto');
 require('dotenv').config();
-const ApiError = require('../../../utils/ApiError');
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_BYTES = 12;
 const KEY_VERSION = 1;
 
 function getKey() {
-    const raw = (process.env.GITHUB_TOKEN_ENCRYPTION_KEY || '').trim();
+    const raw = process.env.GITHUB_TOKEN_ENCRYPTION_KEY;
     if (!raw) {
-        throw new ApiError(500, 'GITHUB_TOKEN_ENCRYPTION_KEY is not configured in Railway Variables');
+        throw new Error('GITHUB_TOKEN_ENCRYPTION_KEY is not configured');
     }
     const key = Buffer.from(raw, 'base64');
     if (key.length !== 32) {
-        throw new ApiError(500, 'GITHUB_TOKEN_ENCRYPTION_KEY must decode to exactly 32 bytes (base64)');
+        throw new Error('GITHUB_TOKEN_ENCRYPTION_KEY must decode to 32 bytes');
     }
     return key;
 }
