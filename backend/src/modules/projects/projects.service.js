@@ -4,6 +4,19 @@ const projectsRepository = require('./projects.repository');
 const githubService = require('../integrations/github/github.service');
 const jenkinsService = require('../integrations/jenkins/jenkins.service');
 const jenkinsConfig = require('../integrations/jenkins/jenkins.config');
+const githubActionsService = require('../integrations/github/github.actions.service');
+
+function getCiProvider() {
+    return (process.env.CI_PROVIDER || (process.env.JENKINS_INTEGRATION_MODE ? 'JENKINS' : 'GITHUB_ACTIONS')).toUpperCase();
+}
+
+function getCiService() {
+    return getCiProvider() === 'JENKINS' ? jenkinsService : githubActionsService;
+}
+
+function getCiJobName() {
+    return getCiProvider() === 'JENKINS' ? jenkinsConfig.jobName() : (process.env.GITHUB_WORKFLOW_FILE || 'deploy.yml');
+}
 
 const ALLOWED_ENVIRONMENTS = [
     'development',
@@ -321,9 +334,9 @@ async function submitDeploymentRequest(projectId, user, input, correlationId) {
                 createdAt: existing.created_at,
                 correlationId,
                 job: {
-                    provider: 'JENKINS',
+                    provider: getCiProvider(),
                     status: existing.status,
-                    jobName: jenkinsConfig.jobName(),
+                    jobName: getCiJobName(),
                 },
             };
         }
@@ -433,8 +446,8 @@ async function submitDeploymentRequest(projectId, user, input, correlationId) {
             },
             ciJobData: {
                 project_id: project.id,
-                provider: 'JENKINS',
-                job_name: jenkinsConfig.jobName(),
+                provider: getCiProvider(),
+                job_name: getCiJobName(),
                 status: 'PENDING',
             },
             eventData: {
@@ -472,17 +485,18 @@ async function submitDeploymentRequest(projectId, user, input, correlationId) {
             createdAt: existing.created_at,
             correlationId,
             job: {
-                provider: 'JENKINS',
+                provider: getCiProvider(),
                 status: existing.status,
-                jobName: jenkinsConfig.jobName(),
+                jobName: getCiJobName(),
             },
         };
     }
 
     const { deployment, ciJob } = txResult;
 
-    // 9. Build deployment contract and dispatch to Jenkins / worker
-    const jobContract = jenkinsService.buildDeploymentContract({
+    // 9. Build deployment contract and dispatch to active CI service
+    const activeCiService = getCiService();
+    const jobContract = activeCiService.buildDeploymentContract({
         project,
         deployment,
         branch: finalBranch,
@@ -496,7 +510,7 @@ async function submitDeploymentRequest(projectId, user, input, correlationId) {
 
     let jobResult;
     try {
-        jobResult = await jenkinsService.triggerDeploymentJob(jobContract);
+        jobResult = await activeCiService.triggerDeploymentJob(jobContract);
         await projectsRepository.markDeploymentDispatched(
             deployment.id,
             ciJob.id,
@@ -507,7 +521,7 @@ async function submitDeploymentRequest(projectId, user, input, correlationId) {
         if (err.isTimeout) {
             // RELIABILITY REQUIREMENT:
             // Ambiguous dispatch timeout handling.
-            // A timeout does NOT mean Jenkins rejected the build.
+            // A timeout does NOT mean CI rejected the build.
             // Keep status as QUEUED to maintain concurrency locks and prevent duplicate builds,
             // while recording reconciliation pending state for Point 6 worker tracking.
             await projectsRepository.markDeploymentDispatchUnknown(
@@ -545,9 +559,9 @@ async function submitDeploymentRequest(projectId, user, input, correlationId) {
         createdAt: deployment.created_at,
         correlationId,
         job: {
-            provider: 'JENKINS',
+            provider: getCiProvider(),
             status: 'QUEUED',
-            jobName: jenkinsConfig.jobName(),
+            jobName: getCiJobName(),
             jobId: jobResult.jobId,
         },
     };
