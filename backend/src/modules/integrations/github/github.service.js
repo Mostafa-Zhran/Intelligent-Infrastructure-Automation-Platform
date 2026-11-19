@@ -472,12 +472,38 @@ async function resolveBranchCommit({ userId, ownerUserId, owner, repo, branch = 
       };
     }
   } catch (err) {
-    // If user provided a commitSha or we are in development without live GitHub creds, provide fallback
+    // If user provided a commitSha, use it
     if (commitSha) {
       return { sha: commitSha, branch: branch || 'main' };
     }
-    // If development environment, generate deterministic fallback SHA so workflow doesn't block
-    if (process.env.NODE_ENV !== 'production') {
+
+    // Attempt direct GitHub REST fetch using system GITHUB_TOKEN or public API
+    try {
+      const token = process.env.GITHUB_TOKEN;
+      const headers = {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'IIAP-DevOps-Platform',
+      };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      const targetBranch = branch || 'main';
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/commits/${encodeURIComponent(targetBranch)}`,
+        { headers, signal: AbortSignal.timeout(6000) }
+      );
+      if (response.ok) {
+        const commitData = await response.json();
+        if (commitData && commitData.sha) {
+          return { sha: commitData.sha, branch: targetBranch };
+        }
+      }
+    } catch {
+      // Fall through
+    }
+
+    // If development environment without live token, generate fallback SHA
+    if (process.env.NODE_ENV !== 'production' && !process.env.GITHUB_TOKEN) {
       const fallbackSha = crypto.createHash('sha1').update(`${owner}/${repo}/${branch}`).digest('hex');
       return { sha: fallbackSha, branch: branch || 'main' };
     }
