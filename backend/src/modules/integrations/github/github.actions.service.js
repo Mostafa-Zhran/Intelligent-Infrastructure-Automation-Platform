@@ -109,13 +109,15 @@ function buildDeploymentContract({
 async function triggerDeploymentJob(contractPayload, userToken = null) {
     const integrationMode = process.env.CI_INTEGRATION_MODE || 'direct';
 
-    const repoFullName =
-        contractPayload.repository?.fullName ||
+    // The repository hosting the deploy.yml workflow
+    const workflowRepo =
+        process.env.GITHUB_ACTIONS_REPO ||
         process.env.GITHUB_REPOSITORY ||
         'Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform';
 
-    const [owner, repo] = repoFullName.split('/');
+    const [owner, repo] = workflowRepo.split('/');
     const workflowFile = process.env.GITHUB_WORKFLOW_FILE || 'deploy.yml';
+    const workflowRef = process.env.GITHUB_WORKFLOW_REF || 'main';
     const actionsUrl = `https://github.com/${owner}/${repo}/actions`;
 
     if (integrationMode === 'mock') {
@@ -139,11 +141,12 @@ async function triggerDeploymentJob(contractPayload, userToken = null) {
 
     const dispatchUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowFile}/dispatches`;
     const payload = {
-        ref: contractPayload.git.branch || 'main',
+        ref: workflowRef,
         inputs: {
             project_id: String(contractPayload.projectId),
             deployment_id: String(contractPayload.deploymentId),
             repo_url: String(contractPayload.repository.url || ''),
+            repo_full_name: String(contractPayload.repository?.fullName || ''),
             branch: String(contractPayload.git.branch || 'main'),
             commit_sha: String(contractPayload.git.commitSha || ''),
             environment: String(contractPayload.targetEnvironment || 'development'),

@@ -21,6 +21,10 @@ on:
         description: 'Git clone repository URL'
         required: false
         type: string
+      repo_full_name:
+        description: 'Target repository full name (owner/repo)'
+        required: false
+        type: string
       branch:
         description: 'Target branch name'
         required: true
@@ -98,16 +102,41 @@ jobs:
           fi
 
       # ------------------------------------------------------------------------
-      # 1. PIPE-04 — Secure Repository Checkout
+      # 0.1 Checkout Platform Infrastructure & Scripts
       # ------------------------------------------------------------------------
+      - name: Checkout Platform Infrastructure Code
+        uses: actions/checkout@v4
+        with:
+          path: .
+          fetch-depth: 1
+
+      # ------------------------------------------------------------------------
+      # 1. PIPE-04 — Secure Repository Checkout (User Application)
+      # ------------------------------------------------------------------------
+      - name: PIPE-04 — Derive Target Repository Name
+        id: target_repo
+        run: |
+          TARGET="${{ inputs.repo_full_name }}"
+          if [ -z "${TARGET}" ] && [ -n "${{ inputs.repo_url }}" ]; then
+            TARGET=$(echo "${{ inputs.repo_url }}" | sed -E 's|https://github.com/||' | sed -E 's|\.git$||')
+          fi
+          if [ -z "${TARGET}" ]; then
+            TARGET="${{ github.repository }}"
+          fi
+          echo "target_repo=${TARGET}" >> $GITHUB_OUTPUT
+          echo "Target user application repository: ${TARGET}"
+
       - name: PIPE-04 — Checkout Exact Commit SHA
         uses: actions/checkout@v4
         with:
+          repository: ${{ steps.target_repo.outputs.target_repo }}
           ref: ${{ inputs.commit_sha }}
+          path: workspace
           fetch-depth: 1
 
       - name: PIPE-04 — Verify Commit Integrity & Dockerfile
         run: |
+          cd workspace
           CHECKED_OUT_SHA=$(git rev-parse HEAD)
           echo "Requested SHA:    ${{ inputs.commit_sha }}"
           echo "Checked out SHA:  ${CHECKED_OUT_SHA}"
@@ -155,8 +184,8 @@ jobs:
       - name: PIPE-05 — Build and Push Container Image
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ${{ inputs.dockerfile_path }}
+          context: workspace
+          file: workspace/${{ inputs.dockerfile_path }}
           push: true
           tags: |
             ${{ steps.meta.outputs.tag_sha }}

@@ -70,13 +70,13 @@ app.get('/', (req, res) => {
 app.get('/health', async (req, res) => {
     let dbStatus = 'connected';
     try {
-        await prisma.$queryRaw`SELECT 1`;
+        await prisma.users.count();
     } catch {
         dbStatus = 'disconnected';
     }
 
     const ciMode = (process.env.CI_INTEGRATION_MODE || 'mock').toLowerCase();
-    const ciConfigured = ciMode === 'mock' || Boolean(process.env.GITHUB_ACTIONS_TOKEN);
+    const ciConfigured = ciMode === 'mock' || Boolean(process.env.GITHUB_TOKEN || process.env.GITHUB_ACTIONS_TOKEN);
     const isHealthy = dbStatus === 'connected';
 
     res.status(isHealthy ? 200 : 503).json({
