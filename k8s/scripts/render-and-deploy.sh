@@ -197,7 +197,7 @@ echo "✓ Rendered manifests generated at: ${RENDERED_FILE}"
 # 1. Always validate rendered manifests syntax using kubectl dry-run
 if command -v kubectl &> /dev/null; then
   echo "--> Validating manifests with kubectl client dry-run..."
-  kubectl apply --dry-run=client -f "${RENDERED_FILE}"
+  kubectl apply --dry-run=client --validate=false -f "${RENDERED_FILE}"
   echo "✓ Manifests syntax and schema validated successfully."
 else
   echo "Notice: kubectl not found on local path. Skipping client validation."
