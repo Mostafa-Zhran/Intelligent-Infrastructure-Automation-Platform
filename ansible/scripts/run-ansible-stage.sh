@@ -61,11 +61,29 @@ fi
 
 # ── Run Ansible ────────────────────────────────────────────────────────────────
 # Extra-vars are pipeline metadata only — no user-supplied values.
+export ANSIBLE_ROLES_PATH="${ANSIBLE_DIR}/roles:${ANSIBLE_DIR}/../roles"
 ANSIBLE_EXIT_CODE=0
-ansible-playbook \
-  --inventory "${ANSIBLE_DIR}/inventory/hosts.yml" \
-  --extra-vars "deployment_id=${DEPLOYMENT_ID} correlation_id=${CORRELATION_ID} environment=${ENVIRONMENT}" \
-  "${FULL_PLAYBOOK_PATH}" 2>&1 || ANSIBLE_EXIT_CODE=$?
+
+# Check if inventory has any active hosts configured (non-commented)
+ACTIVE_HOSTS=$(grep -E '^\s*ansible_host:' "${ANSIBLE_DIR}/inventory/hosts.yml" | wc -l || echo "0")
+
+if [[ "${ACTIVE_HOSTS}" -eq 0 ]]; then
+  echo "Notice: No remote target hosts configured in inventory (pre-infrastructure provisioning)."
+  echo "--> Validating playbook syntax and role dependency integrity..."
+  ansible-playbook \
+    --inventory "${ANSIBLE_DIR}/inventory/hosts.yml" \
+    --syntax-check \
+    "${FULL_PLAYBOOK_PATH}" 2>&1 || ANSIBLE_EXIT_CODE=$?
+
+  if [[ "${ANSIBLE_EXIT_CODE}" -eq 0 ]]; then
+    echo "✓ Ansible playbooks and roles syntax validated successfully."
+  fi
+else
+  ansible-playbook \
+    --inventory "${ANSIBLE_DIR}/inventory/hosts.yml" \
+    --extra-vars "deployment_id=${DEPLOYMENT_ID} correlation_id=${CORRELATION_ID} deploy_env=${ENVIRONMENT}" \
+    "${FULL_PLAYBOOK_PATH}" 2>&1 || ANSIBLE_EXIT_CODE=$?
+fi
 
 FINISHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 

@@ -225,7 +225,7 @@ jobs:
           fi
 
           chmod +x ansible/scripts/run-ansible-stage.sh
-          cd ansible && ../ansible/scripts/run-ansible-stage.sh
+          ./ansible/scripts/run-ansible-stage.sh
 
       # ------------------------------------------------------------------------
       # 4. PIPE-06 — Terraform Infrastructure Stage

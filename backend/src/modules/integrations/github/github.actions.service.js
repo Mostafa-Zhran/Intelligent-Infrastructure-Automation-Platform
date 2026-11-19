@@ -94,7 +94,7 @@ function buildDeploymentContract({
             namespace: `app-${environment}`,
             cluster: 'k8s-cluster',
         },
-        callbackUrl: `${process.env.BACKEND_INTERNAL_URL || process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:3000'}/api/deployments/${deployment.id}/status`,
+        callbackUrl: `${(process.env.BACKEND_INTERNAL_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:3000'))}/api/deployments/${deployment.id}/status`,
         triggeredBy: {
             userId: user.id,
             userRole: user.role,

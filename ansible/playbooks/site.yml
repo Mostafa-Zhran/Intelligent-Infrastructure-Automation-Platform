@@ -28,7 +28,7 @@
           - " Host:           {{ inventory_hostname }}"
           - " Deployment ID:  {{ deployment_id | default('N/A') }}"
           - " Correlation ID: {{ correlation_id | default('N/A') }}"
-          - " Environment:    {{ environment | default('dev') }}"
+          - " Environment:    {{ deploy_env | default('dev') }}"
           - " Started At:     {{ stage_started_at }}"
           - "======================================================"
       no_log: false
