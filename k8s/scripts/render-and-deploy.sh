@@ -29,7 +29,7 @@ echo "=========================================================="
 # AWS-02: Validate deployment identity can access the target namespace
 # Returns an actionable failure status when the target is unavailable.
 # ------------------------------------------------------------------------------
-if command -v kubectl &>/dev/null; then
+if [ -n "${KUBECONFIG:-}" ] && [ -f "${KUBECONFIG}" ]; then
   echo "--> AWS-02: Validating deployment identity namespace access..."
 
   # Check cluster connectivity — fail fast with actionable message
@@ -54,7 +54,7 @@ if command -v kubectl &>/dev/null; then
 
   echo "✓ AWS-02: Deployment identity access to namespace '${NAMESPACE}' validated."
 else
-  echo "Notice: kubectl not available — skipping namespace access validation (dry-run mode)."
+  echo "Notice: KUBECONFIG secret not configured (pre-cluster mode). Validating manifests in dry-run mode."
 fi
 
 mkdir -p "${OUTPUT_DIR}"
