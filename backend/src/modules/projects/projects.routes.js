@@ -10,6 +10,7 @@ const {
     submitDeploymentSchema,
     analyzeRepositorySchema,
     validateIdempotencyHeader,
+    startSetupSchema,
 } = require('./projects.validation');
 
 const router = express.Router();
@@ -396,7 +397,7 @@ router.get(
  *       4. Prevents duplicate active deployments under concurrency via database advisory locks and partial unique indexing.
  *       5. Snapshots execution configuration without raw secrets or credentials.
  *       6. Atomically creates deployment, CI job, snapshot event, and audit log records.
- *       7. Publishes the job to the Jenkins CI/CD pipeline and returns Queued status.
+ *       7. Publishes the job to the GitHub Actions CI/CD pipeline and returns Queued status.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -492,7 +493,7 @@ router.get(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       502:
- *         description: Bad Gateway — Jenkins CI pipeline dispatch failed or returned an error (deployment marked as FAILED)
+ *         description: Bad Gateway — GitHub Actions CI pipeline dispatch failed or returned an error (deployment marked as FAILED)
  *         content:
  *           application/json:
  *             schema:
@@ -510,6 +511,144 @@ router.post(
     validateIdempotencyHeader,
     validateRequest(submitDeploymentSchema, 'body'),
     projectsController.submitDeploymentRequest
+);
+
+// ─── SETUP-05: Setup Pipeline Routes ──────────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/projects/{projectId}/setup:
+ *   post:
+ *     tags: [Projects]
+ *     summary: SETUP-05 — Start Infrastructure Setup Pipeline
+ *     description: >
+ *       Starts the infrastructure provisioning pipeline for the project.
+ *       Validates project access and MVP configuration, prevents duplicate active setups,
+ *       creates a setup deployment record (environment='setup'), updates project setup_status to
+ *       IN_PROGRESS, and dispatches the job to GitHub Actions asynchronously.
+ *       Returns a 202 Accepted response with the queued pipeline ID.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Unique UUID identifier of the project
+ *         example: 123e4567-e89b-12d3-a456-426614174000
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               force:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Set to true to allow re-running a failed or already-READY setup
+ *     responses:
+ *       202:
+ *         description: Setup pipeline queued successfully
+ *       400:
+ *         description: Bad Request — Repository not configured
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden — Insufficient permissions
+ *       404:
+ *         description: Not Found — Project not found
+ *       409:
+ *         description: Conflict — Active setup already in progress or setup already READY
+ *       502:
+ *         description: Bad Gateway — CI dispatch failed
+ *       504:
+ *         description: Gateway Timeout — CI dispatch timed out
+ */
+router.post(
+    '/:projectId/setup',
+    validateRequest(projectIdParamSchema, 'params'),
+    validateRequest(startSetupSchema, 'body'),
+    projectsController.startSetup
+);
+
+/**
+ * @openapi
+ * /api/projects/{projectId}/setup-status:
+ *   get:
+ *     tags: [Projects]
+ *     summary: SETUP-05 — Poll Setup Pipeline Status
+ *     description: >
+ *       Returns the current setup_status of the project and details of the latest setup
+ *       deployment pipeline including stages, timestamps, and a safe failure summary.
+ *       Designed for Dashboard polling. Secrets are never included in the response.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Unique UUID identifier of the project
+ *         example: 123e4567-e89b-12d3-a456-426614174000
+ *     responses:
+ *       200:
+ *         description: Setup status returned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     setupStatus:
+ *                       type: string
+ *                       enum: [PENDING, IN_PROGRESS, READY, FAILED]
+ *                       example: IN_PROGRESS
+ *                     pipeline:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         status:
+ *                           type: string
+ *                           enum: [QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED]
+ *                         startedAt:
+ *                           type: string
+ *                           format: date-time
+ *                         finishedAt:
+ *                           type: string
+ *                           format: date-time
+ *                           nullable: true
+ *                         errorSummary:
+ *                           type: string
+ *                           nullable: true
+ *                         stages:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *       400:
+ *         description: Bad Request — Invalid project UUID
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Not Found — Project not found
+ */
+router.get(
+    '/:projectId/setup-status',
+    validateRequest(projectIdParamSchema, 'params'),
+    projectsController.getSetupStatus
 );
 
 module.exports = router;

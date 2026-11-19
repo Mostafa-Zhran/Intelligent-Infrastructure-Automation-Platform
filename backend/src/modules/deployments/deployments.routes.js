@@ -141,7 +141,7 @@ router.get(
  *     tags: [Deployments]
  *     summary: DEP-04 — Worker Status Callback
  *     description: >
- *       Accepts deployment status updates from the Jenkins/worker process.
+ *       Accepts deployment status updates from the GitHub Actions / CI worker process.
  *       Authenticated by the X-Worker-Api-Key header, NOT by user JWT.
  *       Rejects invalid state transitions and prevents stale overwrite of terminal states.
  *     security:

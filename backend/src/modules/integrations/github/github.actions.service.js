@@ -107,7 +107,7 @@ function buildDeploymentContract({
  * Triggers a GitHub Actions workflow via the GitHub REST API (workflow_dispatch).
  */
 async function triggerDeploymentJob(contractPayload, userToken = null) {
-    const integrationMode = process.env.CI_INTEGRATION_MODE || process.env.JENKINS_INTEGRATION_MODE || 'direct';
+    const integrationMode = process.env.CI_INTEGRATION_MODE || 'direct';
 
     const repoFullName =
         contractPayload.repository?.fullName ||
@@ -148,6 +148,7 @@ async function triggerDeploymentJob(contractPayload, userToken = null) {
             commit_sha: String(contractPayload.git.commitSha || ''),
             environment: String(contractPayload.targetEnvironment || 'development'),
             dockerfile_path: String(contractPayload.build.dockerfilePath || 'Dockerfile'),
+            replicas: String(contractPayload.build.replicas || 1),
             correlation_id: String(contractPayload.correlationId || ''),
             callback_url: String(contractPayload.callbackUrl || ''),
         },

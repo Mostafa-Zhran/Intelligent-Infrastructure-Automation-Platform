@@ -1,0 +1,104 @@
+---
+# tasks/main.yml — docker role
+# ==============================================================================
+# Installs Docker Engine on approved build agents.
+# No user-supplied Docker versions, registry endpoints, or config accepted.
+# ==============================================================================
+
+# ── Remove Legacy Docker Packages ─────────────────────────────────────────────
+- name: "DOCKER | Remove legacy/conflicting packages"
+  apt:
+    name:
+      - docker
+      - docker-engine
+      - docker.io
+      - containerd
+      - runc
+    state: absent
+    purge: true
+  when: ansible_pkg_mgr == 'apt'
+  become: true
+  ignore_errors: true
+
+# ── Install Docker Engine ─────────────────────────────────────────────────────
+- name: "DOCKER | Install Docker prerequisites"
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: true
+  when: ansible_pkg_mgr == 'apt'
+  become: true
+
+- name: "DOCKER | Add Docker official GPG key"
+  apt_key:
+    url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+    state: present
+  when: ansible_pkg_mgr == 'apt'
+  become: true
+
+- name: "DOCKER | Add Docker stable apt repository"
+  apt_repository:
+    repo: >-
+      deb [arch={{ ansible_architecture | replace('x86_64', 'amd64') }}]
+      https://download.docker.com/linux/{{ ansible_distribution | lower }}
+      {{ ansible_distribution_release }} stable
+    state: present
+    update_cache: true
+  when: ansible_pkg_mgr == 'apt'
+  become: true
+
+- name: "DOCKER | Install Docker Engine (approved version)"
+  apt:
+    name:
+      - "docker-ce={{ docker_ce_version }}"
+      - "docker-ce-cli={{ docker_ce_version }}"
+      - containerd.io
+    state: present
+    allow_downgrade: true
+    update_cache: true
+  when: ansible_pkg_mgr == 'apt'
+  become: true
+  notify: restart docker
+
+# ── Configure Docker Daemon ───────────────────────────────────────────────────
+- name: "DOCKER | Write approved Docker daemon configuration"
+  copy:
+    dest: /etc/docker/daemon.json
+    content: "{{ docker_daemon_config | to_nice_json }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: restart docker
+
+# ── Enable and Start Docker ───────────────────────────────────────────────────
+- name: "DOCKER | Enable and start Docker service"
+  service:
+    name: docker
+    state: started
+    enabled: true
+  become: true
+
+# ── Add runner user to docker group ──────────────────────────────────────────
+- name: "DOCKER | Add CI runner user to docker group"
+  user:
+    name: "{{ docker_runner_user }}"
+    groups: docker
+    append: true
+  become: true
+  when: docker_runner_user is defined and docker_runner_user | length > 0
+
+# ── Verify Installation ───────────────────────────────────────────────────────
+- name: "DOCKER | Verify Docker version"
+  command: docker --version
+  register: docker_version_result
+  changed_when: false
+
+- name: "DOCKER | Report Docker version (safe metadata)"
+  debug:
+    msg: "Docker installed: {{ docker_version_result.stdout }}"

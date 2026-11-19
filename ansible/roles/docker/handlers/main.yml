@@ -1,0 +1,8 @@
+---
+# handlers/main.yml — docker role
+
+- name: restart docker
+  service:
+    name: docker
+    state: restarted
+  become: true

@@ -1,0 +1,20 @@
+---
+# defaults/main.yml — common role
+# Approved baseline defaults. NOT overridable from user input at runtime.
+
+# ── Approved baseline packages ────────────────────────────────────────────────
+common_packages:
+  - curl
+  - wget
+  - git
+  - unzip
+  - jq
+  - vim
+  - htop
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - net-tools
+
+# ── System timezone ────────────────────────────────────────────────────────────
+system_timezone: "UTC"

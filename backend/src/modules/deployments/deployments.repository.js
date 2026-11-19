@@ -173,7 +173,7 @@ async function getDeploymentLogs(deploymentId, { stepId, level, limit = 200 } = 
 }
 
 /**
- * Update deployment status (called by Jenkins/worker callback).
+ * Update deployment status (called by GitHub Actions / CI worker callback).
  * Validates state transitions and prevents stale updates.
  */
 async function updateDeploymentStatus(deploymentId, { status, errorMessage, startedAt, finishedAt }) {

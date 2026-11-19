@@ -45,7 +45,7 @@ const getDeploymentLogs = asyncHandler(async (req, res) => {
 
 /**
  * POST /api/deployments/:deploymentId/status
- * Receive a status update callback from Jenkins/worker.
+ * Receive a status update callback from GitHub Actions / CI worker.
  * Protected by worker API key — NOT by user JWT.
  */
 const updateDeploymentStatus = asyncHandler(async (req, res) => {

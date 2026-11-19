@@ -236,7 +236,7 @@ async function markDeploymentDispatched(deploymentId, ciJobId, externalJobId, ur
 
 /**
  * RELIABILITY HELPER:
- * Marks deployment as FAILED when Jenkins definitively rejects the build or fails.
+ * Marks deployment as FAILED when CI pipeline definitively rejects the build or fails.
  */
 async function markDeploymentFailed(deploymentId, ciJobId, errorMessage) {
     const now = new Date();
@@ -278,9 +278,9 @@ async function markDeploymentFailed(deploymentId, ciJobId, errorMessage) {
 
 /**
  * RELIABILITY HELPER:
- * Handles ambiguous Jenkins dispatch timeouts without blindly failing the deployment.
+ * Handles ambiguous CI dispatch timeouts without blindly failing the deployment.
  * Keeps status as QUEUED so active concurrency locks remain active, while recording
- * a reconciliation-pending state for Point 6 worker tracking.
+ * a reconciliation-pending state for background worker tracking.
  */
 async function markDeploymentDispatchUnknown(deploymentId, ciJobId, errorMessage) {
     const now = new Date();
@@ -388,6 +388,69 @@ async function createProjectRecord(projectData) {
     });
 }
 
+// ─── SETUP-05: Setup Pipeline Repository Functions ───────────────────────────
+
+/**
+ * Find an active (QUEUED or RUNNING) setup deployment for a project.
+ * Used to prevent duplicate setup operations.
+ */
+async function findActiveSetup(projectId) {
+    return prisma.deployments.findFirst({
+        where: {
+            project_id: projectId,
+            environment: 'setup',
+            status: { in: ['QUEUED', 'RUNNING'] },
+        },
+        orderBy: { created_at: 'desc' },
+    });
+}
+
+/**
+ * Create a deployment record specifically for infrastructure setup (environment='setup').
+ * Returns the full transaction result: { deployment, ciJob, event, auditLog }.
+ */
+async function createSetupDeploymentRecord({ deploymentData, ciJobData, eventData, auditData }) {
+    return createDeploymentTransaction({ deploymentData, ciJobData, eventData, auditData });
+}
+
+/**
+ * Get the most recent setup deployment for a project, including its CI job and events.
+ */
+async function getLatestSetupDeployment(projectId) {
+    return prisma.deployments.findFirst({
+        where: {
+            project_id: projectId,
+            environment: 'setup',
+        },
+        orderBy: [
+            { created_at: 'desc' },
+            { id: 'desc' },
+        ],
+        include: {
+            ci_jobs: {
+                orderBy: { created_at: 'desc' },
+                take: 1,
+            },
+            deployment_events: {
+                orderBy: { created_at: 'asc' },
+            },
+        },
+    });
+}
+
+/**
+ * Update the setup_status field on a project.
+ */
+async function updateProjectSetupStatus(projectId, status) {
+    return prisma.projects.update({
+        where: { id: projectId },
+        data: {
+            setup_status: status,
+            updated_at: new Date(),
+        },
+    });
+}
+
 module.exports = {
     listProjectsForUser,
     findProjectBySlug,
@@ -404,4 +467,9 @@ module.exports = {
     markDeploymentDispatched,
     markDeploymentFailed,
     markDeploymentDispatchUnknown,
+    // SETUP-05
+    findActiveSetup,
+    createSetupDeploymentRecord,
+    getLatestSetupDeployment,
+    updateProjectSetupStatus,
 };

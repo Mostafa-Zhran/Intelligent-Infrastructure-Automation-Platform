@@ -68,27 +68,34 @@ app.get('/', (req, res) => {
  *         description: Database unreachable or configuration error
  */
 app.get('/health', async (req, res) => {
+    let dbStatus = 'connected';
     try {
         await prisma.$queryRaw`SELECT 1`;
-        res.status(200).json({
-            status: 'ok',
-            database: 'connected',
-            uptime: Math.round(process.uptime()),
-            timestamp: new Date().toISOString(),
-        });
-    } catch (err) {
-        res.status(503).json({
-            status: 'degraded',
-            database: 'disconnected',
-            error: err.message,
-            timestamp: new Date().toISOString(),
-        });
+    } catch {
+        dbStatus = 'disconnected';
     }
+
+    const ciMode = (process.env.CI_INTEGRATION_MODE || 'mock').toLowerCase();
+    const ciConfigured = ciMode === 'mock' || Boolean(process.env.GITHUB_ACTIONS_TOKEN);
+    const isHealthy = dbStatus === 'connected';
+
+    res.status(isHealthy ? 200 : 503).json({
+        status: isHealthy ? 'ok' : 'degraded',
+        database: dbStatus,
+        ci: {
+            provider: 'GITHUB_ACTIONS',
+            mode: ciMode,
+            configured: ciConfigured,
+        },
+        uptime: Math.round(process.uptime()),
+        timestamp: new Date().toISOString(),
+    });
 });
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/integrations/github', githubRoutes);
 app.use('/api/projects', projectsRoutes);
+app.use('/api/v1/projects', projectsRoutes);
 app.use('/api/deployments', deploymentsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 

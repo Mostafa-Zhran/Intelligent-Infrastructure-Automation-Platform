@@ -178,7 +178,7 @@ model ci_jobs {
   id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   project_id      String        @db.Uuid
   deployment_id   String?       @db.Uuid
-  provider        String        @default("JENKINS")
+  provider        String        @default("GITHUB_ACTIONS")
   job_name        String
   external_job_id String?
   status          String        @default("PENDING")

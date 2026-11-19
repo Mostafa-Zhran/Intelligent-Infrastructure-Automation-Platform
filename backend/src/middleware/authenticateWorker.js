@@ -1,5 +1,5 @@
 // backend/src/middleware/authenticateWorker.js
-// Validates requests from internal workers/Jenkins using a shared API key.
+// Validates requests from internal workers / GitHub Actions workflows using a shared API key.
 // The key must be sent in the `X-Worker-Api-Key` header.
 const ApiError = require('../utils/ApiError');
 

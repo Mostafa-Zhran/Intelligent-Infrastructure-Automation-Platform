@@ -114,7 +114,7 @@ export const PipelineVisual: React.FC = () => {
         </h1>
 
         <p className="mt-4 text-sm sm:text-[15px] text-[#C4C4D4] leading-relaxed max-w-lg">
-          Deploy enterprise-grade cloud infrastructure with Terraform, Ansible, Jenkins, Docker, and Kubernetes through one guided workflow.
+          Deploy enterprise-grade cloud infrastructure with Terraform, Ansible, GitHub Actions, Docker, and Kubernetes through one guided workflow.
         </p>
 
         {/* ── Pipeline Rail ────────────────────────────────── */}

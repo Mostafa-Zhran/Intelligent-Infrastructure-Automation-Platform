@@ -187,7 +187,7 @@ async function getDeploymentLogs(deploymentId, user, query = {}) {
 }
 
 /**
- * Handle a status update callback from Jenkins/worker.
+ * Handle a status update callback from GitHub Actions / CI worker.
  * Only accepts requests from internal sources (validated by middleware).
  */
 async function updateDeploymentStatus(deploymentId, payload) {

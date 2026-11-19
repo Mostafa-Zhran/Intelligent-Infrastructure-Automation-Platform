@@ -4,13 +4,13 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 
 process.env.JWT_ACCESS_SECRET = 'test-secret-key-for-api-tests-32chars!';
-process.env.JENKINS_INTEGRATION_MODE = 'mock';
+process.env.CI_INTEGRATION_MODE = 'mock';
 
 const app = require('../../src/app');
 const tokenService = require('../../src/modules/auth/token.service');
 const projectsRepository = require('../../src/modules/projects/projects.repository');
 const githubService = require('../../src/modules/integrations/github/github.service');
-const jenkinsService = require('../../src/modules/integrations/jenkins/jenkins.service');
+const githubActionsService = require('../../src/modules/integrations/github/github.actions.service');
 
 describe('Projects and Deployments HTTP API Integration Tests', () => {
     let server;
@@ -318,7 +318,7 @@ describe('Projects and Deployments HTTP API Integration Tests', () => {
             assert(body.message.includes('permission to trigger deployments'));
         });
 
-        it('should return 502 Bad Gateway and mark deployment as FAILED when Jenkins CI fails', async () => {
+        it('should return 502 Bad Gateway and mark deployment as FAILED when CI fails', async () => {
             let recordedStatus = null;
             mock.method(projectsRepository, 'findProjectWithMembership', async () => sampleProject);
             mock.method(projectsRepository, 'findActiveDeployment', async () => null);
@@ -330,12 +330,12 @@ describe('Projects and Deployments HTTP API Integration Tests', () => {
                 projectsRepository,
                 'createDeploymentTransaction',
                 async ({ deploymentData, ciJobData }) => ({
-                    deployment: { id: 'dep-jenkins-fail', ...deploymentData, created_at: new Date() },
+                    deployment: { id: 'dep-ci-fail', ...deploymentData, created_at: new Date() },
                     ciJob: { id: 'ci-fail-1', ...ciJobData },
                 })
             );
-            mock.method(jenkinsService, 'triggerDeploymentJob', async () => {
-                throw new Error('Jenkins CI service timeout');
+            mock.method(githubActionsService, 'triggerDeploymentJob', async () => {
+                throw new Error('CI service timeout');
             });
             mock.method(
                 projectsRepository,
@@ -362,7 +362,7 @@ describe('Projects and Deployments HTTP API Integration Tests', () => {
             assert.equal(recordedStatus, 'FAILED');
         });
 
-        it('should return 504 Gateway Timeout and retain QUEUED status when Jenkins dispatch times out', async () => {
+        it('should return 504 Gateway Timeout and retain QUEUED status when CI dispatch times out', async () => {
             let unknownStatusRecorded = null;
             mock.method(projectsRepository, 'findProjectWithMembership', async () => sampleProject);
             mock.method(projectsRepository, 'findActiveDeployment', async () => null);
@@ -378,8 +378,8 @@ describe('Projects and Deployments HTTP API Integration Tests', () => {
                     ciJob: { id: 'ci-timeout-rec', ...ciJobData },
                 })
             );
-            mock.method(jenkinsService, 'triggerDeploymentJob', async () => {
-                const timeoutErr = new jenkinsService.JenkinsIntegrationError(
+            mock.method(githubActionsService, 'triggerDeploymentJob', async () => {
+                const timeoutErr = new githubActionsService.GitHubActionsIntegrationError(
                     'Connection timed out after 5000ms',
                     new Error('timeout'),
                     504,

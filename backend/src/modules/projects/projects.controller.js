@@ -88,6 +88,45 @@ const analyzeRepository = asyncHandler(async (req, res) => {
     });
 });
 
+// ─── SETUP-05: Setup Pipeline Controller Handlers ─────────────────────────────
+
+/**
+ * POST /api/projects/:projectId/setup
+ * Starts the infrastructure setup pipeline for a project.
+ */
+const startSetup = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const { force = false } = req.body || {};
+
+    const result = await projectsService.startProjectSetup(
+        projectId,
+        req.user,
+        { force: Boolean(force) },
+        req.correlationId
+    );
+
+    res.status(202).json({
+        success: true,
+        message: 'Infrastructure setup pipeline queued successfully',
+        data: result,
+    });
+});
+
+/**
+ * GET /api/projects/:projectId/setup-status
+ * Returns the current setup status and pipeline details for polling.
+ */
+const getSetupStatus = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+
+    const result = await projectsService.getSetupStatus(projectId, req.user);
+
+    res.status(200).json({
+        success: true,
+        data: result,
+    });
+});
+
 module.exports = {
     listProjects,
     createProject,
@@ -95,4 +134,7 @@ module.exports = {
     getDeploymentHistory,
     submitDeploymentRequest,
     analyzeRepository,
+    // SETUP-05
+    startSetup,
+    getSetupStatus,
 };

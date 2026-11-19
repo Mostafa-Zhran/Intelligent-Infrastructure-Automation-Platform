@@ -34,10 +34,7 @@ backend/feature_project_and_deployments/
 │   ├── modules/
 │   │   ├── auth/                                     # Authentication & password reset module
 │   │   ├── integrations/
-│   │   │   ├── github/                               # GitHub OAuth, orgs, repos, and branches
-│   │   │   └── jenkins/                              # Jenkins CI/CD trigger service & config
-│   │   │       ├── jenkins.config.js                 # Jenkins URL, user, API token, job name
-│   │   │       └── jenkins.service.js                # CSRF crumb issuer, build trigger, queue tracking
+│   │   │   └── github/                               # GitHub OAuth & Actions workflow integration
 │   │   └── projects/                                 # Projects and Deployment Requests (Point 5)
 │   │       ├── projects.controller.js                # Overview, deployment history, submit request
 │   │       ├── projects.repository.js                # Prisma queries for projects, roles & deployments
@@ -74,14 +71,11 @@ Implements **DETAILS-01**, **DETAILS-02**, and **DETAILS-03** from the MVP check
    - Submits a new deployment request with `QUEUED` status.
    - **Idempotency Protection**: Checks `Idempotency-Key` header or body parameter. If re-submitted with the same key, it returns the existing deployment idempotently.
    - **Single Active Deployment Enforcement**: Prevents creating a second deployment if an active deployment (`QUEUED` or `RUNNING`) already exists for that project and environment.
-   - **Jenkins CI/CD Trigger**: Calls `jenkins.service.js` to trigger the remote build job asynchronously, recording the external build URL and queue ID.
+   - **GitHub Actions CI/CD Trigger**: Calls `github.actions.service.js` to dispatch the workflow asynchronously via GitHub REST API, recording external run details.
 
-### B. Jenkins Integration Module (`src/modules/integrations/jenkins/`)
-- **`jenkins.config.js`**:
-  - `JENKINS_URL`, `JENKINS_USER`, `JENKINS_API_TOKEN`, `JENKINS_JOB_NAME`.
-- **`jenkins.service.js`**:
-  - `triggerDeploymentBuild({ deploymentId, projectId, repositoryUrl, branch, environment, correlationId })`
-  - Handles Jenkins crumb (CSRF protection) retrieval and submits parameterized build requests.
+### B. CI Integration Module (`src/modules/integrations/github/github.actions.service.js`)
+- Dispatches `.github/workflows/deploy.yml` workflow run.
+- Formats build and checkout parameters and signs/sends status callback credentials.
 
 ### C. Request Tracking Middleware (`src/middleware/correlationId.js`)
 - Inspects incoming `X-Correlation-ID` or generates a unique UUID.
@@ -98,7 +92,7 @@ Implements **DETAILS-01**, **DETAILS-02**, and **DETAILS-03** from the MVP check
 | Feature | Current Backend | `feature/project_and_deployments` |
 |---|---|---|
 | **Projects Module** | Not present | Fully implemented (`src/modules/projects/`) |
-| **Jenkins Service** | Not present | Fully implemented (`src/modules/integrations/jenkins/`) |
+| **CI Service** | Not present | Fully implemented via GitHub Actions |
 | **Correlation ID** | Not present | Added in `src/middleware/correlationId.js` |
 | **Active Deployment Index** | In schema | Dedicated migration (`20261103010000`) |
 | **Automated Tests** | Basic | Comprehensive unit and integration test suites |

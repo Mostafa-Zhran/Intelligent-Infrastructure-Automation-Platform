@@ -3,12 +3,12 @@ const { describe, it, beforeEach, mock } = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.JWT_ACCESS_SECRET = 'test-secret-key-for-unit-tests-32chars';
-process.env.JENKINS_INTEGRATION_MODE = 'mock';
+process.env.CI_INTEGRATION_MODE = 'mock';
 
 const projectsService = require('../../src/modules/projects/projects.service');
 const projectsRepository = require('../../src/modules/projects/projects.repository');
 const githubService = require('../../src/modules/integrations/github/github.service');
-const jenkinsService = require('../../src/modules/integrations/jenkins/jenkins.service');
+const githubActionsService = require('../../src/modules/integrations/github/github.actions.service');
 const ApiError = require('../../src/utils/ApiError');
 
 describe('Projects & Deployments Service Unit Tests', () => {
@@ -488,7 +488,7 @@ describe('Projects & Deployments Service Unit Tests', () => {
             assert.equal(result.status, 'QUEUED');
         });
 
-        it('RELIABILITY: when Jenkins dispatch fails, deployment must be marked FAILED and NEVER left as Queued', async () => {
+        it('RELIABILITY: when CI dispatch fails, deployment must be marked FAILED and NEVER left as Queued', async () => {
             let failedStatusRecorded = null;
             let failureErrorMessage = null;
 
@@ -514,9 +514,9 @@ describe('Projects & Deployments Service Unit Tests', () => {
                 })
             );
 
-            // Simulate Jenkins service unavailable / failure
-            mock.method(jenkinsService, 'triggerDeploymentJob', async () => {
-                throw new Error('Connection refused: Jenkins is unavailable (ECONNREFUSED)');
+            // Simulate CI service unavailable / failure
+            mock.method(githubActionsService, 'triggerDeploymentJob', async () => {
+                throw new Error('Connection refused: CI service is unavailable (ECONNREFUSED)');
             });
 
             // Capture the markDeploymentFailed call
@@ -648,7 +648,7 @@ describe('Projects & Deployments Service Unit Tests', () => {
             );
         });
 
-        it('RELIABILITY: ambiguous Jenkins dispatch timeout retains QUEUED status, records DISPATCH_TIMEOUT event, and throws 504', async () => {
+        it('RELIABILITY: ambiguous CI dispatch timeout retains QUEUED status, records DISPATCH_TIMEOUT event, and throws 504', async () => {
             let unknownStatusRecorded = null;
             let unknownErrorMessage = null;
 
@@ -667,10 +667,10 @@ describe('Projects & Deployments Service Unit Tests', () => {
                 })
             );
 
-            // Simulate Jenkins timeout error
-            mock.method(jenkinsService, 'triggerDeploymentJob', async () => {
-                const timeoutErr = new jenkinsService.JenkinsIntegrationError(
-                    'Connection timed out after 5000ms reaching Jenkins at http://localhost:8080',
+            // Simulate CI timeout error
+            mock.method(githubActionsService, 'triggerDeploymentJob', async () => {
+                const timeoutErr = new githubActionsService.GitHubActionsIntegrationError(
+                    'Connection timed out after 5000ms reaching GitHub Actions API',
                     new Error('timeout'),
                     504,
                     true // isTimeout = true
@@ -771,10 +771,10 @@ describe('Projects & Deployments Service Unit Tests', () => {
         });
     });
 
-    describe('Jenkins Service Utilities', () => {
+    describe('CI Service Utilities', () => {
         it('sanitizeErrorMessage strips HTML tags and limits length to 250 characters', () => {
             const rawHtml = '<html><head><title>Error 500</title></head><body><h1>Internal Error</h1><p>Stack trace: at org.apache.catalina.core...</p></body></html>';
-            const sanitized = jenkinsService.sanitizeErrorMessage(rawHtml, 50);
+            const sanitized = githubActionsService.sanitizeErrorMessage(rawHtml, 50);
 
             assert(!sanitized.includes('<html>'));
             assert(!sanitized.includes('<h1>'));
@@ -783,15 +783,15 @@ describe('Projects & Deployments Service Unit Tests', () => {
 
         it('sanitizeErrorMessage redacts exposed credentials and tokens', () => {
             const errorWithToken = 'Failed connecting: Bearer secret_token_value12345 in header';
-            const sanitized = jenkinsService.sanitizeErrorMessage(errorWithToken);
+            const sanitized = githubActionsService.sanitizeErrorMessage(errorWithToken);
 
             assert(!sanitized.includes('secret_token_value12345'));
             assert(sanitized.includes('[REDACTED]'));
         });
 
-        it('formatJobUrlPath supports nested Jenkins folders', () => {
-            const path = jenkinsService.formatJobUrlPath('infrastructure/production/deploy-app');
-            assert.equal(path, 'infrastructure/job/production/job/deploy-app');
+        it('formatJobUrlPath normalizes workflow file names', () => {
+            const path = githubActionsService.formatJobUrlPath('/deploy.yml');
+            assert.equal(path, 'deploy.yml');
         });
     });
 

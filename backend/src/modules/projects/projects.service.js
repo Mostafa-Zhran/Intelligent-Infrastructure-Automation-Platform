@@ -2,20 +2,18 @@
 const ApiError = require('../../utils/ApiError');
 const projectsRepository = require('./projects.repository');
 const githubService = require('../integrations/github/github.service');
-const jenkinsService = require('../integrations/jenkins/jenkins.service');
-const jenkinsConfig = require('../integrations/jenkins/jenkins.config');
 const githubActionsService = require('../integrations/github/github.actions.service');
 
 function getCiProvider() {
-    return (process.env.CI_PROVIDER || (process.env.JENKINS_INTEGRATION_MODE ? 'JENKINS' : 'GITHUB_ACTIONS')).toUpperCase();
+    return (process.env.CI_PROVIDER || 'GITHUB_ACTIONS').toUpperCase();
 }
 
 function getCiService() {
-    return getCiProvider() === 'JENKINS' ? jenkinsService : githubActionsService;
+    return githubActionsService;
 }
 
 function getCiJobName() {
-    return getCiProvider() === 'JENKINS' ? jenkinsConfig.jobName() : (process.env.GITHUB_WORKFLOW_FILE || 'deploy.yml');
+    return process.env.GITHUB_WORKFLOW_FILE || 'deploy.yml';
 }
 
 const ALLOWED_ENVIRONMENTS = [
@@ -696,6 +694,249 @@ async function analyzeRepository(user, { owner, repo, branch = 'main', dockerfil
     });
 }
 
+// ─── SETUP-05: Infrastructure Setup Pipeline ──────────────────────────────────
+
+/**
+ * SETUP-05 — Start the infrastructure setup pipeline for a project.
+ * POST /api/projects/:projectId/setup
+ *
+ * Steps:
+ *   1. Verify the caller has 'deploy' permission on the project.
+ *   2. Confirm valid MVP configuration (repository connected).
+ *   3. Prevent duplicate active setups (unless force=true and last run FAILED).
+ *   4. Create a deployment record with environment='setup' + ci_job + event + audit_log.
+ *   5. Update project.setup_status → IN_PROGRESS.
+ *   6. Dispatch setup job to GitHub Actions asynchronously.
+ *   7. Return pipeline ID + QUEUED status without waiting for execution.
+ */
+async function startProjectSetup(projectId, user, { force = false } = {}, correlationId) {
+    // 1. Verify deploy permission
+    const { project } = await verifyProjectAccess(
+        projectId,
+        user.id,
+        user.role,
+        'deploy'
+    );
+
+    // 2. Validate MVP configuration: a repository must be connected
+    if (!project.github_repo_full_name && !project.repository_url) {
+        throw new ApiError(
+            400,
+            'Project repository is not configured. Please connect a GitHub repository before starting the setup pipeline.'
+        );
+    }
+
+    // 3. Prevent duplicate active setup operations
+    const activeSetup = await projectsRepository.findActiveSetup(projectId);
+    if (activeSetup) {
+        throw new ApiError(
+            409,
+            `A setup pipeline (${activeSetup.id}) is already in progress with status '${activeSetup.status}'. Please wait for it to finish before starting a new one.`
+        );
+    }
+
+    // If force=true allow re-running when last setup FAILED; otherwise block re-run if READY
+    if (!force && project.setup_status === 'READY') {
+        throw new ApiError(
+            409,
+            "Project setup is already READY. Pass { force: true } in the request body to re-run the setup pipeline."
+        );
+    }
+
+    // 4. Build deployment data for setup pipeline
+    const repoUrl =
+        project.repository_url ||
+        (project.github_repo_full_name
+            ? `https://github.com/${project.github_repo_full_name}.git`
+            : '');
+
+    const setupCorrelationId = correlationId || `setup-${projectId}-${Date.now()}`;
+
+    // Atomically create setup deployment record (reuses createDeploymentTransaction)
+    let txResult;
+    try {
+        txResult = await projectsRepository.createSetupDeploymentRecord({
+            deploymentData: {
+                project_id: project.id,
+                environment: 'setup',
+                repository_url: repoUrl,
+                branch: project.repository_branch || 'main',
+                commit_sha: null,
+                replicas: 1,
+                status: 'QUEUED',
+                created_by_user_id: user.id,
+                idempotency_key: null,
+            },
+            ciJobData: {
+                project_id: project.id,
+                provider: getCiProvider(),
+                job_name: process.env.GITHUB_SETUP_WORKFLOW_FILE || 'setup.yml',
+                status: 'PENDING',
+            },
+            eventData: {
+                stage: 'QUEUED',
+                from_state: null,
+                to_state: 'QUEUED',
+                message: 'Infrastructure setup pipeline queued',
+                metadata: { setupCorrelationId, triggeredBy: { userId: user.id, userRole: user.role } },
+            },
+            auditData: {
+                actor_user_id: user.id,
+                project_id: project.id,
+                event_type: 'SETUP_REQUESTED',
+                resource_type: 'deployment',
+                metadata: {
+                    environment: 'setup',
+                    correlationId: setupCorrelationId,
+                    force,
+                },
+            },
+        });
+    } catch (err) {
+        // Re-throw ApiError (e.g., duplicate from advisory lock)
+        if (err instanceof ApiError) throw err;
+        throw new ApiError(500, `Failed to create setup pipeline record: ${err.message}`);
+    }
+
+    const { deployment, ciJob } = txResult;
+
+    // 5. Update project setup_status → IN_PROGRESS
+    try {
+        await projectsRepository.updateProjectSetupStatus(project.id, 'IN_PROGRESS');
+    } catch (err) {
+        // Non-fatal: deployment record was created, log and continue
+        // (status reconciliation can fix this via polling)
+    }
+
+    // 6. Build job contract and dispatch to GitHub Actions asynchronously
+    const activeCiService = getCiService();
+    const jobContract = activeCiService.buildDeploymentContract({
+        project,
+        deployment,
+        branch: project.repository_branch || 'main',
+        commitSha: null,
+        environment: 'setup',
+        dockerfilePath: 'Dockerfile',
+        replicas: 1,
+        correlationId: setupCorrelationId,
+        user,
+    });
+
+    try {
+        const jobResult = await activeCiService.triggerDeploymentJob(jobContract);
+        await projectsRepository.markDeploymentDispatched(
+            deployment.id,
+            ciJob.id,
+            jobResult.jobId,
+            jobResult.queueItemUrl
+        );
+
+        return {
+            setupPipelineId: deployment.id,
+            status: 'QUEUED',
+            environment: 'setup',
+            correlationId: setupCorrelationId,
+            createdAt: deployment.created_at,
+            job: {
+                provider: getCiProvider(),
+                status: 'QUEUED',
+                jobName: process.env.GITHUB_SETUP_WORKFLOW_FILE || 'setup.yml',
+                jobId: jobResult.jobId,
+            },
+        };
+    } catch (err) {
+        if (err.isTimeout) {
+            await projectsRepository.markDeploymentDispatchUnknown(
+                deployment.id,
+                ciJob.id,
+                err.message
+            );
+            throw new ApiError(
+                504,
+                `Setup pipeline created with ID ${deployment.id}, but CI dispatch timed out. The setup remains in QUEUED status pending background reconciliation.`
+            );
+        }
+
+        // Definite failure: mark setup as FAILED and revert project status
+        await projectsRepository.markDeploymentFailed(
+            deployment.id,
+            ciJob.id,
+            `Setup CI dispatch failed: ${err.message}`
+        );
+        await projectsRepository.updateProjectSetupStatus(project.id, 'FAILED').catch(() => {});
+
+        throw new ApiError(
+            502,
+            `Setup pipeline created with ID ${deployment.id}, but CI dispatch failed: ${err.message}. Setup marked as FAILED.`
+        );
+    }
+}
+
+/**
+ * SETUP-05 — Get the current setup status for a project.
+ * GET /api/projects/:projectId/setup-status
+ *
+ * Returns the project's overall setup_status and details of the latest
+ * setup deployment pipeline (stages, timestamps, safe error summary).
+ */
+async function getSetupStatus(projectId, user) {
+    // Verify view access (any project member may poll setup status)
+    const { project } = await verifyProjectAccess(
+        projectId,
+        user.id,
+        user.role,
+        'view'
+    );
+
+    const latestSetup = await projectsRepository.getLatestSetupDeployment(projectId);
+
+    // Build a sanitized error summary — never expose raw tokens or secrets
+    const sanitizeError = (msg) => {
+        if (!msg) return null;
+        // Strip any credential-looking tokens
+        return msg
+            .replace(/(?:bearer|basic|token|password|secret|authorization)[:\s=]+\S+/gi, '[REDACTED]')
+            .substring(0, 300);
+    };
+
+    // Map deployment_events to stages
+    const stages = latestSetup?.deployment_events?.map((ev) => ({
+        stage: ev.stage,
+        fromState: ev.from_state,
+        toState: ev.to_state,
+        message: ev.message,
+        occurredAt: ev.created_at,
+    })) || [];
+
+    const latestCiJob = latestSetup?.ci_jobs?.[0] || null;
+
+    return {
+        setupStatus: project.setup_status,
+        pipeline: latestSetup
+            ? {
+                  id: latestSetup.id,
+                  status: latestSetup.status,
+                  environment: latestSetup.environment,
+                  startedAt: latestSetup.started_at || latestSetup.created_at,
+                  finishedAt: latestSetup.finished_at || null,
+                  createdAt: latestSetup.created_at,
+                  updatedAt: latestSetup.updated_at,
+                  errorSummary: sanitizeError(latestSetup.error_message),
+                  stages,
+                  ciJob: latestCiJob
+                      ? {
+                            provider: latestCiJob.provider,
+                            status: latestCiJob.status,
+                            jobName: latestCiJob.job_name,
+                            externalJobId: latestCiJob.external_job_id || null,
+                            url: latestCiJob.url || null,
+                        }
+                      : null,
+              }
+            : null,
+    };
+}
+
 module.exports = {
     listProjects,
     createProject,
@@ -705,4 +946,7 @@ module.exports = {
     getDeploymentHistory,
     submitDeploymentRequest,
     analyzeRepository,
+    // SETUP-05
+    startProjectSetup,
+    getSetupStatus,
 };

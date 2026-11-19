@@ -1,0 +1,123 @@
+---
+# tasks/main.yml — common role
+# ==============================================================================
+# Implements: ANS-01 (Approved baseline configuration)
+# Applied to ALL hosts. No secrets written to logs.
+# ==============================================================================
+
+# ── OS Package Updates ────────────────────────────────────────────────────────
+- name: "COMMON | Update apt cache (Debian/Ubuntu)"
+  apt:
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_pkg_mgr == 'apt'
+  become: true
+
+- name: "COMMON | Update yum/dnf cache (RHEL/Amazon Linux)"
+  yum:
+    update_cache: true
+  when: ansible_pkg_mgr in ['yum', 'dnf']
+  become: true
+
+# ── Install Approved Baseline Packages ───────────────────────────────────────
+- name: "COMMON | Install baseline packages (apt)"
+  apt:
+    name: "{{ common_packages }}"
+    state: present
+    install_recommends: false
+  when: ansible_pkg_mgr == 'apt'
+  become: true
+
+- name: "COMMON | Install baseline packages (yum/dnf)"
+  yum:
+    name: "{{ common_packages }}"
+    state: present
+  when: ansible_pkg_mgr in ['yum', 'dnf']
+  become: true
+
+# ── System Timezone ───────────────────────────────────────────────────────────
+- name: "COMMON | Set timezone to UTC"
+  community.general.timezone:
+    name: "{{ system_timezone }}"
+  become: true
+
+# ── SSH Hardening ─────────────────────────────────────────────────────────────
+- name: "COMMON | Harden SSH — disable password authentication"
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PasswordAuthentication"
+    line: "PasswordAuthentication no"
+    state: present
+    backup: true
+    validate: /usr/sbin/sshd -t -f %s
+  become: true
+  notify: restart sshd
+
+- name: "COMMON | Harden SSH — disable root login"
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PermitRootLogin"
+    line: "PermitRootLogin no"
+    state: present
+    backup: true
+    validate: /usr/sbin/sshd -t -f %s
+  become: true
+  notify: restart sshd
+
+- name: "COMMON | Harden SSH — disable X11 forwarding"
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?X11Forwarding"
+    line: "X11Forwarding no"
+    state: present
+    backup: true
+    validate: /usr/sbin/sshd -t -f %s
+  become: true
+  notify: restart sshd
+
+# ── System Limits ─────────────────────────────────────────────────────────────
+- name: "COMMON | Set system-level file descriptor limit"
+  pam_limits:
+    domain: "*"
+    limit_type: soft
+    limit_item: nofile
+    value: "65536"
+  become: true
+
+- name: "COMMON | Set system-level file descriptor hard limit"
+  pam_limits:
+    domain: "*"
+    limit_type: hard
+    limit_item: nofile
+    value: "131072"
+  become: true
+
+# ── Kernel Parameters ─────────────────────────────────────────────────────────
+- name: "COMMON | Apply kernel sysctl parameters"
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop:
+    - { key: "net.ipv4.ip_forward",                value: "1" }
+    - { key: "net.bridge.bridge-nf-call-iptables",  value: "1" }
+    - { key: "net.bridge.bridge-nf-call-ip6tables", value: "1" }
+    - { key: "vm.max_map_count",                    value: "262144" }
+  become: true
+
+# ── Status Verification ───────────────────────────────────────────────────────
+- name: "COMMON | Verify host uptime and report as safe metadata"
+  command: uptime -p
+  register: uptime_result
+  changed_when: false
+
+- name: "COMMON | Report host metadata (no secrets)"
+  debug:
+    msg:
+      - "Host OS:    {{ ansible_distribution }} {{ ansible_distribution_version }}"
+      - "Kernel:     {{ ansible_kernel }}"
+      - "Uptime:     {{ uptime_result.stdout }}"
+      - "Memory:     {{ ansible_memtotal_mb }} MB total"
+      - "CPU cores:  {{ ansible_processor_vcpus }}"

@@ -5,10 +5,10 @@
 > 2. Git repository input for user applications.
 > 3. Terraform-based AWS infrastructure provisioning.
 > 4. Ansible-based server configuration.
-> 5. Jenkins pipeline to build Docker images and deploy to Kubernetes.
+> 5. GitHub Actions workflow to build Docker images and deploy to Kubernetes.
 > 6. Deployment status tracking and logs display.
 >
-> Direct Terraform, Ansible, Jenkins, Docker, AWS, and Kubernetes execution is handled by the DevOps implementation. This document covers the Backend APIs, data, authorization, and integration contracts needed to support that execution.
+> Direct Terraform, Ansible, GitHub Actions, Docker, AWS, and Kubernetes execution is handled by the DevOps implementation. This document covers the Backend APIs, data, authorization, and integration contracts needed to support that execution.
 
 ## 1. Project-wide Backend Foundation
 
@@ -167,7 +167,7 @@
 - [x] Resolve the selected branch or commit.
 - [x] Create a deployment record with the `Queued` status.
 - [x] Snapshot the repository, branch/commit, environment, and permitted configuration needed for execution.
-- [x] Publish a deployment job using the agreed queue or Jenkins integration contract.
+- [x] Publish a deployment job using the agreed queue or GitHub Actions integration contract.
 - [x] Return the deployment ID and queued status.
 - [x] Prevent duplicate requests for the same active deployment where required.
 - [x] Test invalid configuration, unauthorized access, and queue/integration failures.
@@ -201,7 +201,7 @@
 
 ### DEP-04 — Deployment state updates
 **Integration endpoint or queue consumer:** `POST /api/deployments/{deploymentId}/status`
-- [x] Accept status updates only from the authorized Jenkins/worker integration.
+- [x] Accept status updates only from the authorized GitHub Actions/worker integration.
 - [x] Support the MVP states: `Queued`, `Running`, `Succeeded`, and `Failed`.
 - [x] Record state-change timestamps and pipeline stage updates.
 - [x] Reject invalid state transitions.
@@ -248,7 +248,7 @@
 2. [x] Implement authentication, project authorization, migrations, validation, and shared error handling.
 3. [x] Implement GitHub OAuth plus repository and branch listing.
 4. [x] Implement project creation and project-details APIs.
-5. [x] Define and implement the Backend-to-Jenkins/worker deployment contract.
+5. [x] Define and implement the Backend-to-GitHub Actions/worker deployment contract.
 6. [x] Implement deployment request, state updates, history, details, and logs APIs.
 7. [x] Connect Dashboard APIs to persisted project and deployment data.
 8. [x] Complete security, integration, and API documentation tests.

@@ -106,6 +106,16 @@ const analyzeRepositorySchema = Joi.object({
         }),
 }).unknown(false);
 
+// ─── SETUP-05: Setup Pipeline Validation ─────────────────────────────────────
+
+/**
+ * Request body for POST /api/projects/:projectId/setup
+ * force: allow re-triggering the setup pipeline even when last attempt FAILED or status is READY.
+ */
+const startSetupSchema = Joi.object({
+    force: Joi.boolean().default(false),
+}).unknown(false);
+
 module.exports = {
     projectIdParamSchema,
     deploymentHistoryQuerySchema,
@@ -113,4 +123,6 @@ module.exports = {
     createProjectSchema,
     analyzeRepositorySchema,
     validateIdempotencyHeader,
+    // SETUP-05
+    startSetupSchema,
 };
