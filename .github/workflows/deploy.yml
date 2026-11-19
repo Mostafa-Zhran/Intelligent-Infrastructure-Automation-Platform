@@ -230,6 +230,12 @@ jobs:
       # ------------------------------------------------------------------------
       # 4. PIPE-06 — Terraform Infrastructure Stage
       # ------------------------------------------------------------------------
+      - name: Set up Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+          terraform_wrapper: false
+
       - name: PIPE-06 — Terraform Plan/Apply Infrastructure
         env:
           TF_WORKING_DIR: "terraform/environments/dev"

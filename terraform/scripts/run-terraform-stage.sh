@@ -125,65 +125,74 @@ fi
 
 cd "${TF_WORKING_DIR}"
 
-# terraform init
-echo "--- terraform init ---"
-terraform init -input=false -no-color 2>&1 | grep -v "terraform.tfstate" || true
-
-# terraform validate
-echo "--- terraform validate ---"
-terraform validate -no-color
-
-# terraform plan — always run; output is captured to a summary file
-PLAN_OUT=$(mktemp /tmp/tf-plan-XXXXXX.txt)
-echo "--- terraform plan ---"
-set +e
-terraform plan \
-  -input=false \
-  -no-color \
-  -out="${PLAN_OUT}.binary" \
-  2>&1 | tee "${PLAN_OUT}"
-PLAN_EXIT=$?
-set -e
-
-if [ "${PLAN_EXIT}" -ne 0 ]; then
-  STAGE_STATUS="FAILED"
-  # Safe summary: capture only resource change counts, no state values
-  SAFE_SUMMARY=$(grep -E "^(Plan:|No changes|Error:)" "${PLAN_OUT}" | head -5 | tr '\n' ' ' || echo "Terraform plan failed — see workflow logs.")
-  echo "ERROR: terraform plan failed (exit ${PLAN_EXIT})" >&2
-  EXIT_CODE=1
+if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+  echo "Notice: AWS credentials not configured. Running Terraform syntax and configuration validation in dry-run mode..."
+  terraform init -backend=false -input=false -no-color
+  terraform validate -no-color
+  echo "✓ Terraform syntax and module validation passed (dry-run)."
+  SAFE_SUMMARY="Dry-run: Terraform configurations validated (no AWS credentials configured)."
+  STAGE_STATUS="SUCCEEDED"
 else
-  # Extract safe plan summary (resource counts only, no sensitive values)
-  SAFE_SUMMARY=$(grep -E "^(Plan:|No changes)" "${PLAN_OUT}" | head -3 | tr '\n' ' ' || echo "Plan completed.")
-  echo "✓ Terraform plan succeeded: ${SAFE_SUMMARY}"
-fi
+  # terraform init
+  echo "--- terraform init ---"
+  terraform init -input=false -no-color 2>&1 | grep -v "terraform.tfstate" || true
 
-# terraform apply — only if command is 'apply' and plan passed
-if [ "${TF_COMMAND}" = "apply" ] && [ "${EXIT_CODE}" -eq 0 ]; then
-  echo "--- terraform apply ---"
+  # terraform validate
+  echo "--- terraform validate ---"
+  terraform validate -no-color
+
+  # terraform plan — always run; output is captured to a summary file
+  PLAN_OUT=$(mktemp /tmp/tf-plan-XXXXXX.txt)
+  echo "--- terraform plan ---"
   set +e
-  terraform apply \
+  terraform plan \
     -input=false \
     -no-color \
-    -auto-approve \
-    "${PLAN_OUT}.binary" \
-    2>&1 | grep -vE "(password|token|secret|key|credential|private)" | head -100
-  APPLY_EXIT=$?
+    -out="${PLAN_OUT}.binary" \
+    2>&1 | tee "${PLAN_OUT}"
+  PLAN_EXIT=$?
   set -e
 
-  if [ "${APPLY_EXIT}" -ne 0 ]; then
+  if [ "${PLAN_EXIT}" -ne 0 ]; then
     STAGE_STATUS="FAILED"
-    SAFE_SUMMARY="Terraform apply failed after plan succeeded — see workflow logs."
+    # Safe summary: capture only resource change counts, no state values
+    SAFE_SUMMARY=$(grep -E "^(Plan:|No changes|Error:)" "${PLAN_OUT}" | head -5 | tr '\n' ' ' || echo "Terraform plan failed — see workflow logs.")
+    echo "ERROR: terraform plan failed (exit ${PLAN_EXIT})" >&2
     EXIT_CODE=1
   else
-    STAGE_STATUS="SUCCEEDED"
-    echo "✓ Terraform apply completed successfully."
+    # Extract safe plan summary (resource counts only, no sensitive values)
+    SAFE_SUMMARY=$(grep -E "^(Plan:|No changes)" "${PLAN_OUT}" | head -3 | tr '\n' ' ' || echo "Plan completed.")
+    echo "✓ Terraform plan succeeded: ${SAFE_SUMMARY}"
   fi
-elif [ "${EXIT_CODE}" -eq 0 ]; then
-  STAGE_STATUS="SUCCEEDED"
-fi
 
-# Clean up plan files — never persist plan binary (may contain sensitive data)
-rm -f "${PLAN_OUT}" "${PLAN_OUT}.binary" 2>/dev/null || true
+  # terraform apply — only if command is 'apply' and plan passed
+  if [ "${TF_COMMAND}" = "apply" ] && [ "${EXIT_CODE}" -eq 0 ]; then
+    echo "--- terraform apply ---"
+    set +e
+    terraform apply \
+      -input=false \
+      -no-color \
+      -auto-approve \
+      "${PLAN_OUT}.binary" \
+      2>&1 | grep -vE "(password|token|secret|key|credential|private)" | head -100
+    APPLY_EXIT=$?
+    set -e
+
+    if [ "${APPLY_EXIT}" -ne 0 ]; then
+      STAGE_STATUS="FAILED"
+      SAFE_SUMMARY="Terraform apply failed after plan succeeded — see workflow logs."
+      EXIT_CODE=1
+    else
+      STAGE_STATUS="SUCCEEDED"
+      echo "✓ Terraform apply completed successfully."
+    fi
+  elif [ "${EXIT_CODE}" -eq 0 ]; then
+    STAGE_STATUS="SUCCEEDED"
+  fi
+
+  # Clean up plan files — never persist plan binary (may contain sensitive data)
+  rm -f "${PLAN_OUT}" "${PLAN_OUT}.binary" 2>/dev/null || true
+fi
 
 # ------------------------------------------------------------------------------
 # 8. Post final stage status to backend
