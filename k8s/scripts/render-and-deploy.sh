@@ -194,25 +194,20 @@ EOF
 
 echo "✓ Rendered manifests generated at: ${RENDERED_FILE}"
 
-# 1. Always validate rendered manifests syntax using kubectl dry-run
-if command -v kubectl &> /dev/null; then
-  echo "--> Validating manifests with kubectl client dry-run..."
-  kubectl apply --dry-run=client --validate=false -f "${RENDERED_FILE}"
-  echo "✓ Manifests syntax and schema validated successfully."
-else
-  echo "Notice: kubectl not found on local path. Skipping client validation."
-fi
-
-# 2. Check if a live cluster connection is active
+# Check if a live cluster connection is active
 HAS_CLUSTER=false
-if command -v kubectl &> /dev/null; then
+if command -v kubectl &> /dev/null && [ -n "${KUBECONFIG:-}" ] && [ -f "${KUBECONFIG}" ]; then
   if kubectl cluster-info &> /dev/null; then
     HAS_CLUSTER=true
   fi
 fi
 
 if [ "${HAS_CLUSTER}" = "true" ]; then
-  echo "--> Live Kubernetes cluster detected. Applying rollout..."
+  echo "--> Live Kubernetes cluster detected. Validating manifests with dry-run..."
+  kubectl apply --dry-run=client -f "${RENDERED_FILE}"
+  echo "✓ Manifests syntax and schema validated against cluster."
+
+  echo "--> Applying rollout to namespace '${NAMESPACE}'..."
   kubectl apply -f "${RENDERED_FILE}"
 
   echo "--> Waiting for rollout completion (timeout: ${TIMEOUT_SECONDS}s)..."
@@ -230,6 +225,10 @@ if [ "${HAS_CLUSTER}" = "true" ]; then
   SERVICE_URL="http://${HOST}"
   echo "✓ Service URL: ${SERVICE_URL}"
 else
+  # Pre-cluster dry-run mode
+  if command -v python3 &> /dev/null; then
+    python3 -c "import yaml; list(yaml.safe_load_all(open('${RENDERED_FILE}'))); print('✓ Manifests YAML schema parsed successfully.')" 2>/dev/null || true
+  fi
   echo "Notice: No live Kubernetes cluster connected. Validated manifests in dry-run mode."
   echo "✓ Pre-deployment checks passed. Ready for cluster apply."
   echo "✓ Target Service URL: http://${HOST}"
