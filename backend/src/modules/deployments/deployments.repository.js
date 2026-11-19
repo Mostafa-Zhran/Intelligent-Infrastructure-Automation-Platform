@@ -179,35 +179,35 @@ async function getDeploymentLogs(deploymentId, { stepId, level, limit = 200 } = 
 async function updateDeploymentStatus(deploymentId, { status, errorMessage, startedAt, finishedAt }) {
     const now = new Date();
 
-    return prisma.$transaction(async (tx) => {
-        const existing = await tx.deployments.findUnique({
-            where: { id: deploymentId },
-            select: { id: true, status: true },
-        });
+    const existing = await prisma.deployments.findUnique({
+        where: { id: deploymentId },
+        select: { id: true, status: true },
+    });
 
-        if (!existing) return null;
+    if (!existing) return null;
 
-        // Prevent overwriting a terminal state
-        const terminalStates = ['SUCCEEDED', 'FAILED', 'CANCELLED'];
-        if (terminalStates.includes(existing.status) && existing.status !== status) {
-            return { deployment: existing, skipped: true };
-        }
+    // Prevent overwriting a terminal state
+    const terminalStates = ['SUCCEEDED', 'FAILED', 'CANCELLED'];
+    if (terminalStates.includes(existing.status) && existing.status !== status) {
+        return { deployment: existing, skipped: true };
+    }
 
-        const updateData = {
-            status,
-            updated_at: now,
-        };
-        if (errorMessage !== undefined) updateData.error_message = errorMessage;
-        if (startedAt) updateData.started_at = new Date(startedAt);
-        if (finishedAt) updateData.finished_at = new Date(finishedAt);
+    const updateData = {
+        status,
+        updated_at: now,
+    };
+    if (errorMessage !== undefined) updateData.error_message = errorMessage;
+    if (startedAt) updateData.started_at = new Date(startedAt);
+    if (finishedAt) updateData.finished_at = new Date(finishedAt);
 
-        const deployment = await tx.deployments.update({
-            where: { id: deploymentId },
-            data: updateData,
-        });
+    const deployment = await prisma.deployments.update({
+        where: { id: deploymentId },
+        data: updateData,
+    });
 
-        // Record the state-change event
-        await tx.deployment_events.create({
+    // Record the state-change event
+    try {
+        await prisma.deployment_events.create({
             data: {
                 deployment_id: deploymentId,
                 from_state: existing.status,
@@ -221,9 +221,11 @@ async function updateDeploymentStatus(deploymentId, { status, errorMessage, star
                 },
             },
         });
+    } catch {
+        // Non-blocking event logging
+    }
 
-        return { deployment, skipped: false };
-    });
+    return { deployment, skipped: false };
 }
 
 module.exports = {
