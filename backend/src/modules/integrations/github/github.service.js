@@ -746,7 +746,24 @@ async function analyzeRepository({
   };
 }
 
+async function getUserAccessToken(userId) {
+  if (!userId) return null;
+  const connection = await githubRepository.findConnectionByUserId(userId);
+  if (!connection || connection.revoked_at) return null;
+
+  try {
+    return decryptToken({
+      ciphertext: connection.token_ciphertext,
+      iv: connection.token_iv,
+      tag: connection.token_tag,
+    });
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
+  getUserAccessToken,
   resolveBranchCommit,
   startConnection,
   hashState,

@@ -506,9 +506,19 @@ async function submitDeploymentRequest(projectId, user, input, correlationId) {
         user,
     });
 
+    let userToken = null;
+    try {
+        userToken = await githubService.getUserAccessToken(user.id);
+        if (!userToken && project.owner_user_id && project.owner_user_id !== user.id) {
+            userToken = await githubService.getUserAccessToken(project.owner_user_id);
+        }
+    } catch {
+        // Non-blocking fallback
+    }
+
     let jobResult;
     try {
-        jobResult = await activeCiService.triggerDeploymentJob(jobContract);
+        jobResult = await activeCiService.triggerDeploymentJob(jobContract, userToken);
         await projectsRepository.markDeploymentDispatched(
             deployment.id,
             ciJob.id,
@@ -822,8 +832,18 @@ async function startProjectSetup(projectId, user, { force = false } = {}, correl
         user,
     });
 
+    let userToken = null;
     try {
-        const jobResult = await activeCiService.triggerDeploymentJob(jobContract);
+        userToken = await githubService.getUserAccessToken(user.id);
+        if (!userToken && project.owner_user_id && project.owner_user_id !== user.id) {
+            userToken = await githubService.getUserAccessToken(project.owner_user_id);
+        }
+    } catch {
+        // Non-blocking fallback
+    }
+
+    try {
+        const jobResult = await activeCiService.triggerDeploymentJob(jobContract, userToken);
         await projectsRepository.markDeploymentDispatched(
             deployment.id,
             ciJob.id,

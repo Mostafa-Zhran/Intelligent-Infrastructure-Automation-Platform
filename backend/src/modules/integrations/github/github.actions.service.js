@@ -130,10 +130,10 @@ async function triggerDeploymentJob(contractPayload, userToken = null) {
         };
     }
 
-    const token = userToken || process.env.GITHUB_TOKEN || process.env.GITHUB_CLIENT_SECRET;
+    const token = userToken || process.env.GITHUB_TOKEN;
     if (!token) {
         throw new GitHubActionsIntegrationError(
-            'Missing GitHub authentication token for workflow dispatch',
+            'Missing GitHub authentication token for workflow dispatch. Please connect your GitHub account or configure GITHUB_TOKEN.',
             null,
             401
         );
@@ -212,7 +212,7 @@ async function triggerDeploymentJob(contractPayload, userToken = null) {
  * Fetches execution logs from GitHub Actions for a given workflow run ID or job ID.
  */
 async function fetchWorkflowRunLogs(runId, userToken = null) {
-    const token = userToken || process.env.GITHUB_TOKEN || process.env.GITHUB_CLIENT_SECRET;
+    const token = userToken || process.env.GITHUB_TOKEN;
     if (!token || !runId) return null;
 
     const workflowRepo =
@@ -260,7 +260,7 @@ async function fetchWorkflowRunLogs(runId, userToken = null) {
  * Searches recent workflow runs in GitHub Actions to find the run corresponding to deploymentId.
  */
 async function findWorkflowRunForDeployment(deploymentId, createdAt = null, userToken = null) {
-    const token = userToken || process.env.GITHUB_TOKEN || process.env.GITHUB_CLIENT_SECRET;
+    const token = userToken || process.env.GITHUB_TOKEN;
     if (!token || !deploymentId) return null;
 
     const workflowRepo =
