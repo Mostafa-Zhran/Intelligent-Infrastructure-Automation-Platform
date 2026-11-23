@@ -30,6 +30,16 @@ export const DeploymentLogsPage: React.FC<DeploymentLogsPageProps> = ({
   onNavigate,
   onShowToast,
 }) => {
+  const [activeDeployment, setActiveDeployment] = useState<any>(() => {
+    if (deployment) return deployment;
+    try {
+      const cached = localStorage.getItem('iiap_selected_deployment');
+      return cached ? JSON.parse(cached) : undefined;
+    } catch {
+      return undefined;
+    }
+  });
+
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -38,18 +48,42 @@ export const DeploymentLogsPage: React.FC<DeploymentLogsPageProps> = ({
   const [logSearch, setLogSearch] = useState('');
   const terminalRef = useRef<HTMLDivElement>(null);
 
-  const deploymentId = deployment?.id;
+  useEffect(() => {
+    if (deployment) {
+      setActiveDeployment(deployment);
+      try {
+        localStorage.setItem('iiap_selected_deployment', JSON.stringify(deployment));
+      } catch {}
+    } else if (!activeDeployment) {
+      // Auto-load most recent deployment if none selected
+      deploymentsApi
+        .list({ per_page: 1 })
+        .then((res: { deployments: any[] }) => {
+          if (res.deployments && res.deployments.length > 0) {
+            setActiveDeployment(res.deployments[0]);
+            try {
+              localStorage.setItem('iiap_selected_deployment', JSON.stringify(res.deployments[0]));
+            } catch {}
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsLoading(false));
+    }
+  }, [deployment]);
+
+  const deploymentId = activeDeployment?.id;
 
   useEffect(() => {
+    if (!deploymentId) return;
     fetchLogs();
     let interval: any;
-    if (deployment?.status === 'RUNNING' || deployment?.status === 'QUEUED') {
+    if (activeDeployment?.status === 'RUNNING' || activeDeployment?.status === 'QUEUED') {
       interval = setInterval(fetchLogs, 3000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [deploymentId, deployment?.status]);
+  }, [deploymentId, activeDeployment?.status]);
 
   const fetchLogs = async () => {
     if (!deploymentId) {
@@ -82,7 +116,7 @@ export const DeploymentLogsPage: React.FC<DeploymentLogsPageProps> = ({
             lineNumber: 2,
             timestamp: new Date().toLocaleTimeString(),
             level: 'INFO',
-            message: `[status] Current status: ${deployment?.status || 'QUEUED'}. Awaiting worker output buffers...`,
+            message: `[status] Current status: ${activeDeployment?.status || 'QUEUED'}. Awaiting worker output buffers...`,
           },
         ]);
       }
@@ -143,7 +177,7 @@ export const DeploymentLogsPage: React.FC<DeploymentLogsPageProps> = ({
         <div>
           <button
             type="button"
-            onClick={() => onNavigate(deployment ? 'deployment-details' : 'deployments')}
+            onClick={() => onNavigate(activeDeployment ? 'deployment-details' : 'deployments')}
             className="inline-flex items-center gap-1.5 text-xs text-[#A1A1B5] hover:text-white transition-colors mb-2"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -154,14 +188,14 @@ export const DeploymentLogsPage: React.FC<DeploymentLogsPageProps> = ({
               <Terminal className="w-6 h-6 text-violet-400" />
               <span>Live Console Stream</span>
             </h1>
-            {deployment?.id && (
+            {activeDeployment?.id && (
               <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-white/5 border border-white/10 text-violet-300">
-                #{deployment.id.substring(0, 8)}
+                #{activeDeployment.id.substring(0, 8)}
               </span>
             )}
           </div>
           <p className="text-xs text-[#A1A1B5] mt-1 font-mono">
-            {deployment?.project?.name || 'Automated Container Ingress'} · {filteredLogs.length} buffered lines
+            {activeDeployment?.project?.name || 'Automated Container Ingress'} · {filteredLogs.length} buffered lines
           </p>
         </div>
 

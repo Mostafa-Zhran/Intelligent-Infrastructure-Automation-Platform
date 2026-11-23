@@ -89,7 +89,14 @@ export const App: React.FC = () => {
 
   // Selected project & deployment entity tracking for drill-down views
   const [selectedProject, setSelectedProject] = useState<ProjectItem | undefined>(undefined);
-  const [selectedDeployment, setSelectedDeployment] = useState<DeploymentRecord | undefined>(undefined);
+  const [selectedDeployment, setSelectedDeployment] = useState<DeploymentRecord | undefined>(() => {
+    try {
+      const cached = localStorage.getItem('iiap_selected_deployment');
+      return cached ? JSON.parse(cached) : undefined;
+    } catch {
+      return undefined;
+    }
+  });
 
   // Toast notification state
   const [toast, setToast] = useState<ToastNotification | null>(null);
@@ -479,6 +486,9 @@ export const App: React.FC = () => {
             onNavigate={handleNavigate}
             onSelectDeployment={(dep) => {
               setSelectedDeployment(dep);
+              try {
+                localStorage.setItem('iiap_selected_deployment', JSON.stringify(dep));
+              } catch {}
               handleNavigate('deployment-details');
             }}
             onShowToast={showToast}
@@ -495,6 +505,7 @@ export const App: React.FC = () => {
 
         {currentPage === 'deployment-logs' && (
           <DeploymentLogsPage
+            deployment={selectedDeployment}
             onNavigate={handleNavigate}
             onShowToast={showToast}
           />
