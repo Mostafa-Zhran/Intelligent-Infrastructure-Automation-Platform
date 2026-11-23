@@ -98,7 +98,7 @@ jobs:
             curl -s -S -X POST "${CALLBACK_URL}" \
               -H "Content-Type: application/json" \
               -H "X-Worker-Api-Key: ${WORKER_API_KEY}" \
-              -d "{\"status\":\"RUNNING\",\"startedAt\":\"${STARTED_AT}\"}" || echo "Warning: Backend callback failed."
+              -d "{\"status\":\"RUNNING\",\"startedAt\":\"${STARTED_AT}\",\"runId\":\"${{ github.run_id }}\",\"runUrl\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" || echo "Warning: Backend callback failed."
           fi
 
       # ------------------------------------------------------------------------
@@ -298,7 +298,7 @@ jobs:
             curl -s -S -X POST "${CALLBACK_URL}" \
               -H "Content-Type: application/json" \
               -H "X-Worker-Api-Key: ${WORKER_API_KEY}" \
-              -d "{\"status\":\"SUCCEEDED\",\"startedAt\":\"${STARTED_AT}\",\"finishedAt\":\"${FINISHED_AT}\"}" || true
+              -d "{\"status\":\"SUCCEEDED\",\"startedAt\":\"${STARTED_AT}\",\"finishedAt\":\"${FINISHED_AT}\",\"runId\":\"${{ github.run_id }}\",\"runUrl\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" || true
           fi
 
       # ------------------------------------------------------------------------
@@ -317,5 +317,5 @@ jobs:
             curl -s -S -X POST "${CALLBACK_URL}" \
               -H "Content-Type: application/json" \
               -H "X-Worker-Api-Key: ${WORKER_API_KEY}" \
-              -d "{\"status\":\"FAILED\",\"errorMessage\":\"GitHub Actions pipeline failed during execution. Check workflow run logs for details.\",\"startedAt\":\"${STARTED_AT}\",\"finishedAt\":\"${FINISHED_AT}\"}" || true
+              -d "{\"status\":\"FAILED\",\"errorMessage\":\"GitHub Actions pipeline failed during execution. Check workflow run logs for details.\",\"startedAt\":\"${STARTED_AT}\",\"finishedAt\":\"${FINISHED_AT}\",\"runId\":\"${{ github.run_id }}\",\"runUrl\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" || true
           fi

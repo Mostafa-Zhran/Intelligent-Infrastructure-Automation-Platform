@@ -2,6 +2,7 @@
 const prisma = require('../../db/prisma');
 
 const SAFE_LOG_LEVELS = ['INFO', 'WARN', 'ERROR', 'DEBUG'];
+const SAFE_SOURCES = ['TERRAFORM', 'ANSIBLE', 'JENKINS', 'DOCKER', 'KUBERNETES', 'APPLICATION', 'BACKEND', 'OTHER'];
 const MAX_LOG_LINES = 500;
 
 /**
@@ -173,10 +174,40 @@ async function getDeploymentLogs(deploymentId, { stepId, level, limit = 200 } = 
 }
 
 /**
+ * Persist parsed execution logs into the database in chunks.
+ */
+async function saveDeploymentLogs(deploymentId, logLines = []) {
+    if (!logLines || logLines.length === 0) return [];
+
+    const batchSize = 100;
+    for (let i = 0; i < logLines.length; i += batchSize) {
+        const chunk = logLines.slice(i, i + batchSize).map((l) => ({
+            deployment_id: deploymentId,
+            step_id: l.step_id || null,
+            source: SAFE_SOURCES.includes(String(l.source).toUpperCase()) ? String(l.source).toUpperCase() : 'OTHER',
+            level: SAFE_LOG_LEVELS.includes(String(l.level).toUpperCase()) ? String(l.level).toUpperCase() : 'INFO',
+            message: l.message,
+            logged_at: l.logged_at ? new Date(l.logged_at) : new Date(),
+        }));
+
+        try {
+            await prisma.deployment_logs.createMany({
+                data: chunk,
+                skipDuplicates: true,
+            });
+        } catch {
+            // Non-blocking if duplicates or batch fails
+        }
+    }
+
+    return getDeploymentLogs(deploymentId);
+}
+
+/**
  * Update deployment status (called by GitHub Actions / CI worker callback).
  * Validates state transitions and prevents stale updates.
  */
-async function updateDeploymentStatus(deploymentId, { status, errorMessage, startedAt, finishedAt }) {
+async function updateDeploymentStatus(deploymentId, { status, errorMessage, startedAt, finishedAt, runId, runUrl }) {
     const now = new Date();
 
     const existing = await prisma.deployments.findUnique({
@@ -205,6 +236,23 @@ async function updateDeploymentStatus(deploymentId, { status, errorMessage, star
         data: updateData,
     });
 
+    // Update CI Job external_job_id and url if runId or runUrl provided
+    if (runId || runUrl) {
+        try {
+            await prisma.ci_jobs.updateMany({
+                where: { deployment_id: deploymentId },
+                data: {
+                    status: status === 'RUNNING' ? 'RUNNING' : status === 'SUCCEEDED' ? 'SUCCESS' : 'FAILURE',
+                    ...(runId ? { external_job_id: String(runId) } : {}),
+                    ...(runUrl ? { url: String(runUrl) } : {}),
+                    updated_at: now,
+                },
+            });
+        } catch {
+            // Non-blocking
+        }
+    }
+
     // Record the state-change event
     try {
         await prisma.deployment_events.create({
@@ -217,6 +265,7 @@ async function updateDeploymentStatus(deploymentId, { status, errorMessage, star
                 metadata: {
                     source: 'worker_callback',
                     timestamp: now.toISOString(),
+                    ...(runId ? { runId: String(runId) } : {}),
                     ...(errorMessage ? { error: errorMessage } : {}),
                 },
             },
@@ -233,6 +282,7 @@ module.exports = {
     countDeploymentsForUser,
     findDeploymentById,
     getDeploymentLogs,
+    saveDeploymentLogs,
     updateDeploymentStatus,
 };
 

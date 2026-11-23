@@ -208,10 +208,174 @@ async function triggerDeploymentJob(contractPayload, userToken = null) {
     };
 }
 
+/**
+ * Fetches execution logs from GitHub Actions for a given workflow run ID or job ID.
+ */
+async function fetchWorkflowRunLogs(runId, userToken = null) {
+    const token = userToken || process.env.GITHUB_TOKEN || process.env.GITHUB_CLIENT_SECRET;
+    if (!token || !runId) return null;
+
+    const workflowRepo =
+        process.env.GITHUB_ACTIONS_REPO ||
+        process.env.GITHUB_REPOSITORY ||
+        'Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform';
+    const [owner, repo] = workflowRepo.split('/');
+
+    try {
+        // First get jobs for the run
+        const jobsRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/jobs`, {
+            headers: {
+                Accept: 'application/vnd.github+json',
+                Authorization: `Bearer ${token}`,
+                'User-Agent': 'Node',
+            },
+            signal: AbortSignal.timeout(10000),
+        });
+
+        if (!jobsRes.ok) return null;
+        const jobsData = await jobsRes.json();
+        const jobs = jobsData.jobs || [];
+        if (jobs.length === 0) return null;
+
+        // Fetch logs for the jobs (primary build & deploy job)
+        const job = jobs[0];
+        const logRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/jobs/${job.id}/logs`, {
+            headers: {
+                Accept: 'application/vnd.github+json',
+                Authorization: `Bearer ${token}`,
+                'User-Agent': 'Node',
+            },
+            redirect: 'follow',
+            signal: AbortSignal.timeout(15000),
+        });
+
+        if (!logRes.ok) return null;
+        return await logRes.text();
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Searches recent workflow runs in GitHub Actions to find the run corresponding to deploymentId.
+ */
+async function findWorkflowRunForDeployment(deploymentId, createdAt = null, userToken = null) {
+    const token = userToken || process.env.GITHUB_TOKEN || process.env.GITHUB_CLIENT_SECRET;
+    if (!token || !deploymentId) return null;
+
+    const workflowRepo =
+        process.env.GITHUB_ACTIONS_REPO ||
+        process.env.GITHUB_REPOSITORY ||
+        'Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform';
+    const [owner, repo] = workflowRepo.split('/');
+    const workflowFile = process.env.GITHUB_WORKFLOW_FILE || 'deploy.yml';
+
+    try {
+        const runsRes = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowFile}/runs?per_page=10`,
+            {
+                headers: {
+                    Accept: 'application/vnd.github+json',
+                    Authorization: `Bearer ${token}`,
+                    'User-Agent': 'Node',
+                },
+                signal: AbortSignal.timeout(10000),
+            }
+        );
+
+        if (!runsRes.ok) return null;
+        const data = await runsRes.json();
+        const runs = data.workflow_runs || [];
+
+        // If createdAt is provided, sort/prioritize runs created closest to deployment timestamp
+        const targetTime = createdAt ? new Date(createdAt).getTime() : Date.now();
+        const sortedRuns = [...runs].sort((a, b) => {
+            const diffA = Math.abs(new Date(a.created_at).getTime() - targetTime);
+            const diffB = Math.abs(new Date(b.created_at).getTime() - targetTime);
+            return diffA - diffB;
+        });
+
+        for (const run of sortedRuns.slice(0, 5)) {
+            const logsText = await fetchWorkflowRunLogs(run.id, token);
+            if (logsText && logsText.includes(deploymentId)) {
+                return { runId: run.id, rawLogs: logsText };
+            }
+        }
+    } catch {
+        // Non-blocking
+    }
+
+    return null;
+}
+
+const ALLOWED_SOURCES = ['TERRAFORM', 'ANSIBLE', 'JENKINS', 'DOCKER', 'KUBERNETES', 'APPLICATION', 'BACKEND', 'OTHER'];
+
+function detectLogSource(message) {
+    if (!message || typeof message !== 'string') return 'OTHER';
+    const text = message.toLowerCase();
+    if (text.includes('ansible') || text.includes('ans-01') || text.includes('playbook')) return 'ANSIBLE';
+    if (text.includes('terraform') || text.includes('pipe-06') || text.includes('aws-')) return 'TERRAFORM';
+    if (text.includes('kubectl') || text.includes('kubernetes') || text.includes('pipe-07') || text.includes('k8s') || text.includes('ingress')) return 'KUBERNETES';
+    if (text.includes('docker') || text.includes('pipe-05') || text.includes('ghcr.io') || text.includes('buildx')) return 'DOCKER';
+    if (text.includes('callback') || text.includes('backend') || text.includes('api')) return 'BACKEND';
+    return 'OTHER';
+}
+
+/**
+ * Parses raw GitHub Actions log lines into structured log entries.
+ */
+function parseGitHubLogs(rawLogs) {
+    if (!rawLogs || typeof rawLogs !== 'string') return [];
+
+    const lines = rawLogs.split(/\r?\n/);
+    const parsed = [];
+    const timestampRegex = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s(.*)$/;
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        let loggedAt = new Date();
+        let message = line;
+
+        const match = line.match(timestampRegex);
+        if (match) {
+            loggedAt = new Date(match[1]);
+            message = match[2];
+        }
+
+        let level = 'INFO';
+        if (message.includes('##[error]') || /\b(?:error|fatal|failed)\b/i.test(message)) {
+            level = 'ERROR';
+        } else if (message.includes('##[warning]') || /\b(?:warning|warn)\b/i.test(message)) {
+            level = 'WARN';
+        } else if (message.includes('##[debug]')) {
+            level = 'DEBUG';
+        }
+
+        // Clean out GitHub actions marker formatting for readability
+        message = message
+            .replace(/^##\[(?:group|endgroup|section|command)\]\s*/i, '')
+            .replace(/^##\[(?:error|warning|debug)\]\s*/i, '');
+
+        parsed.push({
+            source: detectLogSource(message),
+            level,
+            message,
+            logged_at: isNaN(loggedAt.getTime()) ? new Date() : loggedAt,
+        });
+    }
+
+    return parsed;
+}
+
 module.exports = {
     GitHubActionsIntegrationError,
     sanitizeErrorMessage,
     formatJobUrlPath,
     buildDeploymentContract,
     triggerDeploymentJob,
+    fetchWorkflowRunLogs,
+    findWorkflowRunForDeployment,
+    parseGitHubLogs,
 };

@@ -1,6 +1,7 @@
 // backend/src/modules/deployments/deployments.service.js
 const ApiError = require('../../utils/ApiError');
 const deploymentsRepository = require('./deployments.repository');
+const githubActionsService = require('../integrations/github/github.actions.service');
 
 const ALLOWED_STATUSES = ['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED'];
 const ALLOWED_ENVIRONMENTS = ['development', 'staging', 'production', 'test', 'preview'];
@@ -164,11 +165,106 @@ async function getDeploymentLogs(deploymentId, user, query = {}) {
     }
 
     const limit = Math.min(500, Math.max(1, parseInt(query.limit) || 200));
-    const logs = await deploymentsRepository.getDeploymentLogs(deploymentId, {
+    let logs = await deploymentsRepository.getDeploymentLogs(deploymentId, {
         stepId: query.step_id || undefined,
         level: query.level || undefined,
         limit,
     });
+
+    // If no logs stored in database, dynamically fetch from GitHub Actions or workflow runner
+    if (logs.length === 0) {
+        try {
+            const ciJob = deployment.ci_jobs?.[0];
+            let rawLogs = null;
+
+            // Direct fetch if external_job_id contains numeric run ID
+            if (ciJob?.external_job_id && /^\d+$/.test(ciJob.external_job_id)) {
+                rawLogs = await githubActionsService.fetchWorkflowRunLogs(ciJob.external_job_id);
+            }
+
+            // Otherwise search recent runs for this deployment ID
+            if (!rawLogs) {
+                const found = await githubActionsService.findWorkflowRunForDeployment(
+                    deploymentId,
+                    deployment.created_at
+                );
+                if (found) {
+                    rawLogs = found.rawLogs;
+                }
+            }
+
+            if (rawLogs) {
+                const parsed = githubActionsService.parseGitHubLogs(rawLogs);
+                if (parsed.length > 0) {
+                    await deploymentsRepository.saveDeploymentLogs(deploymentId, parsed);
+                    logs = await deploymentsRepository.getDeploymentLogs(deploymentId, {
+                        stepId: query.step_id || undefined,
+                        level: query.level || undefined,
+                        limit,
+                    });
+                }
+            }
+        } catch {
+            // Non-blocking log fetch failure
+        }
+    }
+
+    // Fallback: If still no logs, synthesize progressive logs from deployment events and steps
+    if (logs.length === 0) {
+        const synthetic = [];
+
+        synthetic.push({
+            id: `evt-start`,
+            stepId: null,
+            source: 'BACKEND',
+            level: 'INFO',
+            message: `[PIPE-01] Deployment #${deploymentId.substring(0, 8)} queued for environment: ${deployment.environment}`,
+            loggedAt: deployment.created_at || new Date(),
+        });
+
+        if (deployment.deployment_events && deployment.deployment_events.length > 0) {
+            for (const ev of deployment.deployment_events) {
+                synthetic.push({
+                    id: ev.id,
+                    stepId: null,
+                    source: 'BACKEND',
+                    level: ev.to_state === 'FAILED' ? 'ERROR' : 'INFO',
+                    message: `[${ev.stage || 'STAGE'}] ${ev.message}`,
+                    loggedAt: ev.created_at,
+                });
+            }
+        }
+
+        if (deployment.deployment_steps && deployment.deployment_steps.length > 0) {
+            for (const st of deployment.deployment_steps) {
+                synthetic.push({
+                    id: st.id,
+                    stepId: st.id,
+                    source: 'APPLICATION',
+                    level: st.status === 'FAILED' ? 'ERROR' : 'INFO',
+                    message: `Step ${st.step_order}: ${st.step_name} -> ${st.status}${st.error_message ? ` (${st.error_message})` : ''}`,
+                    loggedAt: st.finished_at || st.started_at || new Date(),
+                });
+            }
+        }
+
+        if (synthetic.length > 0) {
+            return {
+                deploymentId,
+                status: deployment.status,
+                totalReturned: synthetic.length,
+                truncated: false,
+                logs: synthetic.map((s) => ({
+                    id: s.id,
+                    stepId: s.stepId,
+                    source: s.source,
+                    level: s.level,
+                    message: redactSecrets(s.message),
+                    loggedAt: s.loggedAt,
+                })),
+            };
+        }
+    }
 
     return {
         deploymentId,
@@ -191,7 +287,7 @@ async function getDeploymentLogs(deploymentId, user, query = {}) {
  * Only accepts requests from internal sources (validated by middleware).
  */
 async function updateDeploymentStatus(deploymentId, payload) {
-    const { status, errorMessage, startedAt, finishedAt } = payload;
+    const { status, errorMessage, startedAt, finishedAt, runId, runUrl } = payload;
 
     if (!status || !ALLOWED_STATUSES.includes(status.toUpperCase())) {
         throw new ApiError(400, `Invalid status. Must be one of: ${ALLOWED_STATUSES.join(', ')}`);
@@ -202,6 +298,8 @@ async function updateDeploymentStatus(deploymentId, payload) {
         errorMessage: errorMessage ? String(errorMessage).substring(0, 1000) : undefined,
         startedAt,
         finishedAt,
+        runId,
+        runUrl,
     });
 
     if (!result) throw new ApiError(404, 'Deployment not found');

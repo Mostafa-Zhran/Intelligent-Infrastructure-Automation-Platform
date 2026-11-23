@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 
 const deploymentsService = require('../../src/modules/deployments/deployments.service');
 const deploymentsRepository = require('../../src/modules/deployments/deployments.repository');
+const githubActionsService = require('../../src/modules/integrations/github/github.actions.service');
 const ApiError = require('../../src/utils/ApiError');
 
 describe('Deployments Service Unit Tests (DEP-01..04)', () => {
@@ -150,6 +151,44 @@ describe('Deployments Service Unit Tests (DEP-01..04)', () => {
             assert.ok(result.logs[0].message.includes('[REDACTED]'));
             assert.ok(!result.logs[1].message.includes('eyJhbGciOiJIUzI1NiIs'));
             assert.ok(result.logs[1].message.includes('[REDACTED]'));
+        });
+
+        it('should dynamically fetch from GitHub Actions when no logs exist in DB', async () => {
+            mock.method(deploymentsRepository, 'findDeploymentById', async () => baseDeployment);
+            let callCount = 0;
+            mock.method(deploymentsRepository, 'getDeploymentLogs', async () => {
+                callCount++;
+                if (callCount === 1) return [];
+                return [
+                    {
+                        id: 'log-gha-1',
+                        step_id: null,
+                        source: 'OTHER',
+                        level: 'INFO',
+                        message: 'Starting IIAP GitHub Actions Deployment Pipeline',
+                        logged_at: new Date(),
+                    },
+                ];
+            });
+            mock.method(githubActionsService, 'findWorkflowRunForDeployment', async () => ({
+                runId: 12345,
+                rawLogs: '2026-11-19T13:29:16.000Z Starting IIAP GitHub Actions Deployment Pipeline\n',
+            }));
+            mock.method(deploymentsRepository, 'saveDeploymentLogs', async () => []);
+
+            const result = await deploymentsService.getDeploymentLogs(mockDeploymentId, mockUser);
+            assert.strictEqual(result.logs.length, 1);
+            assert.strictEqual(result.logs[0].source, 'OTHER');
+        });
+
+        it('should fallback to synthetic logs from deployment events when GitHub Actions is unreachable', async () => {
+            mock.method(deploymentsRepository, 'findDeploymentById', async () => baseDeployment);
+            mock.method(deploymentsRepository, 'getDeploymentLogs', async () => []);
+            mock.method(githubActionsService, 'findWorkflowRunForDeployment', async () => null);
+
+            const result = await deploymentsService.getDeploymentLogs(mockDeploymentId, mockUser);
+            assert.ok(result.logs.length >= 1);
+            assert.ok(result.logs[0].message.includes('queued'));
         });
     });
 
