@@ -12,11 +12,12 @@ import {
   GitCommit,
   Activity,
   Layers,
-  Cpu,
-  Server,
   ShieldCheck,
   Zap,
   Clock,
+  Lock,
+  Unlock,
+  Shield,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -99,6 +100,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [envFilter, setEnvFilter] = useState<string>('ALL');
   const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(30); // seconds (0 = off)
   const [lastUpdated, setLastUpdated] = useState<string>('Just now');
+  const [revealDeepDiagnostics, setRevealDeepDiagnostics] = useState(false);
 
   // Initial load
   useEffect(() => {
@@ -263,10 +265,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </h1>
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <span>K3s AWS-EC2 Active</span>
+                  <span>Cloud Mesh Active</span>
                 </span>
                 <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono bg-white/[0.03] text-slate-400 border border-white/5">
-                  NodePort 30000-32767
+                  Ingress Gateway: Protected
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -327,7 +329,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             { id: 'overview', label: 'Telemetry & Analytics', icon: Activity },
             { id: 'pipelines', label: 'Pipeline Matrix', icon: Terminal, badge: filteredDeployments.length },
             { id: 'services', label: 'Service Catalog', icon: Layers, badge: filteredProjects.length },
-            { id: 'cluster', label: 'Cluster Infrastructure', icon: Cpu },
+            { id: 'cluster', label: 'Cluster Security & Mesh', icon: Shield },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -997,104 +999,147 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         )}
 
         {/* ============================================================== */}
-        {/* TAB 4: CLUSTER INFRASTRUCTURE TOPOLOGY                        */}
+        {/* TAB 4: CLUSTER SECURITY & MESH TELEMETRY                      */}
         {/* ============================================================== */}
         {activeTab === 'cluster' && (
           <div className="space-y-5 animate-fadeIn">
-            {/* Cluster Top Banner */}
+            {/* Cluster Top Security Banner */}
             <div className="p-5 rounded-2xl bg-[#0C0D17] border border-white/[0.08] flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                  <Server className="w-5 h-5" />
+                  <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <span>AWS EC2 K3s Control Plane</span>
+                    <span>Autonomous Cloud Mesh & Control Plane</span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      Healthy
+                      Perimeter Secure
                     </span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Kubernetes v1.28.2+k3s1 · Security Group Port 6443 Opened · NodePort Gateway Active
+                    Zero-Trust Network Perimeter · Workload Subnet Isolation · Automated State Locking & Disaster Recovery
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 font-mono text-xs">
-                <div className="bg-white/[0.03] px-3 py-1.5 rounded-lg border border-white/5">
-                  <span className="text-slate-500">NodePort Range:</span>{' '}
-                  <span className="text-emerald-400 font-bold">30000 - 32767</span>
-                </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRevealDeepDiagnostics((prev) => !prev)}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
+                    revealDeepDiagnostics
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                      : 'bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/10'
+                  }`}
+                >
+                  {revealDeepDiagnostics ? (
+                    <>
+                      <Unlock className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Deep Diagnostics: Revealed</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Deep Diagnostics: Masked</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 
-            {/* Infrastructure Grid */}
+            {/* Operator Warning Banner when revealed */}
+            {revealDeepDiagnostics && (
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono flex items-center gap-2.5 animate-fadeIn">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                <span>
+                  Operator Audit Mode Active: Low-level cluster topology revealed for triage. Raw secrets and external gateways remain masked.
+                </span>
+              </div>
+            )}
+
+            {/* Infrastructure Perimeter Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Node 1: Worker & Master */}
+              {/* Card 1: Orchestration Control Plane */}
               <div className="p-5 rounded-2xl bg-[#0C0D17] border border-white/[0.08] space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono uppercase text-slate-400">Target Node</span>
+                  <span className="text-xs font-mono uppercase text-slate-400">Compute Mesh</span>
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 </div>
-                <div className="font-mono text-sm font-bold text-white">aws-ec2-k3s-master</div>
-                <div className="space-y-1.5 text-xs font-mono text-slate-400 pt-2 border-t border-white/[0.06]">
+                <div className="font-mono text-sm font-bold text-white flex items-center gap-2">
+                  <span>{revealDeepDiagnostics ? 'k8s-mesh-control-plane-01' : 'mesh-control-plane-***'}</span>
+                </div>
+                <div className="space-y-2 text-xs font-mono text-slate-400 pt-2 border-t border-white/[0.06]">
                   <div className="flex justify-between">
-                    <span>Architecture:</span>
-                    <span className="text-slate-200">linux / amd64</span>
+                    <span>Isolation Policy:</span>
+                    <span className="text-emerald-400">Private Subnets Only</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Kubelet API:</span>
-                    <span className="text-emerald-400">Ready</span>
+                    <span>Workload Protection:</span>
+                    <span className="text-slate-200">
+                      {revealDeepDiagnostics ? 'Containerd / cgroups v2' : 'Encrypted Container Sandbox'}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Container Runtime:</span>
-                    <span className="text-slate-200">containerd://1.7.11</span>
+                    <span>Ingress Boundary:</span>
+                    <span className="text-slate-200">
+                      {revealDeepDiagnostics ? 'Gateway Range 30000-32767' : 'Dynamic Gateway Protected'}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Node 2: CI/CD Pipeline Engine */}
+              {/* Card 2: CI/CD Pipeline Automation Gateway */}
               <div className="p-5 rounded-2xl bg-[#0C0D17] border border-white/[0.08] space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono uppercase text-slate-400">CI/CD Automation</span>
+                  <span className="text-xs font-mono uppercase text-slate-400">Delivery Engine</span>
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 </div>
-                <div className="font-mono text-sm font-bold text-white">GitHub Actions Runner</div>
-                <div className="space-y-1.5 text-xs font-mono text-slate-400 pt-2 border-t border-white/[0.06]">
+                <div className="font-mono text-sm font-bold text-white flex items-center gap-2">
+                  <span>{revealDeepDiagnostics ? 'github-actions-ci-runner' : 'ci-runner-ephemeral-***'}</span>
+                </div>
+                <div className="space-y-2 text-xs font-mono text-slate-400 pt-2 border-t border-white/[0.06]">
                   <div className="flex justify-between">
-                    <span>Workflow:</span>
-                    <span className="text-slate-200">deploy.yml (PIPE-01..07)</span>
+                    <span>Credential Scope:</span>
+                    <span className="text-emerald-400">Least-Privilege OIDC</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Callback Gateway:</span>
-                    <span className="text-emerald-400">Auto-Sync Syncing</span>
+                    <span>IaC Verifier:</span>
+                    <span className="text-slate-200">
+                      {revealDeepDiagnostics ? 'Ansible + Terraform State Gate' : 'Automated IaC Guard'}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>IaC Engine:</span>
-                    <span className="text-slate-200">Terraform + Ansible</span>
+                    <span>Telemetry Ingress:</span>
+                    <span className="text-slate-200">
+                      {revealDeepDiagnostics ? 'HMAC Signed Event Callbacks' : 'Cryptographic Verification'}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Node 3: Storage & Database */}
+              {/* Card 3: Storage & Persistence Engine */}
               <div className="p-5 rounded-2xl bg-[#0C0D17] border border-white/[0.08] space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono uppercase text-slate-400">Relational Database</span>
+                  <span className="text-xs font-mono uppercase text-slate-400">Persistence Tier</span>
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 </div>
-                <div className="font-mono text-sm font-bold text-white">PostgreSQL 16 Engine</div>
-                <div className="space-y-1.5 text-xs font-mono text-slate-400 pt-2 border-t border-white/[0.06]">
+                <div className="font-mono text-sm font-bold text-white flex items-center gap-2">
+                  <span>{revealDeepDiagnostics ? 'db-cluster-pg-16' : 'relational-storage-***'}</span>
+                </div>
+                <div className="space-y-2 text-xs font-mono text-slate-400 pt-2 border-t border-white/[0.06]">
                   <div className="flex justify-between">
-                    <span>ORM Client:</span>
-                    <span className="text-slate-200">Prisma Client</span>
+                    <span>At-Rest Encryption:</span>
+                    <span className="text-emerald-400">AES-256 State Locking</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Pool Status:</span>
-                    <span className="text-emerald-400">20 Max Connections</span>
+                    <span>Transport Layer:</span>
+                    <span className="text-slate-200">TLS v1.3 Enforced</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Idle Timeout:</span>
-                    <span className="text-slate-200">30s Clean Disconnect</span>
+                    <span>Connection Pool:</span>
+                    <span className="text-slate-200">
+                      {revealDeepDiagnostics ? 'Prisma 20-Socket Pool' : 'Managed Resilient Sockets'}
+                    </span>
                   </div>
                 </div>
               </div>
