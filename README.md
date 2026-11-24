@@ -1,6 +1,19 @@
-# 🚀 Intelligent Infrastructure Automation Platform
+# 🚀 Intelligent Infrastructure Automation Platform (IIAP)
 
-> A modern, full-stack DevOps automation platform with AI-driven infrastructure management, complete authentication, profile management, and automated CI/CD pipelines.
+> **Enterprise-grade, end-to-end autonomous DevOps platform.** Connect GitHub repositories, analyze software stacks, provision secure cloud infrastructure with Terraform & Ansible, and execute automated zero-downtime Kubernetes rollouts with real-time live telemetry.
+
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat-square)](#)
+[![Unit Tests](https://img.shields.io/badge/tests-156%2F156%20passing-emerald.svg?style=flat-square)](#-automated-testing-suite)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg?style=flat-square&logo=typescript)](#)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB.svg?style=flat-square&logo=react)](#)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933.svg?style=flat-square&logo=node.js)](#)
+[![Express](https://img.shields.io/badge/Express-5.3-black.svg?style=flat-square&logo=express)](#)
+[![Prisma](https://img.shields.io/badge/Prisma-7.10-2D3748.svg?style=flat-square&logo=prisma)](#)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14%2B-4169E1.svg?style=flat-square&logo=postgresql)](#)
+[![Terraform](https://img.shields.io/badge/Terraform-1.6%2B-7B42BC.svg?style=flat-square&logo=terraform)](#)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-1.28%2B-326CE5.svg?style=flat-square&logo=kubernetes)](#)
+[![Swagger](https://img.shields.io/badge/OpenAPI-3.0-85EA2D.svg?style=flat-square&logo=swagger)](#-api--swagger-documentation)
+[![License: ISC](https://img.shields.io/badge/License-ISC-yellow.svg?style=flat-square)](#-license)
 
 ![Project Documentation Guidelines](./project-documentation-guidelines.jpeg)
 
@@ -8,300 +21,391 @@
 
 ## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Environment Variables](#environment-variables)
-- [API Overview](#api-overview)
-- [Deployment](#deployment)
-- [Project Timeline](#project-timeline)
-- [Contributing](#contributing)
-- [License](#license)
+- [Overview](#-overview)
+- [Architecture & 7-Stage Pipeline Contract](#-architecture--7-stage-pipeline-contract)
+- [Key Features](#-key-features)
+- [Tech Stack](#-tech-stack)
+- [Project Directory Layout](#-project-directory-layout)
+- [API & Swagger Documentation](#-api--swagger-documentation)
+- [Environment Variables](#-environment-variables)
+- [Quick Start & Local Development](#-quick-start--local-development)
+- [Automated Testing Suite](#-automated-testing-suite)
+- [Production Deployment](#-production-deployment)
+- [Project Timeline (DEPI Guidelines)](#-project-timeline-depi-guidelines)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ---
 
 ## 🌟 Overview
 
-The **Intelligent Infrastructure Automation Platform** is a full-stack web application designed to automate and intelligently manage DevOps infrastructure. It combines AI-driven recommendations, automated CI/CD pipeline orchestration, and a robust authentication system — all wrapped in a sleek, modern 3D-animated UI.
+The **Intelligent Infrastructure Automation Platform (IIAP)** is a modern full-stack web and cloud automation application engineered as part of the **DEPI DevOps Track (R5)** program. 
 
-Built as part of the **DEPI DevOps Track (R5)** program, this platform demonstrates real-world DevOps practices including infrastructure automation, policy-based action approvals, and multi-environment deployment management.
+The platform bridges the gap between software source code and production-grade cloud infrastructure:
+1. **Git & Repo Analysis:** Connects to GitHub via OAuth, introspecting repositories to detect project frameworks, dockerfiles, build configurations, and required environment parameters.
+2. **Infrastructure as Code (IaC):** Executes validated, least-privilege Terraform modules (`AWS-01`, `AWS-02`) with encrypted remote S3 state storage and DynamoDB locking.
+3. **Configuration Hardening:** Automatically runs Ansible playbooks (`ANS-01`) enforcing strict SSH hardening, root login prevention, and Docker daemon log rotation.
+4. **Cloud-Native Deployment:** Rolls out containerized workloads into Kubernetes (K3s / AWS EKS) with automatic zero-downtime rollouts, health probes, and live ingress routing.
+5. **Real-time Observability & UI Workbench:** Offers a dark engineering workbench with 3D Cyber-Infrastructure visualizer (Three.js), live execution console stream, and user profile management.
+
+---
+
+## 🏗️ Architecture & 7-Stage Pipeline Contract
+
+Every project deployment submitted through the platform is processed through a strict, deterministic 7-stage CI/CD execution pipeline:
+
+```
+[ Git Push / Trigger ]
+         │
+         ▼
+ ┌─────────────────┐
+ │ PIPE-01: LINT   │  Code Quality, Security Scanning & Syntax Verification
+ └────────┬────────┘
+          ▼
+ ┌─────────────────┐
+ │ PIPE-02: BUILD  │  Container Build & Vulnerability Scan (Trivy / Hadolint)
+ └────────┬────────┘
+          ▼
+ ┌─────────────────┐
+ │ PIPE-03: PUSH   │  Publish Immutable Image to Container Registry (GHCR / ECR)
+ └────────┬────────┘
+          ▼
+ ┌─────────────────┐
+ │ PIPE-04: ANSIBLE│  Hardened Host Provisioning, SSH Hardening & Docker Daemon
+ └────────┬────────┘
+          ▼
+ ┌─────────────────┐
+ │ PIPE-05: TF PLAN│  Terraform Plan Generation & Resource Delta Verification
+ └────────┬────────┘
+          ▼
+ ┌─────────────────┐
+ │ PIPE-06: TF APPL│  Terraform Apply, Remote S3 State & DynamoDB Lock
+ └────────┬────────┘
+          ▼
+ ┌─────────────────┐
+ │ PIPE-07: K8S    │  Kubernetes (EKS/K3s) Manifest Apply & Zero-Downtime Rollout
+ └─────────────────┘
+          │
+          ▼
+[ Production Live Ingress ]
+```
+
+- **Security By Design:** Sensitive credentials (AWS keys, GitHub tokens, database passwords) are injected exclusively through backend secrets and environment managers — never passed as plaintext arguments or committed into git.
+- **State Locking:** Remote state corruption is prevented using AWS DynamoDB table state locks and AES-256 S3 bucket server-side encryption.
+
+---
+
+## ✨ Key Features
+
+### 🐙 GitHub OAuth & Workload Discovery
+- **Secure OAuth Handshake:** GitHub integration with CSRF state verification and AES-256-CBC token encryption at rest.
+- **Repository Introspection:** Real-time fetching of organizations, repositories, branches, and commits.
+- **Smart Tech Stack Detection:** Analyzes repo trees to detect frameworks (Node.js, Python, Docker, Go, Static HTML/React).
+
+### 🚀 Workload & Deployment Studio
+- **Multi-Environment Support:** Segregated workspaces for `development`, `staging`, and `production`.
+- **Project Workbench:** Unified split workbench with live topology preview, environment variable management, and deployment history.
+- **Live Logs Studio:** Real-time log streaming terminal with auto-scroll, search filters, and automatic secret redaction.
+- **Luminous Ingress Banner:** Prominent high-contrast ingress routing preview with active service endpoints and port mappings.
+
+### 🔐 Enterprise Authentication & Profile Management
+- **Stateless JWT Sessions:** Dual-token authentication (short-lived access token + 7-day refresh token in HTTP-only cookies).
+- **Password Recovery:** Time-limited (15 min TTL) cryptographically secure password reset flow with email notification.
+- **Profile Image & Avatar Upload:**
+  - Dedicated `POST /api/v1/auth/profile/avatar` endpoint with base64 data URI and URL support.
+  - Client-side canvas image optimization (auto-scaled to crisp 1024px High-DPI).
+  - Prominent 128px profile frame with neon gradient border and instant hover triggers.
+  - Avatar visibility across navigation headers, mobile menus, and dropdowns.
+
+### 🎨 Visual Identity & 3D Engineering Design
+- **Autonomous Infrastructure Nexus Logo:** Modern 3D isometric brand logo uniting cloud layers, containers, and a glowing AI core.
+- **Interactive 3D Visualizer:** Three.js cyber-infrastructure scene with responsive viewport fitting.
+- **High-Density Dark Theme:** Engineered with `#07070D` / `#090A14` backgrounds, glassmorphism, and Violet/Cyan luminous accents.
 
 ---
 
 ## 🛠️ Tech Stack
 
-### Frontend
-| Technology | Version | Purpose |
+### Frontend Architecture
+| Layer | Technologies | Description |
 |---|---|---|
-| React | 18.3.x | UI Framework |
-| TypeScript | 5.6.x | Type Safety |
-| Vite | 5.4.x | Build Tool & Dev Server |
-| Tailwind CSS | 3.4.x | Utility-first Styling |
-| Three.js | 0.186.x | 3D Animations & Scenes |
-| Lucide React | 1.16.x | Icon Library |
+| **Framework** | React 18.3, TypeScript 5.6 | Strict type-checked component architecture |
+| **Tooling** | Vite 5.4, PostCSS, Tailwind CSS | Lightning-fast HMR and utility-first styling |
+| **3D & Graphics** | Three.js 0.186 | Interactive cyber-infrastructure visual scene |
+| **Data Viz** | Recharts 2.15 | Deployment velocity & system performance graphs |
+| **Icons** | Lucide React | Clean, modern developer iconography |
 
-### Backend
-| Technology | Version | Purpose |
+### Backend Architecture
+| Layer | Technologies | Description |
 |---|---|---|
-| Node.js | 18+ | Runtime Environment |
-| Express | 5.3.x | Web Framework |
-| Prisma ORM | 7.10.x | Database ORM |
-| PostgreSQL | 14+ | Relational Database |
-| JWT | 9.0.x | Authentication Tokens |
-| bcrypt | 6.0.x | Password Hashing |
-| Nodemailer | 10.x | Email (SMTP) |
-| Resend | 6.x | Transactional Emails |
-| Joi | 18.x | Request Validation |
+| **Runtime & Server** | Node.js 18+, Express 5.3 | High-performance modular REST API |
+| **Database & ORM** | PostgreSQL 14+, Prisma ORM 7.10 | Type-safe queries, migration management |
+| **Driver Adapter** | `@prisma/adapter-pg`, `pg 8.23` | Native pooler support (Supabase / AWS RDS) |
+| **Security & Crypto** | `bcrypt 6.0`, `jsonwebtoken 9.0` | Cost factor 12 password hashing & signed tokens |
+| **Validation** | Joi 18.2 | Strict schema validation on all incoming requests |
+| **Documentation** | Swagger UI, swagger-jsdoc | OpenAPI 3.0 specification & interactive UI |
+| **Email Delivery** | Nodemailer 10.1, Resend 6.33 | Transactional emails for password resets |
 
 ---
 
-## 📁 Project Structure
+## 📁 Project Directory Layout
 
 ```
-Intelligent Infrastructure Automation Platform/
-├── 📄 README.md                         # This file
-├── 📄 package.json                      # Root workspace scripts
-├── 📄 vercel.json                       # Vercel deployment config
+Intelligent-Infrastructure-Automation-Platform/
+├── 📄 README.md                                 # Comprehensive platform documentation
+├── 📄 package.json                              # Root workspace scripts
+├── 📄 vercel.json                               # Production SPA rewrite configuration
 ├── 📄 .gitignore
-├── 🖼️  project-documentation-guidelines.jpeg
 │
-├── 📂 frontend/                         # React + TypeScript + Vite App
-│   ├── 📄 index.html
-│   ├── 📄 vite.config.ts
-│   ├── 📄 tailwind.config.js
-│   ├── 📄 tsconfig.json
+├── 📂 frontend/                                 # React 18 + TypeScript + Vite SPA
+│   ├── 📄 index.html                            # App entry with Nexus SVG Favicon
+│   ├── 📄 vite.config.ts                        # Dev server & build configuration
+│   ├── 📄 tailwind.config.js                    # Custom theme & color extensions
+│   ├── 📄 tsconfig.json                         # Strict TypeScript configuration
 │   └── 📂 src/
-│       ├── 📄 App.tsx                   # Root component & routing
-│       ├── 📄 main.tsx                  # Entry point
-│       ├── 📄 index.css                 # Global styles
-│       ├── 📂 pages/                    # Page components
-│       ├── 📂 components/              # Reusable components
-│       │   ├── 📂 3d/                  # Three.js 3D scenes
-│       │   ├── 📂 ui/                  # UI primitives
-│       │   ├── 📂 layout/              # Layout components
-│       │   └── 📂 pipeline/            # Pipeline components
-│       ├── 📂 services/                # API service layer
-│       └── 📂 types/                   # TypeScript types
+│       ├── 📄 App.tsx                           # App shell, routing & auth state
+│       ├── 📄 main.tsx                          # DOM mount entry
+│       ├── 📄 index.css                         # Tailored styles & glassmorphism
+│       ├── 📂 components/
+│       │   ├── 📂 common/                       # BrandLogo & ProjectIcon SVGs
+│       │   ├── 📂 layout/                       # Header, Footer navigation
+│       │   ├── 📂 3d/                           # Three.js Infrastructure scene
+│       │   └── 📂 ui/                           # Button, GlassCard, Input primitives
+│       ├── 📂 pages/                            # Landing, Dashboard, Projects, Deployments, Profile
+│       ├── 📂 services/                         # Type-safe API client layer
+│       └── 📂 types/                            # Core TypeScript interfaces
 │
-└── 📂 backend/                          # Node.js + Express API
-    ├── 📄 server.js                     # Entry point
-    ├── 📄 package.json
-    ├── 📄 prisma.config.js
-    ├── 📂 prisma/
-    │   ├── 📄 schema.prisma             # Database schema
-    │   └── 📂 migrations/
-    ├── 📂 generated/                    # Prisma generated client
-    └── 📂 src/
-        ├── 📄 app.js                    # Express app setup
-        ├── 📄 server.js                 # HTTP server
-        ├── 📂 config/                   # App configuration (CORS, etc.)
-        ├── 📂 db/                       # Database connection
-        ├── 📂 middleware/               # Express middlewares
-        ├── 📂 modules/
-        │   └── 📂 auth/                 # Auth module (MVC pattern)
-        └── 📂 utils/                    # Utility functions
+├── 📂 backend/                                  # Node.js + Express 5 REST API
+│   ├── 📄 server.js                             # HTTP server bootstrap
+│   ├── 📄 package.json                          # Dependencies & test runners
+│   ├── 📄 prisma.config.js                      # Prisma CLI configuration
+│   ├── 📂 prisma/
+│   │   ├── 📄 schema.prisma                     # Complete PostgreSQL relational schema
+│   │   └── 📂 migrations/                       # Incremental SQL migration history
+│   ├── 📂 src/
+│   │   ├── 📄 app.js                            # Express pipeline & CORS configuration
+│   │   ├── 📂 config/                           # Swagger & CORS configs
+│   │   ├── 📂 db/                               # Prisma client connection singleton
+│   │   ├── 📂 middleware/                       # JWT auth, Joi validation, error handlers
+│   │   ├── 📂 modules/                          # Domain-driven architecture
+│   │   │   ├── 📂 auth/                         # Authentication, passwords, avatars
+│   │   │   ├── 📂 dashboard/                    # Telemetry aggregation & metrics
+│   │   │   ├── 📂 deployments/                  # Pipeline execution & status tracking
+│   │   │   ├── 📂 integrations/github/          # GitHub OAuth & repository sync
+│   │   │   └── 📂 projects/                     # Workload services & specs
+│   │   └── 📂 utils/                            # Email, encryption, and logger utilities
+│   └── 📂 tests/unit/                           # 156 comprehensive unit test suites
+│
+├── 📂 terraform/                                # Infrastructure as Code Modules
+│   ├── 📂 environments/dev/                     # Root dev environment composition
+│   └── 📂 modules/                              # VPC, EKS, and IAM security modules
+│
+├── 📂 ansible/                                  # Server Provisioning & Hardening
+│   ├── 📄 ansible.cfg                           # Hardened Ansible configuration
+│   ├── 📂 inventory/                            # Dynamic environment hosts
+│   ├── 📂 playbooks/site.yml                    # Pipeline execution playbook
+│   └── 📂 roles/common/                         # SSH & OS baseline hardening
+│
+└── 📂 k8s/                                      # Kubernetes Base Manifests
+    ├── 📄 deployment.yaml                       # Least-privilege container pods
+    ├── 📄 service.yaml                          # ClusterIP service definitions
+    ├── 📄 ingress.yaml                          # HTTP/HTTPS routing specifications
+    └── 📄 serviceaccount.yaml                   # Token mounting disabled by default
 ```
 
 ---
 
-## ✨ Features
+## 🔌 API & Swagger Documentation
 
-### 🔐 Authentication & Security
-- **Sign Up / Sign In** with JWT-based stateless authentication
-- **Password Reset** via secure email token (15-min TTL)
-- **Change Password** with current password verification
-- **HTTP-only cookie** session management
-- **Bcrypt** password hashing (cost factor 12)
-- **Joi** request validation on all endpoints
+The platform includes full interactive OpenAPI 3.0 documentation.
 
-### 👤 User Profile Management
-- View and update user profile (name, email)
-- Avatar support
-- Account settings
+- **Swagger UI:** [http://localhost:3000/api-docs](http://localhost:3000/api-docs)
+- **OpenAPI JSON Spec:** [http://localhost:3000/api-docs.json](http://localhost:3000/api-docs.json)
 
-### 🤖 Infrastructure Automation (Platform Core)
-- **AI Action Recommendations** — Intelligent suggestions for infrastructure changes
-- **Policy-based Approval Workflows** — Risk-level-aware approval gates (LOW / MEDIUM / HIGH)
-- **Multi-environment Support** — Development, staging, production
-- **Deployment Pipeline Tracking** — Real-time pipeline status
-- **Action Audit Trail** — Full history of all infrastructure actions
+### Core REST Endpoints
 
-### 🎨 UI / UX
-- Stunning **3D animated landing page** powered by Three.js
-- Dark-mode first design with glassmorphism effects
-- Fully **responsive** layout (mobile → desktop)
-- Smooth page transitions and micro-animations
-- No-access / 404 guard pages
-
----
-
-## ✅ Prerequisites
-
-Before you begin, make sure you have the following installed:
-
-- **Node.js** v18 or higher → [nodejs.org](https://nodejs.org)
-- **npm** v9 or higher (bundled with Node.js)
-- **PostgreSQL** v14 or higher → [postgresql.org](https://www.postgresql.org)
-- **Git** → [git-scm.com](https://git-scm.com)
-
----
-
-## 🚀 Quick Start
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform.git
-cd Intelligent-Infrastructure-Automation-Platform
-```
-
-### 2. Set Up the Backend
-
-```bash
-cd backend
-
-# Install dependencies
-npm install
-
-# Copy environment file and fill in your values
-cp .env.example .env
-
-# Generate Prisma client
-npx prisma generate
-
-# Run database migrations
-npx prisma migrate deploy
-
-# Start the development server
-npm run dev
-```
-
-> The backend API runs on **http://localhost:3000**
-
-### 3. Set Up the Frontend
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Copy environment file and configure
-cp .env.example .env
-
-# Start the development server
-npm run dev
-```
-
-> The frontend dev server runs on **http://localhost:5173**
-
-### 4. (Optional) Run Both from Root
-
-```bash
-# In two separate terminals from the project root:
-npm run dev:backend
-npm run dev:frontend
-```
+| Module | Method | Endpoint | Auth | Description |
+|---|---|---|---|---|
+| **Auth** | `POST` | `/api/v1/auth/signup` | ❌ | Create new user account |
+| **Auth** | `POST` | `/api/v1/auth/signin` | ❌ | Authenticate & issue JWT cookie/token |
+| **Auth** | `POST` | `/api/v1/auth/signout` | ❌ | Invalidate session & clear cookies |
+| **Auth** | `POST` | `/api/v1/auth/forgot-password` | ❌ | Dispatch 15-min password reset link |
+| **Auth** | `POST` | `/api/v1/auth/reset-password` | ❌ | Reset password with verification token |
+| **Auth** | `GET` | `/api/v1/auth/profile` | ✅ | Fetch authenticated user details |
+| **Auth** | `PATCH` | `/api/v1/auth/profile` | ✅ | Update name, email, or avatar |
+| **Auth** | `POST` | `/api/v1/auth/profile/avatar` | ✅ | Upload/replace user avatar image |
+| **Auth** | `PATCH` | `/api/v1/auth/change-password` | ✅ | Change current password |
+| **GitHub** | `GET` | `/api/v1/integrations/github/auth-url` | ✅ | Generate GitHub OAuth authorize URL |
+| **GitHub** | `GET` | `/api/v1/integrations/github/callback` | ❌ | Exchange OAuth code & encrypt token |
+| **GitHub** | `GET` | `/api/v1/integrations/github/status` | ✅ | Check user GitHub connection status |
+| **GitHub** | `DELETE`| `/api/v1/integrations/github/disconnect`| ✅ | Revoke GitHub integration |
+| **GitHub** | `GET` | `/api/v1/integrations/github/repos` | ✅ | List accessible repositories |
+| **GitHub** | `GET` | `/api/v1/integrations/github/branches` | ✅ | List repository branches |
+| **GitHub** | `POST`| `/api/v1/integrations/github/analyze` | ✅ | Auto-detect repo framework & stack |
+| **Projects**| `GET` | `/api/projects` | ✅ | List user workload projects |
+| **Projects**| `POST`| `/api/projects` | ✅ | Create new project workspace |
+| **Projects**| `GET` | `/api/projects/:id` | ✅ | Get workload configuration & status |
+| **Deploy** | `GET` | `/api/deployments` | ✅ | List paginated deployment runs |
+| **Deploy** | `POST`| `/api/deployments` | ✅ | Dispatch deployment pipeline run |
+| **Deploy** | `GET` | `/api/deployments/:id` | ✅ | Get pipeline stages, events & status |
+| **Deploy** | `GET` | `/api/deployments/:id/logs`| ✅ | Stream redacted execution logs |
+| **Dashboard**| `GET`| `/api/dashboard` | ✅ | Aggregated platform metrics |
 
 ---
 
 ## 🔑 Environment Variables
 
-### Backend (`backend/.env`)
+### Backend Configuration (`backend/.env`)
 
-| Variable | Description | Example |
-|---|---|---|
-| `PORT` | Server port | `3000` |
-| `NODE_ENV` | Environment | `development` |
-| `FRONTEND_URL` | Frontend origin for CORS | `http://localhost:5173` |
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/db?schema=app` |
-| `JWT_ACCESS_SECRET` | JWT signing secret (keep secret!) | `your_super_secret_key` |
-| `JWT_ACCESS_EXPIRES_IN` | JWT expiry duration | `15m` |
-| `PASSWORD_RESET_TOKEN_TTL_MINUTES` | Password reset link TTL | `15` |
-| `SMTP_HOST` | SMTP server host | `smtp.gmail.com` |
-| `SMTP_PORT` | SMTP port | `465` |
-| `SMTP_USER` | Sender email | `you@gmail.com` |
-| `SMTP_PASS` | Gmail app password | `xxxx xxxx xxxx xxxx` |
-| `SMTP_FROM` | Display name + email | `"Platform <you@gmail.com>"` |
-| `RESEND_API_KEY` | Resend API key (optional) | `re_xxxxx` |
+```ini
+# Server
+PORT=3000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
 
-### Frontend (`frontend/.env`)
+# Database (PostgreSQL / Supabase)
+DATABASE_URL="postgresql://user:password@aws-0-region.pooler.supabase.com:5432/postgres"
 
-| Variable | Description | Example |
-|---|---|---|
-| `Backend_API` | Backend API base URL | `https://your-api.railway.app` |
+# JWT Authentication
+JWT_ACCESS_SECRET="your-super-strong-jwt-secret-key"
+JWT_ACCESS_EXPIRES_IN="15m"
+PASSWORD_RESET_TOKEN_TTL_MINUTES=15
 
-> **Note:** Leave `Backend_API` empty during local development — Vite proxy will handle it automatically.
+# GitHub OAuth Integration
+GITHUB_CLIENT_ID="your_github_oauth_client_id"
+GITHUB_CLIENT_SECRET="your_github_oauth_client_secret"
+GITHUB_OAUTH_REDIRECT_URI="http://localhost:3000/api/v1/integrations/github/callback"
+GITHUB_OAUTH_STATE_TTL_MINUTES=10
+GITHUB_TOKEN_ENCRYPTION_KEY="32-byte-base64-encryption-key="
+GITHUB_OAUTH_SCOPES="read:user read:org repo"
 
----
+# Transactional Email (Optional for local testing)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM="IIAP Automation <no-reply@iiap.dev>"
+```
 
-## 🔌 API Overview
+### Frontend Configuration (`frontend/.env`)
 
-Base URL: `http://localhost:3000/api/v1`
-
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| `POST` | `/auth/signup` | ❌ | Register new user |
-| `POST` | `/auth/signin` | ❌ | Login & receive JWT |
-| `POST` | `/auth/signout` | ❌ | Clear session cookie |
-| `POST` | `/auth/forgot-password` | ❌ | Send password reset email |
-| `POST` | `/auth/reset-password` | ❌ | Reset password with token |
-| `GET` | `/auth/profile` | ✅ | Get current user profile |
-| `PATCH` | `/auth/profile` | ✅ | Update user profile |
-| `PATCH` | `/auth/change-password` | ✅ | Change account password |
-
-> See [`backend/README.md`](./backend/README.md) for full API documentation.
+```ini
+# Backend API Base URL (Leave empty in local dev to use Vite proxy)
+Backend_API=
+```
 
 ---
 
-## 🌐 Deployment
+## 🚀 Quick Start & Local Development
 
-### Frontend — Vercel
+### 1. Clone & Install
 
-The frontend is configured for Vercel deployment with SPA rewrites:
+```bash
+git clone https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform.git
+cd Intelligent-Infrastructure-Automation-Platform
 
+# Install root dependencies
+npm install
+
+# Install backend dependencies
+cd backend && npm install
+
+# Install frontend dependencies
+cd ../frontend && npm install
+cd ..
+```
+
+### 2. Configure Database & Environment
+
+1. Create a PostgreSQL database (e.g. via [Supabase](https://supabase.com) or local PostgreSQL).
+2. Copy `backend/.env.example` to `backend/.env` and update `DATABASE_URL` and `JWT_ACCESS_SECRET`.
+3. Generate the Prisma Client and run migrations:
+
+```bash
+cd backend
+npx prisma generate
+npx prisma migrate deploy
+cd ..
+```
+
+### 3. Launch the Platform
+
+Open two terminal windows:
+
+**Terminal 1 — Backend API:**
+```bash
+cd backend
+npm run dev
+# Running on http://localhost:3000
+# OpenAPI Docs: http://localhost:3000/api-docs
+```
+
+**Terminal 2 — Frontend App:**
+```bash
+cd frontend
+npm run dev
+# Running on http://localhost:5173
+```
+
+---
+
+## 🧪 Automated Testing Suite
+
+The repository contains **156 automated unit tests** built with the native Node.js test runner covering infrastructure security, pipeline integrity, and backend APIs:
+
+```bash
+cd backend
+npm test
+```
+
+### Test Coverage Highlights
+- `ANS-01`: Ansible playbooks, SSH hardening, and host key verification.
+- `AWS-01`: S3 remote state encryption (AES256), public access block, and DynamoDB lock tables.
+- `AWS-02`: EKS cluster security, least-privilege IAM roles, and OIDC IRSA configurations.
+- `PIPE-06`: Terraform runner bash safety, directory traversal prevention, and secret redaction.
+- `PIPE-07`: Kubernetes manifests, security contexts, and container capability drops.
+- `DEP-01..04`: Deployment pagination, authorization gates, and GitHub Actions fallback streaming.
+- `SETUP-01..05`: GitHub OAuth state cryptographic verification, repository analysis, and project setup.
+
+---
+
+## 🌐 Production Deployment
+
+### Frontend (Vercel)
+The frontend is configured with SPA catch-all rewrites in [vercel.json](./vercel.json):
 ```bash
 cd frontend
 npm run build
-# Deploy the dist/ folder to Vercel
+# Deploy dist/ to Vercel
 ```
 
-Or connect your GitHub repo to Vercel — it will auto-detect the Vite project.
-
-### Backend — Railway / Render
-
-1. Create a new project on [Railway](https://railway.app) or [Render](https://render.com)
-2. Set all required environment variables from `backend/.env.example`
-3. Set the start command to `npm start`
-4. Ensure `npx prisma generate` runs during build (handled by `postinstall` script)
+### Backend (Railway / Render / AWS ECS)
+1. Deploy the `backend/` directory as a Node.js web service.
+2. Supply environment variables in the platform dashboard.
+3. Start command: `npm start` (automatically generates Prisma client on postinstall).
 
 ---
 
 ## 📅 Project Timeline (DEPI Guidelines)
 
-| Milestone | DEPI Industry | DEPI Deadline |
-|---|---|---|
-| Project Planning & Management | 2 Oct 2026 | 16 Oct 2026 |
-| Literature Review | 9 Oct 2026 | 16 Oct 2026 |
-| Requirements Gathering | 9 Oct 2026 | 16 Oct 2026 |
-| System Analysis & Design | 9 Oct 2026 | 6 Nov 2026 |
-| Implementation (Source Code & Execution) | 16 Oct 2026 | 30 Nov 2026 |
-| Final Presentation & Testing & Reports | 16 Oct 2026 | 4 Dec 2026 |
+| Phase | Milestone Description | DEPI Industry Start | DEPI Deadline | Status |
+|:---:|---|:---:|:---:|:---:|
+| **1** | Project Planning & Management | 2 Oct 2026 | 16 Oct 2026 | ✅ Completed |
+| **2** | Literature Review | 9 Oct 2026 | 16 Oct 2026 | ✅ Completed |
+| **3** | Requirements Gathering | 9 Oct 2026 | 16 Oct 2026 | ✅ Completed |
+| **4** | System Analysis & Design | 9 Oct 2026 | 6 Nov 2026 | ✅ Completed |
+| **5** | Implementation (Source Code & CI/CD Pipeline) | 16 Oct 2026 | 30 Nov 2026 | ✅ Completed |
+| **6** | Final Presentation, Testing & Reports | 16 Oct 2026 | 4 Dec 2026 | 🚀 In Progress |
 
 ---
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature-name`
-3. Commit your changes: `git commit -m "feat: add your feature"`
-4. Push to the branch: `git push origin feature/your-feature-name`
+1. Fork the Project
+2. Create your Feature Branch: `git checkout -b feature/AmazingFeature`
+3. Commit your Changes: `git commit -m 'feat: add AmazingFeature'`
+4. Push to the Branch: `git push origin feature/AmazingFeature`
 5. Open a Pull Request
-
-Please follow [Conventional Commits](https://www.conventionalcommits.org/) for commit messages.
 
 ---
 
@@ -313,8 +417,8 @@ This project is licensed under the **ISC License**.
 
 <div align="center">
 
-**Built with ❤️ for DEPI DevOps Track R5**
+**Built with pride for the DEPI DevOps Track R5**
 
-[GitHub](https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform) · [Report Bug](https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform/issues) · [Request Feature](https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform/issues)
+[GitHub Repository](https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform) · [Issue Tracker](https://github.com/Mostafa-Zhran/Intelligent-Infrastructure-Automation-Platform/issues)
 
 </div>
