@@ -36,8 +36,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   return (
     <div className="w-full relative overflow-hidden select-none bg-[#07070D] text-slate-100">
-      {/* ── 1. Hero Viewport — full-screen, no scroll ───────────────────── */}
-      <section className="relative w-full h-screen flex flex-col justify-center overflow-hidden">
+      {/* ── 1. Hero Viewport — full-screen on desktop, compact fit on mobile without huge gap ───────────────────── */}
+      <section className="relative w-full min-h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem)] flex flex-col justify-start sm:justify-center pt-8 sm:pt-0 pb-12 sm:pb-0 overflow-hidden">
         {/* Ambient 3D Canvas in background — fills entire section */}
         <div className="absolute inset-0 z-0 opacity-45 mix-blend-screen pointer-events-auto">
           <React.Suspense fallback={<div className="w-full h-full bg-[#07070D]" />}>
@@ -47,12 +47,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         {/* Ambient background glows */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[720px] h-[360px] bg-violet-600/10 blur-[140px] pointer-events-none -z-10" />
-        <div className="absolute top-48 left-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[130px] pointer-events-none -z-10" />
+        <div className="absolute top-24 sm:top-48 left-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[130px] pointer-events-none -z-10" />
 
         {/* Hero text — centred over the 3D background */}
         <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center pointer-events-none">
           {/* Engineering Release Pill */}
-          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs font-mono text-slate-300 backdrop-blur-md shadow-lg mb-6 pointer-events-auto">
+          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs font-mono text-slate-300 backdrop-blur-md shadow-lg mb-4 sm:mb-6 pointer-events-auto">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-slate-400 font-semibold">IIAP Platform v2.4</span>
             <span className="text-slate-600">/</span>
@@ -60,21 +60,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Headline */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1] max-w-4xl text-balance pointer-events-none">
+          <h1 className="text-3xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.15] sm:leading-[1.1] max-w-4xl text-balance pointer-events-none">
             Automate cloud infrastructure. From Git commit to live cluster.
           </h1>
 
           {/* Body Copy */}
-          <p className="mt-5 sm:mt-6 text-base sm:text-lg text-slate-300 max-w-[68ch] mx-auto leading-relaxed text-balance font-sans pointer-events-none">
+          <p className="mt-4 sm:mt-6 text-sm sm:text-lg text-slate-300 max-w-[68ch] mx-auto leading-relaxed text-balance font-sans pointer-events-none">
             Connect any GitHub repository. IIAP builds hermetic Docker containers, verifies Terraform AWS topologies, and orchestrates live Kubernetes rollouts with deterministic endpoints in seconds.
           </p>
 
           {/* CTAs */}
-          <div className="mt-8 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full max-w-sm sm:max-w-none pointer-events-auto">
+          <div className="mt-6 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-3.5 w-full max-w-sm sm:max-w-none pointer-events-auto">
             <button
               type="button"
               onClick={() => onNavigate(isAuthenticated ? 'projects' : 'signin')}
-              className="w-full sm:w-auto h-12 px-7 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm shadow-[0_0_28px_rgba(124,58,237,0.45)] hover:shadow-[0_0_36px_rgba(124,58,237,0.65)] transition-all flex items-center justify-center gap-2 group active:scale-[0.98]"
+              className="w-full sm:w-auto h-11 sm:h-12 px-7 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm shadow-[0_0_28px_rgba(124,58,237,0.45)] hover:shadow-[0_0_36px_rgba(124,58,237,0.65)] transition-all flex items-center justify-center gap-2 group active:scale-[0.98]"
             >
               <span>{isAuthenticated ? 'Open Projects Console' : 'Start Deploying Free'}</span>
               <ArrowRight className="w-4 h-4 text-violet-200 group-hover:translate-x-1 transition-transform" />
@@ -83,7 +83,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button
               type="button"
               onClick={scrollToFeatures}
-              className="w-full sm:w-auto h-12 px-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/10 text-sm font-medium transition-all flex items-center justify-center gap-2 backdrop-blur-md active:scale-[0.98]"
+              className="w-full sm:w-auto h-11 sm:h-12 px-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/10 text-sm font-medium transition-all flex items-center justify-center gap-2 backdrop-blur-md active:scale-[0.98]"
             >
               <Terminal className="w-4 h-4 text-cyan-400" />
               <span>Explore Architecture</span>
@@ -91,7 +91,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Live Proof Badges */}
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs text-slate-400 font-mono pointer-events-auto">
+          <div className="mt-6 sm:mt-7 flex flex-wrap items-center justify-center gap-4 sm:gap-10 text-xs text-slate-400 font-mono pointer-events-auto">
             <span className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>Zero-Config K3s &amp; EKS</span>
