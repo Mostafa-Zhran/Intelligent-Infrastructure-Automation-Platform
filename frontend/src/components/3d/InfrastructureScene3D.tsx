@@ -237,7 +237,18 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
     ring2.rotation.z = Math.PI / 5;
     coreGroup.add(ring2);
 
-    // ── 4. Floating Infrastructure Nodes ────────────────────────────────
+    // ── 4. Floating Infrastructure Nodes (Cybernetic Quantum Pods) ──────
+    interface NodeBundle {
+      group: THREE.Group;
+      core: THREE.Mesh;
+      cage: THREE.Mesh;
+      ring: THREE.Mesh;
+      light: THREE.PointLight;
+      info: NodeInfo;
+      baseY: number;
+    }
+
+    const nodeBundles: NodeBundle[] = [];
     const nodeMeshes: THREE.Mesh[] = [];
     const interactiveMap = new Map<THREE.Object3D, NodeInfo>();
 
@@ -245,65 +256,112 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
       const nodeGroup = new THREE.Group();
       nodeGroup.position.set(...info.position);
 
-      let geom: THREE.BufferGeometry;
+      let coreGeom: THREE.BufferGeometry;
+      let cageGeom: THREE.BufferGeometry;
+
       switch (info.id) {
         case 'terraform':
-          geom = new THREE.OctahedronGeometry(0.55, 0);
+          coreGeom = new THREE.OctahedronGeometry(0.48, 0);
+          cageGeom = new THREE.IcosahedronGeometry(0.72, 1);
           break;
         case 'k8s':
-          geom = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+          coreGeom = new THREE.BoxGeometry(0.56, 0.56, 0.56);
+          cageGeom = new THREE.BoxGeometry(0.86, 0.86, 0.86);
           break;
         case 'docker':
-          geom = new THREE.CylinderGeometry(0.42, 0.42, 0.65, 8);
+          coreGeom = new THREE.CylinderGeometry(0.36, 0.36, 0.62, 8);
+          cageGeom = new THREE.CylinderGeometry(0.55, 0.55, 0.88, 8);
           break;
         case 'vault':
-          geom = new THREE.DodecahedronGeometry(0.52, 0);
+          coreGeom = new THREE.DodecahedronGeometry(0.48, 0);
+          cageGeom = new THREE.IcosahedronGeometry(0.76, 1);
           break;
         case 'gateway':
         default:
-          geom = new THREE.TetrahedronGeometry(0.58, 0);
+          coreGeom = new THREE.TetrahedronGeometry(0.52, 0);
+          cageGeom = new THREE.OctahedronGeometry(0.82, 0);
           break;
       }
 
-      const mat = new THREE.MeshPhysicalMaterial({
+      // 1. Inner Crystalline Luminous Core
+      const coreMat = new THREE.MeshPhysicalMaterial({
         color: new THREE.Color(info.color),
         emissive: new THREE.Color(info.color),
-        emissiveIntensity: 0.45,
-        roughness: 0.2,
-        metalness: 0.75,
-        clearcoat: 0.8,
-        wireframe: false,
+        emissiveIntensity: 0.65,
+        roughness: 0.15,
+        metalness: 0.85,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.08,
       });
+      const coreMesh = new THREE.Mesh(coreGeom, coreMat);
+      coreMesh.castShadow = true;
+      coreMesh.userData = { nodeId: info.id, info };
+      nodeGroup.add(coreMesh);
 
-      const mesh = new THREE.Mesh(geom, mat);
-      mesh.castShadow = true;
-      mesh.userData = { nodeId: info.id, info };
-      nodeGroup.add(mesh);
-
-      // Node subtle wire halo
-      const haloGeo = new THREE.RingGeometry(0.8, 0.85, 32);
-      const haloMat = new THREE.MeshBasicMaterial({
+      // 2. Outer Holographic Cyber Lattice Shell
+      const cageMat = new THREE.MeshBasicMaterial({
         color: new THREE.Color(info.color),
-        side: THREE.DoubleSide,
+        wireframe: true,
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.45,
+        blending: THREE.AdditiveBlending,
       });
-      const halo = new THREE.Mesh(haloGeo, haloMat);
-      halo.lookAt(camera.position);
-      nodeGroup.add(halo);
+      const cageMesh = new THREE.Mesh(cageGeom, cageMat);
+      nodeGroup.add(cageMesh);
+
+      // 3. Orbiting Gyroscope Energy Ring
+      const ringGeom = new THREE.TorusGeometry(0.88, 0.015, 16, 64);
+      const ringMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(info.color),
+        emissive: new THREE.Color(info.color),
+        emissiveIntensity: 0.8,
+        roughness: 0.2,
+        metalness: 0.9,
+      });
+      const ringMesh = new THREE.Mesh(ringGeom, ringMat);
+      ringMesh.rotation.x = Math.PI / 3 + Math.random() * 0.3;
+      ringMesh.rotation.y = Math.PI / 6;
+      nodeGroup.add(ringMesh);
+
+      // 4. Vertical Data Beacon Stem (Holographic Coordinate Axis)
+      const beaconGeom = new THREE.CylinderGeometry(0.008, 0.008, 1.8, 8);
+      const beaconMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(info.color),
+        transparent: true,
+        opacity: 0.35,
+        blending: THREE.AdditiveBlending,
+      });
+      const beaconMesh = new THREE.Mesh(beaconGeom, beaconMat);
+      nodeGroup.add(beaconMesh);
+
+      // 5. Node Internal Point Light for Real-time Glow on Mesh
+      const nodeLight = new THREE.PointLight(new THREE.Color(info.color), 1.4, 4.0, 1.5);
+      nodeGroup.add(nodeLight);
 
       scene.add(nodeGroup);
-      nodeMeshes.push(mesh);
-      interactiveMap.set(mesh, info);
+      nodeMeshes.push(coreMesh);
+      interactiveMap.set(coreMesh, info);
+
+      nodeBundles.push({
+        group: nodeGroup,
+        core: coreMesh,
+        cage: cageMesh,
+        ring: ringMesh,
+        light: nodeLight,
+        info,
+        baseY: info.position[1],
+      });
     });
 
     interactiveMeshesRef.current = interactiveMap;
 
-    // ── 5. Pipeline Laser Connection Lines ──────────────────────────────
+    // ── 5. Pipeline Laser Connection Lines & Live Data Packets ──────────
     const connectionLines: THREE.Line[] = [];
-    const pipelineCurvePoints: THREE.Vector3[][] = [];
+    const bezierCurves: THREE.QuadraticBezierCurve3[] = [];
+    const dataPackets: { mesh: THREE.Mesh; curve: THREE.QuadraticBezierCurve3; speed: number; offset: number }[] = [];
+    const packetGeom = new THREE.SphereGeometry(0.065, 8, 8);
 
-    NODES_DATA.forEach((node) => {
+    NODES_DATA.forEach((node, i) => {
       const p1 = new THREE.Vector3(0, 0, 0);
       const p2 = new THREE.Vector3(...node.position);
       const mid = new THREE.Vector3()
@@ -312,18 +370,34 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
         .add(new THREE.Vector3((Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8, 0.4));
 
       const curve = new THREE.QuadraticBezierCurve3(p1, mid, p2);
+      bezierCurves.push(curve);
       const pts = curve.getPoints(36);
-      pipelineCurvePoints.push(pts);
 
       const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
       const lineMat = new THREE.LineBasicMaterial({
         color: new THREE.Color(node.color),
         transparent: true,
-        opacity: 0.32,
+        opacity: 0.38,
       });
       const line = new THREE.Line(lineGeo, lineMat);
       scene.add(line);
       connectionLines.push(line);
+
+      // Add 2 glowing data packet beads per line
+      const packetMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(node.color),
+        blending: THREE.AdditiveBlending,
+      });
+      for (let p = 0; p < 2; p++) {
+        const pMesh = new THREE.Mesh(packetGeom, packetMat);
+        scene.add(pMesh);
+        dataPackets.push({
+          mesh: pMesh,
+          curve,
+          speed: 0.32 + (i % 3) * 0.06,
+          offset: p * 0.5 + i * 0.18,
+        });
+      }
     });
 
     // Inter-node pipeline link (Terraform -> Docker -> K8s)
@@ -505,23 +579,41 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
       ring1.rotation.z += 0.45 * delta * speedFactor;
       ring2.rotation.z -= 0.38 * delta * speedFactor;
 
-      // Rotate and float infrastructure nodes
-      nodeMeshes.forEach((mesh, idx) => {
-        mesh.rotation.y += 0.4 * delta * speedFactor;
-        mesh.rotation.x += 0.25 * delta * speedFactor;
+      // Rotate and float infrastructure nodes (cybernetic quantum pods)
+      nodeBundles.forEach((bundle, idx) => {
+        const isHovered = hoveredNode?.id === bundle.info.id || selectedNode?.id === bundle.info.id;
+        const rotMultiplier = isHovered ? 1.75 : 1.0;
+
+        bundle.core.rotation.y += 0.45 * delta * speedFactor * rotMultiplier;
+        bundle.core.rotation.x += 0.25 * delta * speedFactor * rotMultiplier;
+
+        bundle.cage.rotation.y -= 0.3 * delta * speedFactor * rotMultiplier;
+        bundle.cage.rotation.z += 0.18 * delta * speedFactor * rotMultiplier;
+
+        bundle.ring.rotation.z += 0.55 * delta * speedFactor * rotMultiplier;
+        bundle.ring.rotation.x += 0.22 * delta * speedFactor * rotMultiplier;
 
         // Subtle floating bounce
-        const info = mesh.userData.info as NodeInfo;
-        mesh.parent!.position.y = info.position[1] + Math.sin(time * 1.5 + idx * 1.2) * 0.12 * speedFactor;
+        bundle.group.position.y = bundle.baseY + Math.sin(time * 1.5 + idx * 1.2) * 0.12 * speedFactor;
 
         // Hover scale feedback
-        const isHovered = hoveredNode?.id === info.id || selectedNode?.id === info.id;
-        const targetScale = isHovered ? 1.28 : 1.0;
-        mesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.12);
+        const targetScale = isHovered ? 1.32 : 1.0;
+        bundle.group.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.15);
 
-        const mat = mesh.material as THREE.MeshPhysicalMaterial;
-        const targetEmissive = isHovered ? 0.95 : 0.45;
+        const mat = bundle.core.material as THREE.MeshPhysicalMaterial;
+        const targetEmissive = isHovered ? 1.15 : 0.65;
         mat.emissiveIntensity = THREE.MathUtils.lerp(mat.emissiveIntensity, targetEmissive, 0.15);
+
+        bundle.light.intensity = isHovered ? 2.6 : 1.4;
+      });
+
+      // Flow live data packets along the Bezier curves
+      dataPackets.forEach((p) => {
+        const t = (time * p.speed + p.offset) % 1.0;
+        const pos = p.curve.getPointAt(t);
+        p.mesh.position.copy(pos);
+        const pulse = 1.0 + Math.sin(t * Math.PI) * 0.45;
+        p.mesh.scale.set(pulse, pulse, pulse);
       });
 
       // Slowly float particle cloud
@@ -671,21 +763,6 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
       <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#07070D] to-transparent pointer-events-none z-10" />
       <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#07070D] to-transparent pointer-events-none z-10" />
 
-      {/* ── Top Floating HUD: Controls / Hint ─────────────────────────── */}
-      <div
-        className={`absolute top-3 sm:top-5 left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-all duration-700 w-[92%] sm:w-auto max-w-sm sm:max-w-none text-center ${
-          isSceneReady ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
-        }`}
-      >
-        <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-white/[0.05] backdrop-blur-md border border-white/10 text-[10px] sm:text-[11px] font-mono text-[#A1A1B5] shadow-lg">
-          <span className="relative flex h-2 w-2 flex-shrink-0">
-            <span className="status-dot-pulse absolute inline-flex h-full w-full rounded-full bg-cyan-400" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
-          </span>
-          <span className="hidden sm:inline">Interactive 3D Topology · Move mouse to rotate · Tap nodes to inspect</span>
-          <span className="sm:hidden">Interactive 3D · Tap nodes to inspect</span>
-        </div>
-      </div>
 
       {/* ── Bottom Right: Active Hover HUD Badge ──────────────────────── */}
       {hoveredNode && !selectedNode && (
