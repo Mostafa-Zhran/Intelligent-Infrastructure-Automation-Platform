@@ -3,10 +3,9 @@ import {
   Search,
   Terminal,
   RefreshCw,
-  GitCommit,
+  GitBranch,
   Plus,
   ExternalLink,
-  Globe,
   Clock,
   Zap,
 } from 'lucide-react';
@@ -296,19 +295,19 @@ export const DeploymentsPage: React.FC<DeploymentsPageProps> = ({
         </div>
 
         {/* Matrix Table */}
-        <div className="rounded-2xl bg-[#0C0D17] border border-white/[0.08] overflow-hidden">
+        <div className="rounded-2xl bg-[#090A14] border border-white/[0.08] overflow-hidden shadow-xl">
           <div className="overflow-x-auto w-full">
-            <table className="w-full text-left text-sm border-collapse min-w-[880px]">
+            <table className="w-full text-left text-sm border-collapse min-w-[960px]">
               <thead>
                 <tr className="text-[11px] font-mono uppercase tracking-wider text-slate-400 bg-white/[0.02] border-b border-white/[0.06]">
-                  <th className="py-3 px-4">Pipeline Execution</th>
-                  <th className="py-3 px-4">Target Workload</th>
-                  <th className="py-3 px-4">Git Reference</th>
-                  <th className="py-3 px-4">Pipeline Stages</th>
-                  <th className="py-3 px-4">Environment</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Timestamp</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-3.5 px-4">Pipeline Run</th>
+                  <th className="py-3.5 px-4">Workload</th>
+                  <th className="py-3.5 px-4">Git Branch</th>
+                  <th className="py-3.5 px-4">Environment</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4">Live Service</th>
+                  <th className="py-3.5 px-4">Started</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.04] text-xs">
@@ -330,7 +329,7 @@ export const DeploymentsPage: React.FC<DeploymentsPageProps> = ({
                     <tr
                       key={d.id}
                       onClick={() => handleRowClick(d)}
-                      className="group hover:bg-white/[0.02] transition-colors cursor-pointer"
+                      className="group hover:bg-white/[0.025] transition-colors cursor-pointer"
                     >
                       <td className="py-3.5 px-4 font-mono">
                         <div className="font-bold text-white group-hover:text-violet-300 transition-colors">
@@ -342,15 +341,15 @@ export const DeploymentsPage: React.FC<DeploymentsPageProps> = ({
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <span className="text-white font-medium flex items-center gap-1.5">
-                          <Terminal className="w-3.5 h-3.5 text-violet-400" />
+                        <span className="text-white font-medium flex items-center gap-1.5 font-mono">
+                          <Terminal className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                           <span>{d.project?.name || 'Workload'}</span>
                         </span>
                       </td>
 
                       <td className="py-3.5 px-4 font-mono text-slate-300">
                         <div className="flex items-center gap-1.5">
-                          <GitCommit className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                          <GitBranch className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                           <span>{d.branch || 'main'}</span>
                         </div>
                         {d.commitSha && (
@@ -358,33 +357,6 @@ export const DeploymentsPage: React.FC<DeploymentsPageProps> = ({
                             sha:{d.commitSha.substring(0, 7)}
                           </span>
                         )}
-                      </td>
-
-                      {/* Visual Pipeline Progression Stages (PIPE-01 to PIPE-07) */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-1">
-                          {['Build', 'Lint', 'Test', 'Ansible', 'Terraform', 'K8s'].map((stage, idx) => {
-                            const isFail = d.status.toUpperCase() === 'FAILED' && idx >= 4;
-                            const isDone = d.status.toUpperCase() === 'SUCCEEDED' || (d.status.toUpperCase() === 'RUNNING' && idx < 3);
-                            const isCurrent = d.status.toUpperCase() === 'RUNNING' && idx === 3;
-
-                            return (
-                              <span
-                                key={stage}
-                                title={`Stage: ${stage}`}
-                                className={`w-4 h-1.5 rounded-full ${
-                                  isFail
-                                    ? 'bg-rose-500/80'
-                                    : isCurrent
-                                    ? 'bg-sky-400 animate-pulse'
-                                    : isDone
-                                    ? 'bg-emerald-400'
-                                    : 'bg-white/10'
-                                }`}
-                              />
-                            );
-                          })}
-                        </div>
                       </td>
 
                       <td className="py-3.5 px-4">
@@ -397,33 +369,37 @@ export const DeploymentsPage: React.FC<DeploymentsPageProps> = ({
                         {renderStatusBadge(d.status)}
                       </td>
 
+                      {/* Dedicated Clean Live Service Column */}
+                      <td className="py-3.5 px-4">
+                        {d.serviceUrl ? (
+                          <a
+                            href={d.serviceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 text-[11px] font-mono font-semibold transition-all shadow-[0_0_12px_rgba(16,185,129,0.15)] group/link"
+                            title={d.serviceUrl}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                            <span>Live App</span>
+                            <ExternalLink className="w-3 h-3 text-emerald-400 group-hover/link:translate-x-0.5 transition-transform" />
+                          </a>
+                        ) : (
+                          <span className="text-slate-600 font-mono text-[11px]">—</span>
+                        )}
+                      </td>
+
                       <td className="py-3.5 px-4 text-slate-400 font-mono">
                         {formatDate(d.startedAt || d.createdAt)}
                       </td>
 
                       <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {d.serviceUrl && (
-                            <a
-                              href={d.serviceUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[11px] font-mono transition-colors"
-                              title="Open live app endpoint"
-                            >
-                              <Globe className="w-3 h-3 text-emerald-400" />
-                              <span>Live App</span>
-                              <ExternalLink className="w-2.5 h-2.5" />
-                            </a>
-                          )}
-                          <button
-                            type="button"
-                            className="px-2.5 py-1 rounded bg-white/[0.03] group-hover:bg-violet-600 group-hover:text-white border border-white/10 text-slate-300 text-[11px] font-mono transition-colors"
-                          >
-                            Inspect
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          className="px-3 py-1 rounded-lg bg-white/[0.03] group-hover:bg-violet-600 group-hover:text-white border border-white/10 text-slate-300 text-xs font-mono transition-all"
+                        >
+                          Inspect
+                        </button>
                       </td>
                     </tr>
                   ))
