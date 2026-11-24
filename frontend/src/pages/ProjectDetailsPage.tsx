@@ -4,16 +4,15 @@ import {
   CheckCircle2,
   GitBranch,
   Play,
-  Terminal,
   Layers,
-  Clock,
   ChevronRight,
-  ShieldCheck,
   Settings,
   RefreshCw,
-  GitCommit,
   ExternalLink,
   AlertTriangle,
+  Box,
+  Cpu,
+  Plus,
 } from 'lucide-react';
 import { PageId } from '../types';
 import { projectsApi, deploymentsApi, Project, ApiDeployment } from '../services/api';
@@ -100,37 +99,30 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
     switch ((status || '').toUpperCase()) {
       case 'SUCCEEDED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>Succeeded</span>
           </span>
         );
       case 'RUNNING':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/15 text-sky-300 border border-sky-500/30 shadow-[0_0_12px_-2px_rgba(56,189,248,0.4)]">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-sky-500/15 text-sky-300 border border-sky-500/30 shadow-[0_0_12px_-2px_rgba(56,189,248,0.4)]">
             <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
             <span>Running</span>
           </span>
         );
       case 'FAILED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/15 border border-rose-500/30 text-rose-400">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-rose-500/15 border border-rose-500/30 text-rose-400">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
             <span>Failed</span>
-          </span>
-        );
-      case 'READY':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Ready</span>
           </span>
         );
       case 'QUEUED':
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-[#A1A1B5]">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-white/5 border border-white/10 text-slate-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
             <span>Queued</span>
           </span>
         );
@@ -155,7 +147,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center gap-3">
         <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
-        <p className="text-sm text-[#A1A1B5]">Loading project overview…</p>
+        <p className="text-sm font-mono text-slate-400">Loading project topology…</p>
       </div>
     );
   }
@@ -164,247 +156,246 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6">
         <AlertTriangle className="w-12 h-12 text-amber-400 mb-3" />
-        <h2 className="text-xl font-bold text-white mb-2">Project not selected</h2>
-        <p className="text-sm text-[#A1A1B5] mb-6">Please select a project from the catalog.</p>
+        <h2 className="text-xl font-bold text-white mb-2">Project not found</h2>
+        <p className="text-sm text-slate-400 mb-6">The requested repository project does not exist or has been removed.</p>
         <button
           type="button"
           onClick={() => onNavigate('projects')}
           className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-500 transition-colors"
         >
-          Back to Projects
+          Return to Projects
         </button>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-8 sm:py-10 max-w-7xl mx-auto flex flex-col gap-8 animate-slideUpFade">
-      {/* Background ambient glows */}
-      <div className="absolute -top-32 -left-20 w-96 h-96 bg-violet-600/15 rounded-full blur-[120px] pointer-events-none -z-10" />
-      <div className="absolute top-48 -right-24 w-96 h-96 bg-sky-500/10 rounded-full blur-[140px] pointer-events-none -z-10" />
+    <div className="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-8 sm:py-10 max-w-7xl mx-auto flex flex-col gap-8 animate-fadeIn">
+      {/* Background ambient lighting */}
+      <div className="absolute top-0 left-1/4 w-[600px] h-[350px] bg-violet-600/10 blur-[130px] pointer-events-none -z-10" />
+      <div className="absolute top-48 right-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[130px] pointer-events-none -z-10" />
 
-      {/* Top Breadcrumb & Actions Bar */}
+      {/* Header bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 z-10">
         <div>
           <button
             type="button"
             onClick={() => onNavigate('projects')}
-            className="inline-flex items-center gap-1.5 text-xs text-[#A1A1B5] hover:text-white transition-colors mb-2"
+            className="inline-flex items-center gap-1.5 text-xs font-mono text-slate-400 hover:text-white transition-colors mb-2.5 group"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to projects</span>
+            <ArrowLeft className="w-3.5 h-3.5 text-violet-400 group-hover:-translate-x-1 transition-transform" />
+            <span>Back to Projects</span>
           </button>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight text-white">{project.name}</h1>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono bg-white/5 border border-white/10 text-[#A1A1B5] capitalize">
-              {project.defaultEnvironment}
-            </span>
-            {renderStatusBadge(project.setupStatus)}
-          </div>
-          <div className="flex items-center gap-2 mt-1.5 text-xs text-[#A1A1B5] font-mono">
-            <GitBranch className="w-3.5 h-3.5 text-violet-400" />
-            <span>
-              Branch: <code className="text-white">{project.repositoryBranch || 'main'}</code>
-            </span>
-            <span>·</span>
-            <span className="truncate max-w-sm">
-              {project.githubRepoFullName || project.repositoryUrl || 'Configured Git Repo'}
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              {project.name}
+            </h1>
+            <span className="font-mono text-xs text-slate-400 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/10">
+              {project.repositoryBranch || 'main'}
             </span>
           </div>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl font-sans">
+            {project.description || 'Automated deployment workspace managed by IIAP control plane.'}
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Action Controls */}
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => onNavigate('deployments')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/10 text-xs font-medium transition-colors"
+            onClick={() => {
+              if (project.id) loadDeployments(project.id);
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/10 text-xs font-mono transition-all"
+            title="Refresh deployments"
           >
-            <Terminal className="w-3.5 h-3.5 text-[#A1A1B5]" />
-            <span>Deployments</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDeployments ? 'animate-spin' : ''}`} />
+            <span>Sync</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsDeployModalOpen(true)}
-            disabled={isDeploying}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-500 text-xs font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.5)] hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-[0_0_24px_rgba(124,58,237,0.45)] hover:shadow-[0_0_32px_rgba(124,58,237,0.65)] transition-all active:scale-[0.98]"
           >
-            <Play className={`w-3.5 h-3.5 fill-current ${isDeploying ? 'animate-spin' : ''}`} />
-            <span>{isDeploying ? 'Triggering...' : 'Deploy Now'}</span>
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Deploy Branch</span>
           </button>
         </div>
       </div>
 
-      {/* 3 Telemetry Summary Cards */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-5 z-10">
-        <div className="rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10 shadow-lg">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">
-            Target Environment
-          </span>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-2xl font-bold text-white capitalize">{project.defaultEnvironment}</span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-              Active
-            </span>
+      {/* Quick Spec Metrics Strip */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 z-10">
+        <div className="rounded-2xl bg-[#080911] border border-white/[0.08] p-5 shadow-lg relative overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
+          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Repository</span>
+          <div className="flex items-center gap-2 mt-2 font-mono text-sm text-white truncate">
+            <GitBranch className="w-4 h-4 text-violet-400 shrink-0" />
+            <span className="truncate">{project.repositoryUrl ? project.repositoryUrl.replace(/^https?:\/\/github\.com\//, '') : 'Local Git'}</span>
           </div>
-          <p className="text-xs text-[#A1A1B5] mt-1">Automatic container ingress enabled</p>
         </div>
 
-        <div className="rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10 shadow-lg">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">
-            Total Deployments
-          </span>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-2xl font-bold text-white">{deployments.length}</span>
-            <span className="text-xs text-[#A1A1B5]">pipeline runs</span>
+        <div className="rounded-2xl bg-[#080911] border border-white/[0.08] p-5 shadow-lg relative overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Default Target</span>
+          <div className="flex items-center gap-2 mt-2 font-mono text-sm text-emerald-400 capitalize">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>{project.defaultEnvironment || 'production'}</span>
           </div>
-          <p className="text-xs text-[#A1A1B5] mt-1">
-            Latest: {project.latestDeployment ? renderStatusBadge(project.latestDeployment.status) : 'None'}
-          </p>
         </div>
 
-        <div className="rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10 shadow-lg">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">
-            Repository Setup
-          </span>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-2xl font-bold text-white">{project.setupStatus}</span>
-            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+        <div className="rounded-2xl bg-[#080911] border border-white/[0.08] p-5 shadow-lg relative overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-sky-500/40 to-transparent" />
+          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Cluster Architecture</span>
+          <div className="flex items-center gap-2 mt-2 font-mono text-sm text-sky-400">
+            <Cpu className="w-4 h-4 text-sky-400 shrink-0" />
+            <span>Kubernetes Native</span>
           </div>
-          <p className="text-xs text-[#A1A1B5] mt-1 truncate">
-            {project.githubRepoFullName || 'Linked via platform'}
-          </p>
+        </div>
+
+        <div className="rounded-2xl bg-[#080911] border border-white/[0.08] p-5 shadow-lg relative overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
+          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Total Deployments</span>
+          <div className="flex items-center gap-2 mt-2 font-mono text-sm text-white font-bold">
+            <Layers className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>{deployments.length} Runs</span>
+          </div>
         </div>
       </section>
 
       {/* Navigation Tabs */}
-      <div className="border-b border-white/10 flex items-center gap-6 z-10 text-xs font-medium">
+      <div className="flex items-center gap-2 border-b border-white/[0.08] pb-1 z-10 font-mono text-xs">
         <button
           type="button"
           onClick={() => setActiveTab('deployments')}
-          className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${
             activeTab === 'deployments'
-              ? 'border-violet-500 text-white font-semibold'
-              : 'border-transparent text-[#A1A1B5] hover:text-white'
+              ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.3)] font-semibold'
+              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           }`}
         >
-          <Clock className="w-4 h-4" />
-          <span>Deployment History ({deployments.length})</span>
+          <Layers className="w-3.5 h-3.5 text-violet-400" />
+          <span>Deployment History</span>
+          <span className="px-1.5 py-0.2 rounded bg-violet-500/20 text-violet-300 font-bold text-[10px]">
+            {deployments.length}
+          </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('config')}
-          className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${
             activeTab === 'config'
-              ? 'border-violet-500 text-white font-semibold'
-              : 'border-transparent text-[#A1A1B5] hover:text-white'
+              ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.3)] font-semibold'
+              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           }`}
         >
-          <Layers className="w-4 h-4" />
-          <span>Configuration</span>
+          <Box className="w-3.5 h-3.5 text-sky-400" />
+          <span>Infrastructure Manifests</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('settings')}
-          className={`pb-3 border-b-2 transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${
             activeTab === 'settings'
-              ? 'border-violet-500 text-white font-semibold'
-              : 'border-transparent text-[#A1A1B5] hover:text-white'
+              ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.3)] font-semibold'
+              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           }`}
         >
-          <Settings className="w-4 h-4" />
-          <span>Project Settings</span>
+          <Settings className="w-3.5 h-3.5 text-slate-400" />
+          <span>Settings</span>
         </button>
       </div>
 
       {/* TAB 1: Deployments History */}
       {activeTab === 'deployments' && (
-        <div className="rounded-2xl sm:rounded-3xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 overflow-hidden z-10 shadow-xl">
-          <div className="p-4 sm:p-5 border-b border-white/5 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white">Pipeline Executions</h3>
-            <button
-              type="button"
-              onClick={() => loadDeployments(project.id)}
-              disabled={isLoadingDeployments}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] text-xs text-[#A1A1B5] hover:text-white border border-white/10"
-            >
-              <RefreshCw className={`w-3 h-3 ${isLoadingDeployments ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
-            </button>
-          </div>
-
-          {isLoadingDeployments && (
-            <div className="py-12 flex flex-col items-center justify-center gap-2 text-[#A1A1B5]">
-              <RefreshCw className="w-6 h-6 animate-spin text-violet-400" />
-              <p className="text-xs">Loading execution history…</p>
+        <div className="rounded-2xl sm:rounded-3xl bg-[#080911] border border-white/[0.08] overflow-hidden z-10 shadow-xl">
+          {isLoadingDeployments ? (
+            <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
+              <RefreshCw className="w-6 h-6 text-violet-400 animate-spin" />
+              <p className="font-mono text-xs">Loading execution history...</p>
             </div>
-          )}
-
-          {!isLoadingDeployments && deployments.length === 0 && (
-            <div className="py-16 flex flex-col items-center justify-center text-center p-6">
-              <Clock className="w-10 h-10 text-[#A1A1B5] mb-2" />
-              <p className="text-sm font-semibold text-white">No deployments triggered yet</p>
-              <p className="text-xs text-[#A1A1B5] mb-4">
-                Launch your first pipeline build to view execution milestones and live logs.
+          ) : deployments.length === 0 ? (
+            <div className="p-12 text-center text-slate-400 space-y-3">
+              <Layers className="w-8 h-8 text-slate-600 mx-auto" />
+              <p className="font-medium text-white">No deployments yet</p>
+              <p className="text-xs max-w-sm mx-auto font-sans">
+                Trigger your first automated build and deployment from Git commit to Kubernetes cluster.
               </p>
               <button
                 type="button"
                 onClick={() => setIsDeployModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-semibold shadow-md"
+                className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shadow-md"
               >
-                Trigger Deployment
+                <Plus className="w-3.5 h-3.5" />
+                <span>Trigger Deployment</span>
               </button>
             </div>
-          )}
-
-          {!isLoadingDeployments && deployments.length > 0 && (
-            <div className="overflow-x-auto w-full">
-              <table className="w-full text-left text-sm border-collapse min-w-[700px]">
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-mono text-xs">
                 <thead>
-                  <tr className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5] bg-white/[0.02] border-b border-white/5">
-                    <th className="py-3 px-4">Deployment ID</th>
-                    <th className="py-3 px-4">Branch / Commit</th>
-                    <th className="py-3 px-4">Environment</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Timestamp</th>
-                    <th className="py-3 px-4 text-right">Details</th>
+                  <tr className="border-b border-white/[0.08] bg-white/[0.02] text-slate-400">
+                    <th className="py-3 px-4 font-semibold">Deployment ID</th>
+                    <th className="py-3 px-4 font-semibold">Status</th>
+                    <th className="py-3 px-4 font-semibold">Branch & Commit</th>
+                    <th className="py-3 px-4 font-semibold">Environment</th>
+                    <th className="py-3 px-4 font-semibold">Live Service</th>
+                    <th className="py-3 px-4 font-semibold">Triggered</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 text-xs">
-                  {deployments.map((d) => (
+                <tbody className="divide-y divide-white/[0.04]">
+                  {deployments.map((dep) => (
                     <tr
-                      key={d.id}
+                      key={dep.id}
                       onClick={() => {
-                        if (onSelectDeployment) onSelectDeployment(d);
+                        onSelectDeployment?.(dep);
                         onNavigate('deployment-details');
                       }}
-                      className="group hover:bg-white/[0.03] transition-colors cursor-pointer"
+                      className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
                     >
-                      <td className="py-3.5 px-4 font-mono font-bold text-white">
-                        {d.id.substring(0, 8)}…
+                      <td className="py-3.5 px-4 font-bold text-white group-hover:text-violet-300 transition-colors">
+                        #{dep.id.substring(0, 8)}
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-[#A1A1B5]">
-                        <div className="flex items-center gap-1.5">
-                          <GitCommit className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                          <span>{d.branch || 'main'}</span>
-                          {d.commitSha && (
-                            <span className="text-violet-300 text-[11px]">
-                              ({d.commitSha.substring(0, 7)})
+                      <td className="py-3.5 px-4">{renderStatusBadge(dep.status)}</td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-1.5 text-slate-300">
+                          <GitBranch className="w-3 h-3 text-violet-400" />
+                          <span>{dep.branch || 'main'}</span>
+                          {dep.commitSha && (
+                            <span className="text-slate-500 text-[11px]">
+                              ({dep.commitSha.substring(0, 7)})
                             </span>
                           )}
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[11px] bg-white/[0.04] text-[#A1A1B5] border border-white/5 capitalize">
-                          {d.environment}
-                        </span>
+                        <span className="capitalize text-emerald-400 font-semibold">{dep.environment}</span>
                       </td>
-                      <td className="py-3.5 px-4">{renderStatusBadge(d.status)}</td>
-                      <td className="py-3.5 px-4 text-[#A1A1B5]">{formatDate(d.startedAt || d.createdAt)}</td>
+                      <td className="py-3.5 px-4">
+                        {dep.serviceUrl ? (
+                          <a
+                            href={dep.serviceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 underline font-semibold"
+                          >
+                            <span>Open URL</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-400">{formatDate(dep.startedAt || dep.createdAt)}</td>
                       <td className="py-3.5 px-4 text-right">
-                        <ChevronRight className="w-4 h-4 text-[#A1A1B5] group-hover:text-violet-300 transition-all inline-block" />
+                        <span className="inline-flex items-center gap-1 text-slate-400 group-hover:text-white transition-colors">
+                          <span>Details</span>
+                          <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -415,65 +406,58 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
         </div>
       )}
 
-      {/* TAB 2: Configuration */}
+      {/* TAB 2: Config */}
       {activeTab === 'config' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 z-10">
-          <div className="rounded-2xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 p-6 space-y-4">
-            <h3 className="text-sm font-bold text-white">Build & Container Spec</h3>
-            <div className="space-y-3 text-xs">
-              <div>
-                <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">Default Branch</p>
-                <p className="text-white font-mono mt-0.5">{project.repositoryBranch || 'main'}</p>
-              </div>
-              <div>
-                <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">Default Environment</p>
-                <p className="text-emerald-400 font-mono mt-0.5 capitalize">{project.defaultEnvironment}</p>
-              </div>
-              <div>
-                <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">GitHub Full Name</p>
-                <p className="text-violet-300 font-mono mt-0.5">{project.githubRepoFullName || '—'}</p>
-              </div>
+        <div className="rounded-2xl sm:rounded-3xl bg-[#080911] border border-white/[0.08] p-6 space-y-4 z-10">
+          <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+            <div>
+              <h3 className="text-base font-bold text-white">Infrastructure as Code Blueprint</h3>
+              <p className="text-xs text-slate-400 mt-0.5 font-sans">
+                Declarative Terraform and Kubernetes spec applied during deployment runs.
+              </p>
             </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+              HERMETIC SPEC
+            </span>
           </div>
 
-          <div className="rounded-2xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 p-6 space-y-4">
-            <h3 className="text-sm font-bold text-white">Repository Link</h3>
-            <p className="text-xs text-[#A1A1B5]">
-              Source repository linked for continuous delivery container builds.
-            </p>
-            {project.repositoryUrl ? (
-              <a
-                href={project.repositoryUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/10 text-xs font-medium transition-colors"
-              >
-                <span>View on GitHub</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            ) : (
-              <p className="text-xs text-[#A1A1B5] font-mono">No external URL provided</p>
-            )}
+          <div className="space-y-3 font-mono text-xs">
+            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
+              <span className="text-slate-400">Kubernetes Cluster Namespace:</span>
+              <span className="text-white font-bold">{project.slug || project.name.toLowerCase()}</span>
+            </div>
+            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
+              <span className="text-slate-400">Ingress Strategy:</span>
+              <span className="text-cyan-400 font-bold">Deterministic NodePort Pool (30000 - 32767)</span>
+            </div>
+            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
+              <span className="text-slate-400">Container Registry:</span>
+              <span className="text-violet-400 font-bold">ghcr.io / OCI Hermetic BuildKit</span>
+            </div>
+            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
+              <span className="text-slate-400">Zero-Trust Baseline:</span>
+              <span className="text-emerald-400 font-bold">runAsNonRoot: true · Drop All Capabilities</span>
+            </div>
           </div>
         </div>
       )}
 
       {/* TAB 3: Settings */}
       {activeTab === 'settings' && (
-        <div className="rounded-2xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 p-6 space-y-4 z-10 max-w-2xl">
-          <h3 className="text-sm font-bold text-white">Project Identity & Metadata</h3>
-          <div className="space-y-3 text-xs">
-            <div>
-              <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">Project UUID</p>
-              <code className="text-violet-300 font-mono text-xs select-all">{project.id}</code>
+        <div className="rounded-2xl sm:rounded-3xl bg-[#080911] border border-white/[0.08] p-6 space-y-4 z-10 max-w-2xl">
+          <h3 className="text-base font-bold text-white">Project Identity & Metadata</h3>
+          <div className="space-y-3 font-mono text-xs">
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+              <p className="text-[11px] text-slate-500 uppercase tracking-wider">Project UUID</p>
+              <code className="text-violet-300 font-semibold select-all mt-1 block">{project.id}</code>
             </div>
-            <div>
-              <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">Project Slug</p>
-              <code className="text-white font-mono text-xs">{project.slug}</code>
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+              <p className="text-[11px] text-slate-500 uppercase tracking-wider">Project Slug</p>
+              <code className="text-white font-semibold mt-1 block">{project.slug}</code>
             </div>
-            <div>
-              <p className="text-[11px] font-mono text-[#A1A1B5] uppercase">Created At</p>
-              <p className="text-[#A1A1B5]">{formatDate(project.createdAt)}</p>
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+              <p className="text-[11px] text-slate-500 uppercase tracking-wider">Provisioned Date</p>
+              <p className="text-slate-300 mt-1">{formatDate(project.createdAt)}</p>
             </div>
           </div>
         </div>
@@ -481,52 +465,55 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
 
       {/* Trigger Deployment Modal */}
       {isDeployModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-md rounded-2xl bg-[#13131F] border border-white/15 p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <h3 className="text-base font-bold text-white">Trigger Pipeline Deployment</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-md rounded-2xl sm:rounded-3xl bg-[#090A14] border border-white/[0.12] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Play className="w-4 h-4 text-violet-400 fill-current" />
+                <span>Trigger Pipeline Deployment</span>
+              </h3>
               <button
                 type="button"
                 onClick={() => setIsDeployModalOpen(false)}
-                className="text-gray-400 hover:text-white text-xs px-2 py-1 rounded"
+                className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3.5 font-mono text-xs">
               <div>
-                <label className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">
-                  Project Name
+                <label className="text-[11px] uppercase tracking-wider text-slate-400">
+                  Target Project
                 </label>
-                <p className="text-white font-semibold mt-1">{project.name}</p>
+                <p className="text-white font-bold mt-1">{project.name}</p>
               </div>
 
               <div>
-                <label className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">
-                  Target Environment
+                <label className="text-[11px] uppercase tracking-wider text-slate-400">
+                  Environment
                 </label>
-                <p className="text-emerald-400 font-mono mt-1 capitalize">{project.defaultEnvironment}</p>
+                <p className="text-emerald-400 font-bold mt-1 capitalize">{project.defaultEnvironment}</p>
               </div>
 
               <div>
-                <label className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">
+                <label className="text-[11px] uppercase tracking-wider text-slate-400">
                   Git Branch
                 </label>
                 <input
                   type="text"
                   value={deployBranch}
                   onChange={(e) => setDeployBranch(e.target.value)}
-                  className="w-full h-9 px-3 mt-1 bg-black/50 border border-white/15 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-violet-500"
+                  className="w-full h-10 px-3.5 mt-1 bg-white/[0.03] border border-white/10 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-violet-500"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-white/[0.08]">
               <button
                 type="button"
                 onClick={() => setIsDeployModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs text-[#A1A1B5] hover:text-white"
+                className="px-4 py-2 rounded-xl text-xs font-mono text-slate-400 hover:text-white"
               >
                 Cancel
               </button>
@@ -534,9 +521,19 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
                 type="button"
                 onClick={handleTriggerDeploy}
                 disabled={isDeploying}
-                className="px-5 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md hover:brightness-110 disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white shadow-[0_0_20px_rgba(124,58,237,0.4)] disabled:opacity-50 transition-all flex items-center gap-2"
               >
-                {isDeploying ? 'Deploying...' : 'Confirm & Deploy'}
+                {isDeploying ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Queueing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Confirm &amp; Run</span>
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                  </>
+                )}
               </button>
             </div>
           </div>
