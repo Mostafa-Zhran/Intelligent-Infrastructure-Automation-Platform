@@ -270,6 +270,7 @@ jobs:
           HOST: "app-${{ inputs.project_id }}.${{ inputs.environment }}.example.com"
           TIMEOUT_SECONDS: "180"
           KUBECONFIG_SECRET: "${{ secrets.KUBECONFIG }}"
+          CLUSTER_NODE_IP: "${{ secrets.K8S_NODE_IP }}"
         run: |
           # If KUBECONFIG secret is provided, configure runner context
           if [ -n "${KUBECONFIG_SECRET}" ]; then
@@ -298,7 +299,7 @@ jobs:
             curl -s -S -X POST "${CALLBACK_URL}" \
               -H "Content-Type: application/json" \
               -H "X-Worker-Api-Key: ${WORKER_API_KEY}" \
-              -d "{\"status\":\"SUCCEEDED\",\"startedAt\":\"${STARTED_AT}\",\"finishedAt\":\"${FINISHED_AT}\",\"runId\":\"${{ github.run_id }}\",\"runUrl\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" || true
+              -d "{\"status\":\"SUCCEEDED\",\"startedAt\":\"${STARTED_AT}\",\"finishedAt\":\"${FINISHED_AT}\",\"runId\":\"${{ github.run_id }}\",\"runUrl\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"serviceUrl\":\"${{ steps.k8s_deploy.outputs.IIAP_SERVICE_URL }}\"}" || true
           fi
 
       # ------------------------------------------------------------------------

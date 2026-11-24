@@ -7,6 +7,8 @@ import {
   GitCommit,
   Layers,
   Plus,
+  ExternalLink,
+  Globe,
 } from 'lucide-react';
 import { PageId } from '../types';
 import { deploymentsApi, ApiDeployment } from '../services/api';
@@ -274,7 +276,23 @@ export const DeploymentsPage: React.FC<DeploymentsPageProps> = ({
                       {formatDate(d.startedAt || d.createdAt)}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <ChevronRight className="w-4 h-4 text-[#A1A1B5] group-hover:text-violet-300 transition-all inline-block" />
+                      <div className="flex items-center justify-end gap-2">
+                        {d.serviceUrl && (
+                          <a
+                            href={d.serviceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[11px] font-mono transition-colors"
+                            title="Open live app"
+                          >
+                            <Globe className="w-3 h-3 text-emerald-400" />
+                            <span>App</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                        <ChevronRight className="w-4 h-4 text-[#A1A1B5] group-hover:text-violet-300 transition-all inline-block" />
+                      </div>
                     </td>
                   </tr>
                 ))}

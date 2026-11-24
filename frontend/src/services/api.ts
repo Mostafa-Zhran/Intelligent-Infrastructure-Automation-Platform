@@ -393,6 +393,7 @@ export interface ApiDeployment {
   repositoryUrl?: string | null;
   replicas: number;
   errorMessage?: string | null;
+  serviceUrl?: string | null;
   startedAt?: string | null;
   finishedAt?: string | null;
   createdAt: string;

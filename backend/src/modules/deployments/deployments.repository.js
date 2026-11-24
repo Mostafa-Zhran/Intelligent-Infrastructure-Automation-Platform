@@ -53,6 +53,14 @@ async function listDeploymentsForUser(userId, isAdmin, { skip = 0, take = 20, st
                     url: true,
                 },
             },
+            deployment_events: {
+                where: { stage: 'STATUS_UPDATE' },
+                orderBy: { created_at: 'desc' },
+                take: 2,
+                select: {
+                    metadata: true,
+                },
+            },
         },
     });
 }
@@ -139,6 +147,7 @@ async function findDeploymentById(deploymentId) {
                     to_state: true,
                     stage: true,
                     message: true,
+                    metadata: true,
                     created_at: true,
                 },
             },
@@ -207,7 +216,7 @@ async function saveDeploymentLogs(deploymentId, logLines = []) {
  * Update deployment status (called by GitHub Actions / CI worker callback).
  * Validates state transitions and prevents stale updates.
  */
-async function updateDeploymentStatus(deploymentId, { status, errorMessage, startedAt, finishedAt, runId, runUrl }) {
+async function updateDeploymentStatus(deploymentId, { status, errorMessage, startedAt, finishedAt, runId, runUrl, serviceUrl }) {
     const now = new Date();
 
     const existing = await prisma.deployments.findUnique({
@@ -266,6 +275,7 @@ async function updateDeploymentStatus(deploymentId, { status, errorMessage, star
                     source: 'worker_callback',
                     timestamp: now.toISOString(),
                     ...(runId ? { runId: String(runId) } : {}),
+                    ...(serviceUrl ? { serviceUrl: String(serviceUrl) } : {}),
                     ...(errorMessage ? { error: errorMessage } : {}),
                 },
             },

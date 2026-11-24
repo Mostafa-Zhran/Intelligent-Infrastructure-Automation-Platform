@@ -62,6 +62,17 @@ function formatDeployment(d) {
                   url: d.ci_jobs[0].url,
               }
             : null,
+        // Extract serviceUrl from the latest SUCCEEDED event metadata
+        serviceUrl: (() => {
+            const events = d.deployment_events || [];
+            for (let i = events.length - 1; i >= 0; i--) {
+                const meta = events[i].metadata;
+                if (meta && typeof meta === 'object' && meta.serviceUrl) {
+                    return meta.serviceUrl;
+                }
+            }
+            return null;
+        })(),
     };
 }
 
@@ -287,7 +298,7 @@ async function getDeploymentLogs(deploymentId, user, query = {}) {
  * Only accepts requests from internal sources (validated by middleware).
  */
 async function updateDeploymentStatus(deploymentId, payload) {
-    const { status, errorMessage, startedAt, finishedAt, runId, runUrl } = payload;
+    const { status, errorMessage, startedAt, finishedAt, runId, runUrl, serviceUrl } = payload;
 
     if (!status || !ALLOWED_STATUSES.includes(status.toUpperCase())) {
         throw new ApiError(400, `Invalid status. Must be one of: ${ALLOWED_STATUSES.join(', ')}`);
@@ -300,6 +311,7 @@ async function updateDeploymentStatus(deploymentId, payload) {
         finishedAt,
         runId,
         runUrl,
+        serviceUrl: serviceUrl ? String(serviceUrl).substring(0, 500) : undefined,
     });
 
     if (!result) throw new ApiError(404, 'Deployment not found');

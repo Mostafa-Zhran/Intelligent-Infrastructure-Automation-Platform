@@ -13,6 +13,10 @@ PORT="${PORT:-3000}"
 HOST="${HOST:-${APP_NAME}.local}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-180}"
 OUTPUT_DIR="${OUTPUT_DIR:-/tmp/k8s-rendered-${APP_NAME}}"
+CLUSTER_NODE_IP="${CLUSTER_NODE_IP:-}"
+
+# Derive a stable NodePort (30000–32767) from APP_NAME hash so each project gets its own port
+NODE_PORT=$((30000 + $(echo -n "${APP_NAME}" | cksum | cut -d' ' -f1) % 2767))
 
 echo "=========================================================="
 echo " [PIPE-07] Kubernetes Deployment Pipeline Stage"
@@ -162,7 +166,7 @@ spec:
     - name: http
       port: 80
       targetPort: ${PORT}
-      nodePort: 30080
+      nodePort: ${NODE_PORT}
       protocol: TCP
   selector:
     app.kubernetes.io/name: ${APP_NAME}
@@ -222,6 +226,18 @@ if [ "${HAS_CLUSTER}" = "true" ]; then
 
   SERVICE_URL="http://${HOST}"
   echo "✓ Service URL: ${SERVICE_URL}"
+
+  # Build real NodePort URL and export for GitHub Actions callback
+  if [ -n "${CLUSTER_NODE_IP}" ]; then
+    REAL_SERVICE_URL="http://${CLUSTER_NODE_IP}:${NODE_PORT}"
+  else
+    _EXT_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}' 2>/dev/null || true)
+    REAL_SERVICE_URL="http://${_EXT_IP:-localhost}:${NODE_PORT}"
+  fi
+  echo "✓ NodePort URL: ${REAL_SERVICE_URL}"
+  if [ -n "${GITHUB_OUTPUT:-}" ]; then
+    echo "IIAP_SERVICE_URL=${REAL_SERVICE_URL}" >> "${GITHUB_OUTPUT}"
+  fi
 else
   # Pre-cluster dry-run mode
   if command -v python3 &> /dev/null; then
