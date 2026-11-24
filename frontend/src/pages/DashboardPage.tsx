@@ -10,7 +10,6 @@ import {
   Search,
   CheckCircle2,
   GitCommit,
-  Activity,
   ArrowRight,
 } from 'lucide-react';
 import { PageId, UserProfile } from '../types';
@@ -79,7 +78,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     await fetchDashboardData(true);
-    onShowToast?.('info', 'Telemetry Synced', 'Live pipeline metrics and projects refreshed.');
+    onShowToast?.('info', 'Telemetry Synced', 'Live pipeline metrics and infrastructure state updated.');
   };
 
   const filteredProjects = projects.filter((p) => {
@@ -100,43 +99,43 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     switch ((status || '').toUpperCase()) {
       case 'SUCCEEDED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             <span>Succeeded</span>
           </span>
         );
       case 'RUNNING':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-sky-500/15 border border-sky-500/30 text-sky-300 shadow-[0_0_12px_-2px_rgba(56,189,248,0.4)]">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-sky-500/10 border border-sky-500/30 text-sky-300 font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
             <span>Running</span>
           </span>
         );
       case 'FAILED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-rose-500/15 border border-rose-500/30 text-rose-400">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-rose-500/10 border border-rose-500/30 text-rose-400 font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
             <span>Failed</span>
           </span>
         );
       case 'QUEUED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/15 border border-amber-500/30 text-amber-400">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
             <span>Queued</span>
           </span>
         );
       case 'READY':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             <span>Ready</span>
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white/5 border border-white/10 text-[#A1A1B5]">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white/5 border border-white/10 text-slate-400 font-mono">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
             <span>Pending</span>
           </span>
         );
@@ -159,169 +158,155 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   };
 
   return (
-    <div className="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-8 sm:py-10 max-w-7xl mx-auto flex flex-col gap-8 animate-slideUpFade">
-      {/* Subtle ambient lighting */}
-      <div className="absolute -top-32 -left-20 w-96 h-96 bg-violet-600/10 rounded-full blur-[140px] pointer-events-none -z-10" />
-      <div className="absolute top-48 -right-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-[160px] pointer-events-none -z-10" />
-
-      {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 z-10">
+    <div className="relative w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-10 max-w-7xl mx-auto flex flex-col gap-8 animate-fadeIn">
+      {/* ── 1. Top Executive Control Header ─────────────────────────────── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/5">
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">Console Overview</h1>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-white/[0.04] text-[#A1A1B5] border border-white/10">
-              <Activity className="w-3 h-3 text-emerald-400" />
-              <span>Operational</span>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              Engineering Console
+            </h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Mesh Active</span>
             </span>
           </div>
-          <p className="text-sm text-[#A1A1B5]">
-            Welcome back, <span className="text-white font-medium">{user.fullName || "Developer"}</span>. Real-time infrastructure status and active pipeline delivery.
+          <p className="text-xs sm:text-sm text-slate-400">
+            Authenticated as <span className="text-slate-200 font-medium">{user.fullName || 'Operator'}</span> ({user.email}) · Live Kubernetes & CI/CD topology control.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs font-mono text-[#A1A1B5] hidden sm:inline-block">
-            Updated: <span className="text-white font-mono">{lastUpdated}</span>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="text-xs font-mono text-slate-500 hidden lg:inline-block mr-1">
+            Synced: <span className="text-slate-300">{lastUpdated}</span>
           </span>
 
           <button
             type="button"
             onClick={handleManualRefresh}
             disabled={isRefreshing}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/10 text-xs font-medium transition-colors shadow-sm disabled:opacity-50"
-            title="Sync latest telemetry"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] text-slate-200 hover:text-white border border-white/10 text-xs font-medium transition-colors disabled:opacity-50"
+            title="Refresh metrics and pipelines"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-[#A1A1B5] ${isRefreshing ? 'animate-spin text-sky-400' : ''}`} />
-            <span>{isRefreshing ? 'Syncing...' : 'Refresh'}</span>
+            <RefreshCw className={`w-3.5 h-3.5 text-slate-400 ${isRefreshing ? 'animate-spin text-sky-400' : ''}`} />
+            <span>{isRefreshing ? 'Syncing...' : 'Sync Telemetry'}</span>
           </button>
 
           <button
             type="button"
             onClick={() => onNavigate('new-project')}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-500 text-xs font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.5)] hover:shadow-[0_4px_28px_0_rgba(139,92,246,0.7)] hover:brightness-110 active:scale-[0.98] transition-all"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shadow-[0_0_20px_rgba(124,58,237,0.4)] transition-all active:scale-[0.98]"
           >
-            <Plus className="w-4 h-4" />
-            <span>New Project</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span>Deploy Project</span>
           </button>
         </div>
       </div>
 
-      {/* Primary Metrics Strip (Operate mode: high contrast, glanceable) */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 z-10">
+      {/* ── 2. Primary Telemetry Tiles (Operate Mode: High Contrast & Dense) ─ */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         {/* Metric 1: Total Projects */}
         <div
           onClick={() => onNavigate('projects')}
-          className="relative overflow-hidden rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10 shadow-[0_16px_36px_-10px_rgba(0,0,0,0.5)] group hover:border-violet-500/40 transition-all cursor-pointer"
+          className="p-4 sm:p-5 rounded-2xl bg-[#0C0C16] border border-white/10 hover:border-violet-500/30 transition-all cursor-pointer flex flex-col justify-between group"
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#A1A1B5]">
-              Total Projects
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-300 group-hover:scale-105 transition-transform">
-              <FolderGit2 className="w-4 h-4" />
-            </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Projects</span>
+            <FolderGit2 className="w-4 h-4 text-violet-400 group-hover:scale-110 transition-transform" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-white tracking-tight">
+          <div className="mt-4 flex items-baseline gap-2">
+            <span className="text-3xl font-extrabold text-white font-mono tracking-tight tabular-nums">
               {isLoading ? '…' : metrics.totalProjects}
             </span>
-            <span className="text-xs text-[#A1A1B5]">tracked repos</span>
+            <span className="text-[11px] text-slate-500 font-mono">active repos</span>
           </div>
         </div>
 
-        {/* Metric 2: Active Pipelines */}
+        {/* Metric 2: Active Deployments */}
         <div
-          onClick={() => onNavigate('deployments')}
-          className="relative overflow-hidden rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10 shadow-[0_16px_36px_-10px_rgba(0,0,0,0.5)] group hover:border-sky-500/40 transition-all cursor-pointer"
+          onClick={() => {
+            setDeploymentFilter('RUNNING');
+          }}
+          className={`p-4 sm:p-5 rounded-2xl bg-[#0C0C16] border transition-all cursor-pointer flex flex-col justify-between group ${
+            metrics.runningDeployments > 0 ? 'border-sky-500/40' : 'border-white/10 hover:border-sky-500/30'
+          }`}
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#A1A1B5]">
-              Running Pipelines
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
-              <RefreshCw className={`w-4 h-4 ${metrics.runningDeployments > 0 ? 'animate-spin' : ''}`} />
-            </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Active Rollouts</span>
+            <RefreshCw className={`w-4 h-4 text-sky-400 ${metrics.runningDeployments > 0 ? 'animate-spin' : ''}`} />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-white tracking-tight">
+          <div className="mt-4 flex items-baseline gap-2">
+            <span className="text-3xl font-extrabold text-sky-400 font-mono tracking-tight tabular-nums">
               {isLoading ? '…' : metrics.runningDeployments}
             </span>
-            {metrics.runningDeployments > 0 ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-300">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" /> Active build
-              </span>
-            ) : (
-              <span className="text-xs text-[#A1A1B5]">idle</span>
-            )}
+            <span className="text-[11px] text-slate-500 font-mono">
+              {metrics.runningDeployments > 0 ? 'building now' : 'idle state'}
+            </span>
           </div>
         </div>
 
         {/* Metric 3: Succeeded */}
         <div
-          onClick={() => onNavigate('deployments')}
-          className="relative overflow-hidden rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10 shadow-[0_16px_36px_-10px_rgba(0,0,0,0.5)] group hover:border-emerald-500/40 transition-all cursor-pointer"
+          onClick={() => {
+            setDeploymentFilter('SUCCEEDED');
+          }}
+          className="p-4 sm:p-5 rounded-2xl bg-[#0C0C16] border border-white/10 hover:border-emerald-500/30 transition-all cursor-pointer flex flex-col justify-between group"
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#A1A1B5]">
-              Succeeded
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Succeeded</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-emerald-400 tracking-tight">
+          <div className="mt-4 flex items-baseline gap-2">
+            <span className="text-3xl font-extrabold text-emerald-400 font-mono tracking-tight tabular-nums">
               {isLoading ? '…' : metrics.succeededDeployments}
             </span>
-            <span className="text-xs text-[#A1A1B5]">healthy deploys</span>
+            <span className="text-[11px] text-slate-500 font-mono">live workloads</span>
           </div>
         </div>
 
         {/* Metric 4: Failed */}
         <div
-          onClick={() => onNavigate('deployments')}
-          className="relative overflow-hidden rounded-2xl bg-[#13131F]/90 backdrop-blur-xl p-5 border border-white/10 shadow-[0_16px_36px_-10px_rgba(0,0,0,0.5)] group hover:border-rose-500/40 transition-all cursor-pointer"
+          onClick={() => {
+            setDeploymentFilter('FAILED');
+          }}
+          className={`p-4 sm:p-5 rounded-2xl bg-[#0C0C16] border transition-all cursor-pointer flex flex-col justify-between group ${
+            metrics.failedDeployments > 0 ? 'border-rose-500/40' : 'border-white/10 hover:border-rose-500/30'
+          }`}
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#A1A1B5]">
-              Failed (Needs review)
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 group-hover:scale-105 transition-transform">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Failed</span>
+            <AlertTriangle className={`w-4 h-4 ${metrics.failedDeployments > 0 ? 'text-rose-400' : 'text-slate-500'}`} />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-rose-400 tracking-tight">
+          <div className="mt-4 flex items-baseline gap-2">
+            <span className={`text-3xl font-extrabold font-mono tracking-tight tabular-nums ${metrics.failedDeployments > 0 ? 'text-rose-400' : 'text-white'}`}>
               {isLoading ? '…' : metrics.failedDeployments}
             </span>
-            {metrics.failedDeployments > 0 ? (
-              <span className="text-[11px] font-medium text-rose-300">action required</span>
-            ) : (
-              <span className="text-xs text-[#A1A1B5]">all clear</span>
-            )}
+            <span className="text-[11px] text-slate-500 font-mono">
+              {metrics.failedDeployments > 0 ? 'needs triage' : '0 errors'}
+            </span>
           </div>
         </div>
       </section>
 
-      {/* Middle Section: Active Projects Grid */}
-      <section className="relative rounded-2xl sm:rounded-3xl bg-[#13131F]/80 backdrop-blur-xl p-6 sm:p-7 border border-white/10 shadow-[0_20px_48px_-12px_rgba(0,0,0,0.6)] z-10">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 mb-5 border-b border-white/5 gap-3">
+      {/* ── 3. Active Projects Section ───────────────────────────────────── */}
+      <section className="rounded-2xl bg-[#0A0A14] border border-white/10 p-5 sm:p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/5">
           <div className="flex items-center gap-2.5">
-            <h2 className="text-lg font-bold text-white tracking-tight">Active Projects</h2>
-            <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 border border-white/10 text-[#A1A1B5] font-mono">
+            <h2 className="text-base font-bold text-white tracking-tight">Active Repositories</h2>
+            <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 border border-white/10 text-slate-400 font-mono tabular-nums">
               {filteredProjects.length}
             </span>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="relative flex items-center">
-              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Filter projects..."
+                placeholder="Search projects by name..."
                 value={projectSearch}
                 onChange={(e) => setProjectSearch(e.target.value)}
-                className="w-44 sm:w-56 h-8 pl-8 pr-3 text-xs bg-white/[0.04] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/60 transition-colors"
+                className="w-48 sm:w-64 h-8 pl-8 pr-3 text-xs bg-white/[0.03] border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/60 transition-colors"
               />
             </div>
 
@@ -330,7 +315,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               onClick={() => onNavigate('projects')}
               className="inline-flex items-center gap-1 text-xs font-medium text-violet-300 hover:text-white transition-colors"
             >
-              <span>View all projects</span>
+              <span>View all</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -338,36 +323,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
         {/* Loading state */}
         {isLoading && (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <RefreshCw className="w-6 h-6 text-violet-400 animate-spin" />
-            <p className="text-xs text-[#A1A1B5]">Syncing project catalog…</p>
+          <div className="flex flex-col items-center justify-center py-10 gap-2.5">
+            <RefreshCw className="w-5 h-5 text-violet-400 animate-spin" />
+            <p className="text-xs text-slate-400 font-mono">Syncing repositories from database…</p>
           </div>
         )}
 
         {/* Zero state */}
         {!isLoading && projects.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-[#A1A1B5] mb-3">
-              <FolderGit2 className="w-6 h-6" />
+            <div className="w-11 h-11 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center text-slate-400 mb-3">
+              <FolderGit2 className="w-5 h-5" />
             </div>
-            <p className="text-sm font-semibold text-white mb-1">No registered projects yet</p>
-            <p className="text-xs text-[#A1A1B5] mb-5 max-w-xs">
-              Connect a Git repository to provision containers and automated CI/CD pipelines.
+            <p className="text-sm font-semibold text-white mb-1">No repositories configured</p>
+            <p className="text-xs text-slate-400 mb-5 max-w-xs">
+              Connect a Git repository to start automated container builds and live Kubernetes rollouts.
             </p>
             <button
               type="button"
               onClick={() => onNavigate('new-project')}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-semibold shadow-md hover:brightness-110 transition-all"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shadow-md transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Create Project</span>
+              <span>Deploy First Project</span>
             </button>
           </div>
         )}
 
         {/* Projects Cards Grid */}
         {!isLoading && projects.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredProjects.slice(0, 6).map((p) => (
               <div
                 key={p.id}
@@ -375,22 +360,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   if (onSelectProject) onSelectProject(p);
                   onNavigate('project-details');
                 }}
-                className="group relative flex flex-col justify-between p-5 rounded-2xl bg-[#0F0F19]/90 hover:bg-[#161626] border border-white/10 hover:border-violet-500/40 transition-all duration-200 cursor-pointer shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:shadow-[0_12px_28px_-6px_rgba(139,92,246,0.2)]"
+                className="group flex flex-col justify-between p-4 sm:p-5 rounded-xl bg-[#0E0E1B] hover:bg-[#131326] border border-white/10 hover:border-violet-500/40 transition-all cursor-pointer"
               >
-                <div className="flex flex-col gap-1.5 mb-5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-white group-hover:text-violet-300 transition-colors truncate">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-white group-hover:text-violet-300 transition-colors truncate">
                       {p.name}
                     </span>
-                    <ArrowUpRight className="w-4 h-4 text-[#A1A1B5] group-hover:text-violet-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+                    <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-violet-300 transition-colors shrink-0" />
                   </div>
-                  <span className="font-mono text-[11px] text-[#A1A1B5] truncate">
-                    {p.githubRepoFullName || p.repositoryUrl || 'Direct container repository'}
-                  </span>
+                  <p className="font-mono text-xs text-slate-400 truncate">
+                    {p.githubRepoFullName || p.repositoryUrl || 'Container project'}
+                  </p>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[11px] bg-white/[0.04] text-[#A1A1B5] border border-white/5 capitalize">
+                <div className="flex items-center justify-between pt-3 mt-4 border-t border-white/5 text-xs">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[10px] bg-white/[0.04] text-slate-400 border border-white/5 capitalize">
                     {p.defaultEnvironment}
                   </span>
                   {p.latestDeployment
@@ -403,17 +388,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         )}
       </section>
 
-      {/* Bottom Section: Recent Pipeline Deployments */}
-      <section className="relative rounded-2xl sm:rounded-3xl bg-[#13131F]/80 backdrop-blur-xl p-6 sm:p-7 border border-white/10 shadow-[0_20px_48px_-12px_rgba(0,0,0,0.6)] z-10">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 mb-4 border-b border-white/5 gap-3">
+      {/* ── 4. Recent Pipeline Deployments Table ─────────────────────────── */}
+      <section className="rounded-2xl bg-[#0A0A14] border border-white/10 p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/5">
           <div className="flex items-center gap-2.5">
-            <h2 className="text-lg font-bold text-white tracking-tight">Recent Pipeline Runs</h2>
-            <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 border border-white/10 text-[#A1A1B5] font-mono">
+            <h2 className="text-base font-bold text-white tracking-tight">Recent Deployments</h2>
+            <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 border border-white/10 text-slate-400 font-mono tabular-nums">
               {filteredDeployments.length} runs
             </span>
           </div>
 
-          {/* Filter Pills */}
+          {/* Quick Filter Pills */}
           <div className="flex flex-wrap items-center gap-1.5">
             {(['ALL', 'RUNNING', 'SUCCEEDED', 'FAILED'] as const).map((st) => (
               <button
@@ -422,8 +407,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 onClick={() => setDeploymentFilter(st)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-colors ${
                   deploymentFilter === st
-                    ? 'bg-violet-600/30 text-white border border-violet-500/40 font-semibold'
-                    : 'bg-white/[0.03] text-[#A1A1B5] hover:text-white border border-transparent'
+                    ? 'bg-violet-600 text-white font-semibold'
+                    : 'bg-white/[0.03] text-slate-400 hover:text-white hover:bg-white/[0.06]'
                 }`}
               >
                 {st}
@@ -435,40 +420,40 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               onClick={() => onNavigate('deployments')}
               className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-violet-300 hover:text-white transition-colors"
             >
-              <span>View all</span>
+              <span>View all runs</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
         {/* Deployments Table */}
-        <div className="overflow-x-auto w-full -mx-2 sm:mx-0">
-          <table className="w-full text-left text-sm border-collapse min-w-[700px]">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left text-sm border-collapse min-w-[720px]">
             <thead>
-              <tr className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5] bg-white/[0.02] border-b border-white/5">
-                <th className="py-3 px-4 rounded-l-xl">Deployment</th>
+              <tr className="text-[11px] font-mono uppercase tracking-wider text-slate-400 bg-white/[0.02] border-b border-white/5">
+                <th className="py-3 px-4">Deployment ID</th>
                 <th className="py-3 px-4">Project</th>
                 <th className="py-3 px-4">Branch / Commit</th>
                 <th className="py-3 px-4">Environment</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4">Time</th>
-                <th className="py-3 px-4 rounded-r-xl text-right">Details</th>
+                <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-xs">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-[#A1A1B5]">
-                    <RefreshCw className="w-5 h-5 animate-spin inline-block mr-2" />
+                  <td colSpan={7} className="py-10 text-center text-slate-400">
+                    <RefreshCw className="w-5 h-5 animate-spin inline-block mr-2 text-violet-400" />
                     Loading deployment history…
                   </td>
                 </tr>
               ) : filteredDeployments.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-[#A1A1B5] text-xs">
+                  <td colSpan={7} className="py-10 text-center text-slate-500 font-mono text-xs">
                     {deploymentFilter !== 'ALL'
                       ? `No deployments with status "${deploymentFilter}".`
-                      : 'No deployment pipelines triggered yet.'}
+                      : 'No deployment pipelines executed yet.'}
                   </td>
                 </tr>
               ) : (
@@ -479,18 +464,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       if (onSelectDeployment) onSelectDeployment(d);
                       onNavigate('deployment-details');
                     }}
-                    className="group hover:bg-white/[0.03] transition-colors cursor-pointer"
+                    className="group hover:bg-white/[0.02] transition-colors cursor-pointer"
                   >
                     <td className="py-3.5 px-4 font-mono font-bold text-white">
                       {d.id.substring(0, 8)}…
                     </td>
                     <td className="py-3.5 px-4">
                       <span className="text-white group-hover:text-violet-300 font-medium transition-colors flex items-center gap-1.5">
-                        <Terminal className="w-3.5 h-3.5 text-[#A1A1B5]" />
+                        <Terminal className="w-3.5 h-3.5 text-slate-400" />
                         <span>{d.projectName}</span>
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-[#A1A1B5]">
+                    <td className="py-3.5 px-4 font-mono text-slate-400">
                       <div className="flex items-center gap-1.5">
                         <GitCommit className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                         <span>{d.branch}</span>
@@ -502,18 +487,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[11px] bg-white/[0.04] text-[#A1A1B5] border border-white/5 capitalize">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[10px] bg-white/[0.04] text-slate-400 border border-white/5 capitalize">
                         {d.environment}
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
                       {renderStatusBadge(d.status)}
                     </td>
-                    <td className="py-3.5 px-4 text-[#A1A1B5]">
+                    <td className="py-3.5 px-4 text-slate-400 font-mono">
                       {formatRelativeTime(d.startedAt)}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <ChevronRight className="w-4 h-4 text-[#A1A1B5] group-hover:text-violet-300 transition-all inline-block" />
+                      <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-violet-300 transition-colors inline-block" />
                     </td>
                   </tr>
                 ))

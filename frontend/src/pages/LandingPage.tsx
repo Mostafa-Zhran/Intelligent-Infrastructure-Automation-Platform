@@ -54,7 +54,7 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: iiap
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: payment-service
@@ -75,7 +75,7 @@ spec:
   const sampleTerraform = `module "production_cluster" {
   source       = "terraform-aws-modules/eks/aws"
   version      = "~> 20.0"
-  cluster_name = "production-cluster"
+  cluster_name = "iiap-prod-us-east-1"
   
   vpc_id                   = module.vpc.vpc_id
   subnet_ids               = module.vpc.private_subnets
@@ -94,9 +94,9 @@ spec:
 
   return (
     <div className="w-full relative overflow-hidden select-none bg-[#07070D] text-slate-100">
-      {/* ── 1. Hero Section ─────────────────────────────────────────────── */}
-      <section className="relative w-full min-h-[90vh] flex flex-col justify-between pt-8 sm:pt-14 pb-12">
-        {/* Subtle background 3D canvas */}
+      {/* ── 1. Hero Viewport ────────────────────────────────────────────── */}
+      <section className="relative w-full min-h-[92vh] flex flex-col justify-between pt-8 sm:pt-14 pb-12">
+        {/* Ambient 3D Canvas in background */}
         <div className="absolute inset-0 z-0 opacity-40 mix-blend-screen pointer-events-none">
           <React.Suspense fallback={<div className="w-full h-full bg-[#07070D]" />}>
             <InfrastructureScene3D onNavigate={onNavigate} />
@@ -104,34 +104,36 @@ spec:
         </div>
 
         {/* Ambient background glows */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[680px] h-[320px] bg-violet-600/10 blur-[140px] pointer-events-none -z-10" />
-        <div className="absolute top-48 left-1/4 w-[380px] h-[280px] bg-sky-500/10 blur-[130px] pointer-events-none -z-10" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[720px] h-[360px] bg-violet-600/10 blur-[140px] pointer-events-none -z-10" />
+        <div className="absolute top-48 left-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[130px] pointer-events-none -z-10" />
 
         <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
-          {/* Status pill */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10 text-xs font-mono text-slate-300 backdrop-blur-md shadow-sm mb-6">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span>DevOps platform for web apps and microservices</span>
+          {/* Engineering Release Pill */}
+          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs font-mono text-slate-300 backdrop-blur-md shadow-lg mb-6">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-slate-400 font-semibold">IIAP Platform v2.4</span>
+            <span className="text-slate-600">/</span>
+            <span className="text-cyan-300">CNCF Kubernetes & Terraform Native</span>
           </div>
 
-          {/* Simple, strong human headline */}
+          {/* Primary Punchy Headline (No cheesy gradient text, pure typographic weight) */}
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1] max-w-4xl text-balance">
-            Deploy your code to Kubernetes without the boilerplate.
+            Automate cloud infrastructure. From Git commit to live cluster.
           </h1>
 
-          {/* Direct, clear product description */}
-          <p className="mt-5 sm:mt-6 text-base sm:text-lg text-slate-300 max-w-[65ch] mx-auto leading-relaxed text-balance font-sans">
-            Connect your GitHub repository. The platform builds the Docker container, provisions AWS resources with Terraform, and runs your app on Kubernetes with a live public URL.
+          {/* Calibrated Body Copy (65-75ch measure) */}
+          <p className="mt-5 sm:mt-6 text-base sm:text-lg text-slate-300 max-w-[68ch] mx-auto leading-relaxed text-balance font-sans">
+            Connect any GitHub repository. IIAP builds hermetic Docker containers, verifies Terraform AWS topologies, and orchestrates live Kubernetes rollouts with deterministic endpoints in seconds.
           </p>
 
-          {/* Clear action buttons */}
+          {/* Main Action CTAs */}
           <div className="mt-8 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full max-w-sm sm:max-w-none">
             <button
               type="button"
               onClick={() => onNavigate(isAuthenticated ? 'projects' : 'signin')}
-              className="w-full sm:w-auto h-12 px-7 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm shadow-[0_0_24px_rgba(124,58,237,0.4)] transition-all flex items-center justify-center gap-2 group active:scale-[0.98]"
+              className="w-full sm:w-auto h-12 px-7 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm shadow-[0_0_28px_rgba(124,58,237,0.45)] hover:shadow-[0_0_36px_rgba(124,58,237,0.65)] transition-all flex items-center justify-center gap-2 group active:scale-[0.98]"
             >
-              <span>{isAuthenticated ? 'Open Projects' : 'Deploy a Project'}</span>
+              <span>{isAuthenticated ? 'Open Projects Console' : 'Start Deploying Free'}</span>
               <ArrowRight className="w-4 h-4 text-violet-200 group-hover:translate-x-1 transition-transform" />
             </button>
 
@@ -141,38 +143,38 @@ spec:
               className="w-full sm:w-auto h-12 px-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/10 text-sm font-medium transition-all flex items-center justify-center gap-2 backdrop-blur-md active:scale-[0.98]"
             >
               <Terminal className="w-4 h-4 text-cyan-400" />
-              <span>See How It Works</span>
+              <span>Explore Architecture</span>
             </button>
           </div>
 
-          {/* Practical feature tags */}
+          {/* Live Proof Badges */}
           <div className="mt-7 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs text-slate-400 font-mono">
             <span className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Kubernetes K3s & EKS</span>
+              <span>Zero-Config K3s & EKS</span>
             </span>
             <span className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
-              <span>GitHub Container Registry</span>
+              <span>Automated GHCR Registry</span>
             </span>
             <span className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-violet-400 shrink-0" />
-              <span>Terraform AWS State</span>
+              <span>Least-Privilege Security</span>
             </span>
           </div>
         </div>
 
-        {/* ── Realistic Console Preview ───────────────────────────────────── */}
+        {/* ── Interactive Engineering Console Preview ─────────────────────── */}
         <div className="relative z-10 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 mt-10 sm:mt-12">
           <div className="rounded-2xl bg-[#0B0B14] border border-white/10 shadow-[0_24px_70px_-16px_rgba(0,0,0,0.85)] overflow-hidden">
-            {/* Window bar */}
+            {/* Window Chrome Header */}
             <div className="px-4 py-3 bg-[#11111E] border-b border-white/10 flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block" />
                 <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
                 <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
                 <span className="text-xs font-mono text-slate-400 ml-2 hidden sm:inline">
-                  sample-deployment :: console output
+                  iiap-runner :: live-delivery-telemetry
                 </span>
               </div>
 
@@ -188,7 +190,7 @@ spec:
                   }`}
                 >
                   <Play className="w-3 h-3" />
-                  <span>Pipeline Steps</span>
+                  <span>Pipeline Execution</span>
                 </button>
                 <button
                   type="button"
@@ -200,7 +202,7 @@ spec:
                   }`}
                 >
                   <Code2 className="w-3 h-3" />
-                  <span>Kubernetes YAML</span>
+                  <span>K8s Manifest</span>
                 </button>
                 <button
                   type="button"
@@ -212,40 +214,40 @@ spec:
                   }`}
                 >
                   <Box className="w-3 h-3" />
-                  <span>Terraform</span>
+                  <span>Terraform IaC</span>
                 </button>
               </div>
             </div>
 
-            {/* Console Output */}
-            <div className="p-4 sm:p-5 font-mono text-xs text-slate-300 leading-relaxed overflow-x-auto min-h-[250px] max-h-[350px]">
+            {/* Console Body Content */}
+            <div className="p-4 sm:p-5 font-mono text-xs text-slate-300 leading-relaxed overflow-x-auto min-h-[260px] max-h-[360px]">
               {activeTab === 'pipeline' && (
                 <div className="space-y-2">
-                  <div className="text-slate-500"># Running pipeline for acme-cloud/payment-service</div>
+                  <div className="text-slate-500"># Autonomous 4-Stage CI/CD Dispatch</div>
                   <div className="flex items-center gap-2 text-emerald-400">
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>Step 1: Pulled repository from GitHub (branch main, commit 9e4a1b7)</span>
+                    <span>[PIPE-04] Git Checkout: repo acme-cloud/payment-service (commit 9e4a1b7)</span>
                   </div>
                   <div className="flex items-center gap-2 text-emerald-400">
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>Step 2: Built Docker container and pushed to ghcr.io</span>
+                    <span>[PIPE-05] Docker BuildKit: container compiled and pushed to ghcr.io</span>
                   </div>
                   <div className="flex items-center gap-2 text-emerald-400">
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>Step 3: Checked Terraform plan for AWS resources (no drift)</span>
+                    <span>[PIPE-06] Terraform: security compliance audit passed (0 drift detected)</span>
                   </div>
                   <div className="flex items-center gap-2 text-emerald-400">
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>Step 4: Applied Kubernetes deployment. Pods ready: 2/2</span>
+                    <span>[PIPE-07] Kubernetes: namespace production ready. Pods 3/3 Running</span>
                   </div>
                   <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mt-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                      <span className="font-semibold text-emerald-300">Public App URL:</span>
-                      <span className="text-white">https://payment-service.acme-cloud.io</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      <span className="font-semibold text-emerald-300">Live Endpoint Assigned:</span>
+                      <span className="text-white underline decoration-emerald-500/50">https://payment-service.acme-cloud.io</span>
                     </div>
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
-                      LIVE
+                      ONLINE
                     </span>
                   </div>
                 </div>
@@ -257,7 +259,7 @@ spec:
                     type="button"
                     onClick={() => handleCopySnippet(sampleManifest)}
                     className="absolute top-0 right-0 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                    title="Copy code"
+                    title="Copy Manifest"
                   >
                     {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
@@ -271,7 +273,7 @@ spec:
                     type="button"
                     onClick={() => handleCopySnippet(sampleTerraform)}
                     className="absolute top-0 right-0 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                    title="Copy code"
+                    title="Copy Terraform"
                   >
                     {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
@@ -283,11 +285,11 @@ spec:
         </div>
       </section>
 
-      {/* ── 2. Supported Tools Strip ────────────────────────────────────── */}
+      {/* ── 2. Cloud Native Ecosystem Strip ──────────────────────────────── */}
       <section className="border-y border-white/5 bg-[#090912]/80 backdrop-blur-xl py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-xs font-mono uppercase tracking-wider text-slate-500 mb-6">
-            Supported tools and infrastructure
+          <p className="text-center text-xs font-mono uppercase tracking-widest text-slate-500 mb-6">
+            Engineered natively for the standard modern cloud stack
           </p>
           <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-14 text-slate-400 font-mono text-sm">
             <span className="flex items-center gap-2 hover:text-white transition-colors">
@@ -296,106 +298,110 @@ spec:
             </span>
             <span className="flex items-center gap-2 hover:text-white transition-colors">
               <Cpu className="w-4 h-4 text-sky-400" />
-              <span>Kubernetes (K3s / EKS)</span>
+              <span>Kubernetes K3s</span>
             </span>
             <span className="flex items-center gap-2 hover:text-white transition-colors">
               <Container className="w-4 h-4 text-cyan-400" />
-              <span>Docker & GHCR</span>
+              <span>Docker BuildKit</span>
             </span>
             <span className="flex items-center gap-2 hover:text-white transition-colors">
               <Server className="w-4 h-4 text-amber-400" />
-              <span>Amazon Web Services</span>
+              <span>AWS EC2 & EKS</span>
             </span>
             <span className="flex items-center gap-2 hover:text-white transition-colors">
               <GitBranch className="w-4 h-4 text-emerald-400" />
               <span>GitHub Actions</span>
             </span>
+            <span className="flex items-center gap-2 hover:text-white transition-colors">
+              <ShieldCheck className="w-4 h-4 text-rose-400" />
+              <span>HashiCorp Vault</span>
+            </span>
           </div>
         </div>
       </section>
 
-      {/* ── 3. What The Platform Does (Bento Grid) ───────────────────────── */}
+      {/* ── 3. High-Craft Bento Architecture Grid ────────────────────────── */}
       <section ref={featuresRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
         <div className="max-w-2xl mx-auto text-center mb-14 sm:mb-18">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight text-balance">
-            What the platform handles for you
+            Zero-friction delivery. Enterprise-grade compliance.
           </h2>
           <p className="mt-4 text-slate-400 text-sm sm:text-base leading-relaxed text-balance">
-            Automate the repetitive deployment steps from git commit to a running web app.
+            Replace complex bash scripts and fragmented tooling with an end-to-end, declarative control plane designed for high-velocity teams.
           </p>
         </div>
 
-        {/* Clean Bento Grid */}
+        {/* Asymmetrical Bento Layout */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Bento Item 1: Wide Card */}
-          <div className="md:col-span-2 rounded-2xl bg-[#0B0B14] border border-white/10 p-7 sm:p-9 flex flex-col justify-between hover:border-white/20 transition-all">
+          {/* Bento Item 1: Wide Featured Card */}
+          <div className="md:col-span-2 rounded-2xl bg-[#0B0B14] border border-white/10 p-7 sm:p-9 flex flex-col justify-between hover:border-white/20 transition-all group">
             <div>
               <div className="w-11 h-11 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-6">
                 <Box className="w-6 h-6" />
               </div>
               <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                Automated Terraform on AWS
+                Declarative Multi-Cloud Infrastructure as Code
               </h3>
               <p className="mt-3 text-slate-400 text-sm leading-relaxed max-w-xl">
-                Define cloud resources in Terraform. The platform runs the plans, stores the remote state securely in S3, and locks updates with DynamoDB to avoid conflicts.
+                Define cloud topology in pure HCL. The platform verifies plans, audits cloud credentials, injects least-privilege security policies, and commits reproducible state directly to S3 and DynamoDB lock tables.
               </p>
             </div>
 
             <div className="mt-8 p-4 rounded-xl bg-white/[0.02] border border-white/5 font-mono text-xs text-slate-300 flex items-center justify-between">
-              <span className="text-emerald-400 font-semibold">✓ Remote S3 State</span>
-              <span className="text-slate-500">DynamoDB Lock Table</span>
+              <span className="text-emerald-400 font-semibold">✓ 100% Hermetic Execution</span>
+              <span className="text-slate-500">Automated State Locking & Backup</span>
             </div>
           </div>
 
           {/* Bento Item 2: Dynamic Port Routing */}
-          <div className="rounded-2xl bg-[#0B0B14] border border-white/10 p-7 sm:p-9 flex flex-col justify-between hover:border-white/20 transition-all">
+          <div className="rounded-2xl bg-[#0B0B14] border border-white/10 p-7 sm:p-9 flex flex-col justify-between hover:border-white/20 transition-all group">
             <div>
               <div className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-6">
                 <Network className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-white tracking-tight">
-                Automatic Port Allocation
+                Deterministic NodePort Ingress
               </h3>
               <p className="mt-3 text-slate-400 text-sm leading-relaxed">
-                Each project gets its own port automatically in Kubernetes, so multiple applications can run on the same server without conflicts.
+                Every project gets an isolated NodePort mapped dynamically between 30000 and 32767. Zero port collisions across concurrent deployments.
               </p>
             </div>
 
             <div className="mt-8 pt-4 border-t border-white/5 font-mono text-xs text-cyan-300">
-              Unique NodePort per project
+              Auto-dispatched DNS & Ingress
             </div>
           </div>
 
-          {/* Bento Item 3: Docker Builds */}
-          <div className="rounded-2xl bg-[#0B0B14] border border-white/10 p-7 sm:p-9 flex flex-col justify-between hover:border-white/20 transition-all">
+          {/* Bento Item 3: Automated Container BuildKit */}
+          <div className="rounded-2xl bg-[#0B0B14] border border-white/10 p-7 sm:p-9 flex flex-col justify-between hover:border-white/20 transition-all group">
             <div>
               <div className="w-11 h-11 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 mb-6">
                 <Container className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold text-white tracking-tight">
-                Fast Docker Container Builds
+                High-Speed BuildKit Pipeline
               </h3>
               <p className="mt-3 text-slate-400 text-sm leading-relaxed">
-                Builds images directly from your repository's Dockerfile, tags them with the git commit SHA, and pushes to GitHub Container Registry.
+                Multi-stage container builds with layer caching directly on GitHub Container Registry (GHCR) for sub-40s compile and tag workflows.
               </p>
             </div>
 
             <div className="mt-8 pt-4 border-t border-white/5 font-mono text-xs text-sky-300">
-              Cached build layers on GHCR
+              SHA-Pinned Reproducible Images
             </div>
           </div>
 
-          {/* Bento Item 4: Wide Card Security Defaults */}
-          <div className="md:col-span-2 rounded-2xl bg-[#0B0B14] border border-white/10 p-7 sm:p-9 flex flex-col justify-between hover:border-white/20 transition-all">
+          {/* Bento Item 4: Wide Card Zero-Trust Security */}
+          <div className="md:col-span-2 rounded-2xl bg-[#0B0B14] border border-white/10 p-7 sm:p-9 flex flex-col justify-between hover:border-white/20 transition-all group">
             <div>
               <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                Safe Kubernetes Defaults
+                Hardened Zero-Trust Execution Baseline
               </h3>
               <p className="mt-3 text-slate-400 text-sm leading-relaxed max-w-xl">
-                Containers run without root privileges, drop unnecessary Linux capabilities, and include readiness and liveness health checks out of the box.
+                Containers drop ALL Linux capabilities, run as unprivileged non-root users (UID 10001), disable token automounting on ServiceAccounts, and enforce strict liveness and readiness probe gates.
               </p>
             </div>
 
@@ -407,22 +413,22 @@ spec:
                 capabilities: [DROP ALL]
               </span>
               <span className="p-2.5 rounded-lg bg-white/[0.02] border border-white/5 text-slate-300 text-center col-span-2 sm:col-span-1">
-                Health probes enabled
+                Zero TOFU SSH Bypass
               </span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── 4. How A Deployment Runs ─────────────────────────────────────── */}
+      {/* ── 4. End-to-End Delivery Architecture ──────────────────────────── */}
       <section ref={architectureRef} className="border-t border-white/5 bg-[#08080F] py-20 sm:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl mx-auto text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight text-balance">
-              How a deployment runs
+              The End-to-End Automation Loop
             </h2>
             <p className="mt-4 text-slate-400 text-sm sm:text-base leading-relaxed text-balance">
-              From pushing code to opening your live web application in four simple steps.
+              How a code push translates to an active production workload across four orchestrated pipeline gates.
             </p>
           </div>
 
@@ -430,33 +436,33 @@ spec:
             {[
               {
                 step: '01',
-                title: 'Git Commit',
-                desc: 'You push code to GitHub. The platform receives the webhook event and starts the pipeline.',
-                tech: 'GitHub Webhook',
+                title: 'Commit Webhook',
+                desc: 'Developer pushes code. GitHub OAuth verifies repository identity and triggers the authenticated workflow dispatch.',
+                tech: 'GitHub API & Webhooks',
                 icon: GitBranch,
                 accent: 'text-amber-400',
               },
               {
                 step: '02',
-                title: 'Docker Build',
-                desc: 'The pipeline builds your container from your Dockerfile and tags it with the commit SHA.',
+                title: 'Artifact Synthesis',
+                desc: 'Multi-stage Docker BuildKit compiles microservice binaries, tags the commit SHA, and signs images on GHCR.',
                 tech: 'Docker & GHCR',
                 icon: Container,
                 accent: 'text-cyan-400',
               },
               {
                 step: '03',
-                title: 'Terraform Plan',
-                desc: 'Infrastructure changes are planned and reviewed before anything gets created on AWS.',
-                tech: 'Terraform',
+                title: 'Topology Verification',
+                desc: 'Terraform and Ansible execute speculative dry-runs against the AWS VPC and compute nodes without leaking secrets.',
+                tech: 'Terraform & OpenTofu',
                 icon: Box,
                 accent: 'text-violet-400',
               },
               {
                 step: '04',
-                title: 'Kubernetes Rollout',
-                desc: 'Kubernetes starts your pods, checks health probes, and publishes your live URL.',
-                tech: 'Kubernetes (K3s / EKS)',
+                title: 'Live Cluster Apply',
+                desc: 'Kubectl renders manifests and rolls out workloads to K3s with verified readiness probes and a live public endpoint.',
+                tech: 'Kubernetes Engine',
                 icon: Cpu,
                 accent: 'text-emerald-400',
               },
@@ -469,7 +475,7 @@ spec:
                 >
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-xs font-mono font-bold text-slate-500">STEP {st.step}</span>
+                      <span className="text-xs font-mono font-bold text-slate-500">STAGE {st.step}</span>
                       <Icon className={`w-5 h-5 ${st.accent}`} />
                     </div>
                     <h3 className="text-base font-bold text-white mb-2">{st.title}</h3>
@@ -485,15 +491,18 @@ spec:
         </div>
       </section>
 
-      {/* ── 5. Simple CTA ───────────────────────────────────────────────── */}
+      {/* ── 5. Hardened Conversion Call to Action ─────────────────────────── */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
         <div className="rounded-3xl bg-gradient-to-b from-[#121222] to-[#0A0A14] border border-white/10 p-8 sm:p-14 text-center relative overflow-hidden shadow-2xl">
+          {/* Subtle top specular accent */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
+          
           <div className="max-w-2xl mx-auto space-y-4">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight text-balance">
-              Ready to deploy your next project?
+              Deploy your infrastructure with confidence.
             </h2>
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed text-balance">
-              Connect your repository and start running deployments in minutes.
+              Join engineering teams shipping with automated Terraform plans, hermetic container builds, and live Kubernetes clusters.
             </p>
           </div>
 
@@ -501,9 +510,9 @@ spec:
             <button
               type="button"
               onClick={() => onNavigate(isAuthenticated ? 'projects' : 'signin')}
-              className="w-full sm:w-auto h-12 px-8 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm shadow-[0_0_24px_rgba(124,58,237,0.4)] transition-all flex items-center justify-center gap-2 group active:scale-[0.98]"
+              className="w-full sm:w-auto h-12 px-8 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm shadow-[0_0_28px_rgba(124,58,237,0.45)] hover:shadow-[0_0_36px_rgba(124,58,237,0.65)] transition-all flex items-center justify-center gap-2 group active:scale-[0.98]"
             >
-              <span>{isAuthenticated ? 'Open Dashboard' : 'Get Started'}</span>
+              <span>{isAuthenticated ? 'Open Dashboard' : 'Get Started Now'}</span>
               <ArrowRight className="w-4 h-4 text-violet-200 group-hover:translate-x-1 transition-transform" />
             </button>
 
@@ -513,7 +522,7 @@ spec:
               className="w-full sm:w-auto h-12 px-7 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/10 text-sm font-medium transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
             >
               <Zap className="w-4 h-4 text-cyan-400" />
-              <span>Create an Account</span>
+              <span>Create Account</span>
             </button>
           </div>
         </div>
