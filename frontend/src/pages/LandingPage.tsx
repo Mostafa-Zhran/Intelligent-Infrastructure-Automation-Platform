@@ -5,7 +5,10 @@ import {
   ChevronDown, Eye, Server, BarChart3, ChevronRight, Activity
 } from 'lucide-react';
 import { PageId } from '../types';
-import { InfrastructureScene3D } from '../components/3d/InfrastructureScene3D';
+
+const InfrastructureScene3D = React.lazy(() =>
+  import('../components/3d/InfrastructureScene3D').then((m) => ({ default: m.InfrastructureScene3D }))
+);
 
 interface LandingPageProps {
   onNavigate: (page: PageId) => void;
@@ -121,7 +124,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <section className="relative w-full min-h-[92vh] flex flex-col justify-between pt-6 sm:pt-10">
         {/* Background 3D Canvas */}
         <div className="absolute inset-0 z-0">
-          <InfrastructureScene3D onNavigate={onNavigate} />
+          <React.Suspense fallback={<div className="w-full h-full bg-[#07070D]" />}>
+            <InfrastructureScene3D onNavigate={onNavigate} />
+          </React.Suspense>
         </div>
 
         {/* Foreground Hero Content with backdrop scrim for maximum readability */}

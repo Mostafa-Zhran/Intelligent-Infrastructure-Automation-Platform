@@ -13,10 +13,13 @@ export default defineConfig(({ mode }) => {
       include: ['three', 'lucide-react'],
     },
     build: {
+      chunkSizeWarningLimit: 650,
       rollupOptions: {
         output: {
           manualChunks: {
             three: ['three'],
+            vendor: ['react', 'react-dom'],
+            icons: ['lucide-react'],
           },
         },
       },

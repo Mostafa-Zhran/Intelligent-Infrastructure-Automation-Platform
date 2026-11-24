@@ -18,9 +18,16 @@ const cleanConnectionString = connectionString
 
 const pool = new Pool({
     connectionString: cleanConnectionString,
+    max: parseInt(process.env.DB_POOL_MAX || '20', 10),
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
     ssl: {
         rejectUnauthorized: false,
     },
+});
+
+pool.on('error', (err) => {
+    console.error('Unexpected database client error in connection pool:', err.message);
 });
 
 const adapter = new PrismaPg(pool);
