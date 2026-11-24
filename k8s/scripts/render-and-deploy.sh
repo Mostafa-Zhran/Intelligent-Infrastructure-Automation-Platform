@@ -157,11 +157,12 @@ metadata:
     app.kubernetes.io/name: ${APP_NAME}
     app.kubernetes.io/managed-by: iiap
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
     - name: http
       port: 80
       targetPort: ${PORT}
+      nodePort: 30080
       protocol: TCP
   selector:
     app.kubernetes.io/name: ${APP_NAME}
@@ -175,13 +176,10 @@ metadata:
     app.kubernetes.io/name: ${APP_NAME}
     app.kubernetes.io/managed-by: iiap
   annotations:
-    kubernetes.io/ingress.class: nginx
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
   rules:
-    - host: ${HOST}
-      http:
+    - http:
         paths:
           - path: /
             pathType: Prefix
