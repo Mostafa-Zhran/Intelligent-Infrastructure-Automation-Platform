@@ -451,6 +451,17 @@ export const App: React.FC = () => {
           <DashboardPage
             user={fallbackUser}
             onNavigate={handleNavigate}
+            onSelectProject={(project) => {
+              setSelectedProject(project);
+              handleNavigate('project-details');
+            }}
+            onSelectDeployment={(dep) => {
+              setSelectedDeployment(dep);
+              try {
+                localStorage.setItem('iiap_selected_deployment', JSON.stringify(dep));
+              } catch {}
+              handleNavigate('deployment-details');
+            }}
             onShowToast={showToast}
           />
         )}
@@ -477,6 +488,13 @@ export const App: React.FC = () => {
           <ProjectDetailsPage
             project={selectedProject}
             onNavigate={handleNavigate}
+            onSelectDeployment={(dep) => {
+              setSelectedDeployment(dep);
+              try {
+                localStorage.setItem('iiap_selected_deployment', JSON.stringify(dep));
+              } catch {}
+              handleNavigate('deployment-details');
+            }}
             onShowToast={showToast}
           />
         )}

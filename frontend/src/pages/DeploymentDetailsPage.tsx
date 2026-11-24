@@ -41,12 +41,15 @@ export const DeploymentDetailsPage: React.FC<DeploymentDetailsPageProps> = ({
   const deploymentId = initialDeployment?.id;
 
   useEffect(() => {
+    if (initialDeployment) {
+      setDeployment(initialDeployment);
+    }
     if (deploymentId) {
       loadDeploymentDetails(deploymentId);
     } else {
       setIsLoading(false);
     }
-  }, [deploymentId]);
+  }, [deploymentId, initialDeployment]);
 
   const loadDeploymentDetails = async (id: string) => {
     try {
