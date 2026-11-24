@@ -42,6 +42,7 @@ async function getProfileById(id) {
             id: true,
             name: true,
             email: true,
+            avatar_url: true,
             platform_role: true,
             status: true,
             created_at: true,

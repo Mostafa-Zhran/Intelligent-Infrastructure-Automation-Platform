@@ -29,6 +29,17 @@ const resetPasswordSchema = Joi.object({
 const updateProfileSchema = Joi.object({
     name: Joi.string().trim().min(2).max(100),
     email: Joi.string().trim().lowercase().email().max(254),
+    avatar: Joi.string().allow(null, '').max(8000000),
+    avatarUrl: Joi.string().allow(null, '').max(8000000),
+    avatar_url: Joi.string().allow(null, '').max(8000000),
+})
+    .min(1)
+    .unknown(false);
+
+const uploadAvatarSchema = Joi.object({
+    avatar: Joi.string().allow(null, '').max(8000000),
+    avatarUrl: Joi.string().allow(null, '').max(8000000),
+    avatar_url: Joi.string().allow(null, '').max(8000000),
 })
     .min(1)
     .unknown(false);
@@ -47,5 +58,6 @@ module.exports = {
     forgotPasswordSchema,
     resetPasswordSchema,
     updateProfileSchema,
+    uploadAvatarSchema,
     changePasswordSchema,
 };

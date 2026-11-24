@@ -10,6 +10,7 @@ const {
     forgotPasswordSchema,
     resetPasswordSchema,
     updateProfileSchema,
+    uploadAvatarSchema,
     changePasswordSchema,
 } = require('./auth.validation');
 const router = express.Router();
@@ -223,6 +224,38 @@ router.patch(
     authenticate,
     validateRequest(updateProfileSchema),
     authController.updateProfile
+);
+
+/**
+ * @openapi
+ * /api/v1/auth/profile/avatar:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Upload or update user profile image
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               avatar: { type: string, description: 'Base64 data URI or image URL' }
+ *               avatarUrl: { type: string, description: 'Base64 data URI or image URL' }
+ *     responses:
+ *       200:
+ *         description: Avatar updated successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
+router.post(
+    '/profile/avatar',
+    authenticate,
+    validateRequest(uploadAvatarSchema),
+    authController.uploadAvatar
 );
 
 /**

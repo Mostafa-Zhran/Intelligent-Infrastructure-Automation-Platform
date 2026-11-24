@@ -6,6 +6,8 @@ export interface ApiUser {
   email: string;
   platform_role: PlatformRole;
   status: string;
+  avatar_url?: string | null;
+  avatarUrl?: string | null;
 }
 
 export interface ApiResponse<T = any> {
@@ -119,10 +121,21 @@ export const authApi = {
   async updateProfile(body: {
     name?: string;
     email?: string;
+    avatar?: string;
+    avatarUrl?: string;
+    avatar_url?: string;
   }): Promise<{ user: ApiUser }> {
     const res = await request<ApiResponse<{ user: ApiUser }>>('/profile', {
       method: 'PATCH',
       body: JSON.stringify(body),
+    });
+    return res.data!;
+  },
+
+  async uploadAvatar(avatar: string): Promise<{ avatarUrl: string; user: ApiUser }> {
+    const res = await request<ApiResponse<{ avatarUrl: string; user: ApiUser }>>('/profile/avatar', {
+      method: 'POST',
+      body: JSON.stringify({ avatar }),
     });
     return res.data!;
   },

@@ -114,6 +114,19 @@ const updateProfile = asyncHandler(async (req, res) => {
     });
 });
 
+const uploadAvatar = asyncHandler(async (req, res) => {
+    const avatar = req.body.avatar || req.body.avatarUrl || req.body.avatar_url;
+    const user = await authService.updateAvatar(req.user.id, avatar);
+
+    res.status(200).json({
+        success: true,
+        data: {
+            avatarUrl: user.avatar_url,
+            user,
+        },
+    });
+});
+
 const changePassword = asyncHandler(async (req, res) => {
     const result = await authService.changePassword(
         req.user.id,
@@ -139,6 +152,6 @@ module.exports = {
     changePassword,
     getProfile,
     updateProfile,
-
+    uploadAvatar,
 };
 

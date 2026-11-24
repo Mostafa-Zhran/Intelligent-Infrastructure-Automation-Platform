@@ -40,6 +40,7 @@ async function signUp({ name, email, password }) {
             id: user.id,
             name: user.name,
             email: user.email,
+            avatar_url: user.avatar_url || null,
             platform_role: user.platform_role,
             status: user.status,
         },
@@ -67,6 +68,7 @@ async function signIn({ email, password, metadata = {} }) {
             id: user.id,
             name: user.name,
             email: user.email,
+            avatar_url: user.avatar_url || null,
             platform_role: user.platform_role,
             status: user.status,
         },
@@ -115,7 +117,7 @@ async function getProfile(userId) {
     return user;
 }
 
-async function updateProfile(userId, { name, email }) {
+async function updateProfile(userId, { name, email, avatar, avatarUrl, avatar_url }) {
     const currentUser = await authRepository.findById(userId);
 
     if (!currentUser) {
@@ -139,6 +141,11 @@ async function updateProfile(userId, { name, email }) {
         data.email = normalizedEmail;
     }
 
+    const resolvedAvatar = avatar !== undefined ? avatar : (avatarUrl !== undefined ? avatarUrl : avatar_url);
+    if (resolvedAvatar !== undefined) {
+        data.avatar_url = resolvedAvatar ? String(resolvedAvatar) : null;
+    }
+
     if (Object.keys(data).length === 0) {
         throw new ApiError(400, 'No profile fields provided');
     }
@@ -149,10 +156,32 @@ async function updateProfile(userId, { name, email }) {
         id: updatedUser.id,
         name: updatedUser.name,
         email: updatedUser.email,
+        avatar_url: updatedUser.avatar_url,
         platform_role: updatedUser.platform_role,
         status: updatedUser.status,
         created_at: updatedUser.created_at,
         updated_at: updatedUser.updated_at,
+    };
+}
+
+async function updateAvatar(userId, avatar) {
+    const user = await authRepository.findById(userId);
+
+    if (!user) {
+        throw new ApiError(404, 'User not found');
+    }
+
+    const updatedUser = await authRepository.updateUser(userId, {
+        avatar_url: avatar ? String(avatar) : null,
+    });
+
+    return {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        avatar_url: updatedUser.avatar_url,
+        platform_role: updatedUser.platform_role,
+        status: updatedUser.status,
     };
 }
 
@@ -193,5 +222,6 @@ module.exports = {
     resetUserPassword,
     getProfile,
     updateProfile,
+    updateAvatar,
     changePassword,
 };

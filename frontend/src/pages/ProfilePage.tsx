@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   User,
   Shield,
@@ -10,6 +10,8 @@ import {
   AlertCircle,
   Mail,
   Fingerprint,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
 import { GlassCard } from '../components/ui/GlassCard';
 import { InputField } from '../components/ui/InputField';
@@ -41,10 +43,92 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [fullName, setFullName] = useState(user.fullName);
   const [email, setEmail] = useState(user.email);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [profileErrors, setProfileErrors] = useState<{
     fullName?: string;
     email?: string;
   }>({});
+
+  const optimizeImageFile = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 512;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(e.target?.result as string);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.88));
+        };
+        img.onerror = () => reject(new Error('Failed to process image file.'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Failed to read image file.'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handlePhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      onShowToast('error', 'Invalid File Type', 'Please choose a PNG, JPG, or WebP image.');
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      onShowToast('error', 'File Too Large', 'Please select an image smaller than 8MB.');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    try {
+      const optimizedBase64 = await optimizeImageFile(file);
+      const res = await authApi.uploadAvatar(optimizedBase64);
+      const newAvatarUrl = res.avatarUrl || optimizedBase64;
+      onUpdateUser({ avatarUrl: newAvatarUrl });
+      onShowToast('success', 'Profile Photo Updated', 'Your profile picture has been saved.');
+    } catch (err: any) {
+      onShowToast('error', 'Upload Failed', err.message || 'Failed to update profile photo.');
+    } finally {
+      setIsUploadingPhoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setIsUploadingPhoto(true);
+    try {
+      await authApi.uploadAvatar('');
+      onUpdateUser({ avatarUrl: undefined });
+      onShowToast('success', 'Photo Removed', 'Your profile photo has been removed.');
+    } catch (err: any) {
+      onShowToast('error', 'Removal Failed', err.message || 'Failed to remove profile photo.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   // ── Security state ─────────────────────────────────────
   const [currentPassword, setCurrentPassword] = useState('');
@@ -77,6 +161,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         fullName: updatedUser?.name || fullName,
         email: updatedUser?.email || email,
         avatarInitials: initials,
+        avatarUrl: updatedUser?.avatar_url || updatedUser?.avatarUrl || user.avatarUrl,
         status: updatedUser?.status,
         role: updatedUser?.platform_role,
       });
@@ -153,20 +238,46 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         style={{ background: 'rgba(13,13,22,0.85)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 16px 40px -8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07)' }}
       >
         {/* Avatar with gradient ring */}
-        <div className="relative flex-shrink-0">
+        <div className="relative flex-shrink-0 group">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            className="hidden"
+            onChange={handlePhotoFileChange}
+          />
           <div
-            className="p-[2px] rounded-2xl"
+            onClick={() => !isUploadingPhoto && fileInputRef.current?.click()}
+            className="p-[2px] rounded-2xl cursor-pointer transition-transform hover:scale-[1.03] active:scale-[0.98] relative"
             style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.9) 0%, rgba(34,211,238,0.7) 100%)' }}
+            title="Click to change profile picture"
           >
             <div
-              className="w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] flex items-center justify-center text-lg sm:text-xl font-extrabold text-white"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] flex items-center justify-center text-lg sm:text-xl font-extrabold text-white overflow-hidden relative"
               style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.8) 0%, rgba(67,56,202,0.7) 100%)' }}
             >
-              {user.avatarInitials}
+              {user.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={user.fullName}
+                  className="w-full h-full object-cover rounded-[14px]"
+                />
+              ) : (
+                user.avatarInitials
+              )}
+
+              {/* Hover or loading overlay */}
+              <div className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] rounded-[14px] flex items-center justify-center transition-opacity ${isUploadingPhoto ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                {isUploadingPhoto ? (
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                ) : (
+                  <Camera className="w-5 h-5 text-white/90" />
+                )}
+              </div>
             </div>
           </div>
           <div
-            className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full border-2 border-[#07070D] flex items-center justify-center shadow-md"
+            className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full border-2 border-[#07070D] flex items-center justify-center shadow-md z-10 pointer-events-none"
             style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}
           >
             <BadgeCheck className="w-3.5 h-3.5 text-white" />
@@ -205,13 +316,36 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
           <button
             type="button"
-            onClick={() => onShowToast('info', 'Photo Upload', 'Photo upload feature coming soon')}
-            className="flex items-center gap-1.5 text-[11px] font-medium text-[#C4C4D4] hover:text-white px-3 py-1.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+            disabled={isUploadingPhoto}
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1.5 text-[11px] font-medium text-[#C4C4D4] hover:text-white px-3 py-1.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:opacity-50"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
           >
-            <Camera className="w-3.5 h-3.5" />
-            Change photo
+            {isUploadingPhoto ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-400" />
+                <span>Uploading...</span>
+              </>
+            ) : (
+              <>
+                <Camera className="w-3.5 h-3.5" />
+                <span>Change photo</span>
+              </>
+            )}
           </button>
+          {user.avatarUrl && (
+            <button
+              type="button"
+              disabled={isUploadingPhoto}
+              onClick={handleRemovePhoto}
+              className="flex items-center gap-1.5 text-[11px] font-medium text-rose-400/80 hover:text-rose-300 px-3 py-1.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 disabled:opacity-50"
+              style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.18)' }}
+              title="Remove profile photo"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Remove photo</span>
+            </button>
+          )}
         </div>
       </div>
 

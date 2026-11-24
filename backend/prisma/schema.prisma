@@ -462,6 +462,7 @@ model users {
   status                                                          account_status
   created_at                                                      DateTime              @default(now()) @db.Timestamptz(6)
   updated_at                                                      DateTime              @default(now()) @db.Timestamptz(6)
+  avatar_url                                                      String?
   action_approvals                                                action_approvals[]
   action_policies                                                 action_policies[]
   ai_actions                                                      ai_actions[]
