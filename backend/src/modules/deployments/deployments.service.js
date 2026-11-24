@@ -2,6 +2,7 @@
 const ApiError = require('../../utils/ApiError');
 const deploymentsRepository = require('./deployments.repository');
 const githubActionsService = require('../integrations/github/github.actions.service');
+const githubService = require('../integrations/github/github.service');
 
 const ALLOWED_STATUSES = ['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED'];
 const ALLOWED_ENVIRONMENTS = ['development', 'staging', 'production', 'test', 'preview'];
@@ -133,6 +134,38 @@ async function getDeploymentById(deploymentId, user) {
         throw new ApiError(403, 'You do not have permission to view this deployment');
     }
 
+    // Auto-sync status from GitHub Actions if still QUEUED or RUNNING
+    if (['QUEUED', 'RUNNING'].includes(deployment.status)) {
+        try {
+            const userToken = await githubService.getUserAccessToken(user.id);
+            const found = await githubActionsService.findWorkflowRunForDeployment(
+                deploymentId,
+                deployment.created_at,
+                userToken
+            );
+            if (found && found.conclusion) {
+                const newStatus = found.conclusion === 'success' ? 'SUCCEEDED' : 'FAILED';
+                await updateDeploymentStatus(deploymentId, {
+                    status: newStatus,
+                    runId: found.runId,
+                    runUrl: found.runUrl,
+                    finishedAt: new Date().toISOString(),
+                });
+                deployment.status = newStatus;
+            } else if (found && found.status === 'in_progress' && deployment.status === 'QUEUED') {
+                await updateDeploymentStatus(deploymentId, {
+                    status: 'RUNNING',
+                    runId: found.runId,
+                    runUrl: found.runUrl,
+                    startedAt: new Date().toISOString(),
+                });
+                deployment.status = 'RUNNING';
+            }
+        } catch {
+            // Non-blocking sync
+        }
+    }
+
     return {
         ...formatDeployment(deployment),
         steps: deployment.deployment_steps?.map((s) => ({
@@ -201,6 +234,16 @@ async function getDeploymentLogs(deploymentId, user, query = {}) {
                 );
                 if (found) {
                     rawLogs = found.rawLogs;
+                    if (['QUEUED', 'RUNNING'].includes(deployment.status) && found.conclusion) {
+                        const newStatus = found.conclusion === 'success' ? 'SUCCEEDED' : 'FAILED';
+                        await updateDeploymentStatus(deploymentId, {
+                            status: newStatus,
+                            runId: found.runId,
+                            runUrl: found.runUrl,
+                            finishedAt: new Date().toISOString(),
+                        });
+                        deployment.status = newStatus;
+                    }
                 }
             }
 

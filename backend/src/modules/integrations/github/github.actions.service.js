@@ -298,7 +298,13 @@ async function findWorkflowRunForDeployment(deploymentId, createdAt = null, user
         for (const run of sortedRuns.slice(0, 5)) {
             const logsText = await fetchWorkflowRunLogs(run.id, token);
             if (logsText && logsText.includes(deploymentId)) {
-                return { runId: run.id, rawLogs: logsText };
+                return {
+                    runId: run.id,
+                    rawLogs: logsText,
+                    status: run.status,
+                    conclusion: run.conclusion,
+                    runUrl: run.html_url,
+                };
             }
         }
     } catch {
