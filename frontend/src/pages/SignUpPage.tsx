@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-import { UserPlus, User, Mail, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
-import { GlassCard } from '../components/ui/GlassCard';
-import { InputField } from '../components/ui/InputField';
-import { PasswordInput } from '../components/ui/PasswordInput';
-import { Button } from '../components/ui/Button';
+import { UserPlus, User, Mail, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle, Lock, ShieldCheck } from 'lucide-react';
 import { PasswordStrengthMeter } from '../components/ui/PasswordStrengthMeter';
 import { PageId } from '../types';
 import { authApi } from '../services/api';
@@ -28,18 +24,15 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const validate = () => {
-    const newErrors: {
-      fullName?: string;
-      email?: string;
-      password?: string;
-      confirmPassword?: string;
-    } = {};
+    const newErrors: FormErrors = {};
 
     if (!fullName.trim()) {
       newErrors.fullName = 'Full Name is required.';
@@ -48,10 +41,9 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
     if (!email.trim()) {
       newErrors.email = 'Work Email is required.';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Please provide a valid work email address.';
+      newErrors.email = 'Please provide a valid corporate email address.';
     }
 
-    // Password requirements: 8+ characters with upper case, lower case and a number
     const hasLength = password.length >= 8;
     const hasUpper = /[A-Z]/.test(password);
     const hasLower = /[a-z]/.test(password);
@@ -104,145 +96,261 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto px-3 sm:px-4 py-5 sm:py-12 animate-fadeIn">
-      {/* Back to Home Link */}
-      <div className="mb-3 sm:mb-4">
-        <button
-          type="button"
-          onClick={() => onNavigate('landing')}
-          className="inline-flex items-center gap-2 text-xs font-mono text-[#A1A1B5] hover:text-white transition-colors group py-1.5 px-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-          aria-label="Back to home page"
-        >
-          <ArrowLeft className="w-3.5 h-3.5 text-violet-400 group-hover:-translate-x-1 transition-transform" />
-          <span>Back to Home</span>
-        </button>
-      </div>
+    <div className="w-full min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-8 sm:py-12 animate-fadeIn relative">
+      {/* Background ambient lighting */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[550px] h-[340px] bg-violet-600/10 blur-[130px] pointer-events-none -z-10" />
 
-      <GlassCard glow="cyan" size="lg" className="p-5 sm:p-8">
-        {/* Card Header */}
-        <div className="text-center mb-6">
-          <div
-            className="mx-auto w-12 h-12 rounded-2xl mb-4 flex items-center justify-center shadow-lg"
-            style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.9) 0%, rgba(67,56,202,0.85) 100%)', border: '1px solid rgba(139,92,246,0.4)', boxShadow: '0 8px 24px -6px rgba(124,58,237,0.5), inset 0 1px 0 rgba(255,255,255,0.15)' }}
+      <div className="w-full max-w-lg">
+        {/* Navigation back */}
+        <div className="mb-4 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => onNavigate('landing')}
+            className="inline-flex items-center gap-2 text-xs font-mono text-slate-400 hover:text-white transition-colors group py-1.5 px-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.06] border border-white/5"
           >
-            <UserPlus className="w-5 h-5 text-white" />
-          </div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-white">
-            Create account
-          </h2>
-          <p className="text-sm text-[#C4C4D4] mt-1">
-            Start deploying in minutes.
-          </p>
+            <ArrowLeft className="w-3.5 h-3.5 text-violet-400 group-hover:-translate-x-1 transition-transform" />
+            <span>Back to Home</span>
+          </button>
+
+          <span className="text-[11px] font-mono text-slate-500 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>New Operator Provisioning</span>
+          </span>
         </div>
 
-        {isSuccess ? (
-          <div className="text-center py-8 space-y-4 animate-fadeIn">
-            <div className="w-14 h-14 bg-emerald-950/60 border border-emerald-500/40 rounded-full flex items-center justify-center mx-auto text-emerald-400 shadow-lg shadow-emerald-950/50">
-              <CheckCircle2 className="w-8 h-8" />
+        {/* Card Container */}
+        <div className="relative rounded-2xl sm:rounded-3xl bg-[#090A14] border border-white/[0.1] shadow-[0_24px_70px_-15px_rgba(0,0,0,0.9)] overflow-hidden p-6 sm:p-8 backdrop-blur-xl">
+          {/* Top specular hairline */}
+          <div className="absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="mx-auto w-12 h-12 rounded-2xl mb-4 bg-gradient-to-br from-violet-600/30 to-purple-800/20 border border-violet-500/40 flex items-center justify-center text-violet-300 shadow-[0_0_20px_rgba(139,92,246,0.3)]">
+              <UserPlus className="w-6 h-6" />
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-white">Workspace Provisioned!</h3>
-              <p className="text-xs text-gray-300 mt-1">
-                Your credentials have been securely initialized. Redirecting to your account profile…
-              </p>
-            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              Create developer account
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1.5 leading-relaxed font-sans">
+              Provision a zero-config cloud automation workspace in seconds.
+            </p>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
-            {submitError && (
-              <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/30 flex items-start gap-3 text-rose-300 text-xs animate-fadeIn">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <span>{submitError}</span>
+
+          {/* Success Banner */}
+          {isSuccess && (
+            <div className="mb-5 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-3 font-mono animate-fadeIn">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+              <div>
+                <p className="font-semibold text-emerald-200">Account provisioned successfully!</p>
+                <p className="text-[11px] text-emerald-400 mt-0.5">Redirecting to your dashboard...</p>
               </div>
-            )}
-            <InputField
-              label="Full Name"
-              placeholder="e.g. Alex Morgan"
-              value={fullName}
-              onChange={(e) => {
-                setFullName(e.target.value);
-                if (errors.fullName) setErrors((prev: FormErrors) => ({ ...prev, fullName: undefined }));
-              }}
-              error={errors.fullName}
-              icon={<User className="w-4 h-4" />}
-              required
-              autoComplete="name"
-            />
+            </div>
+          )}
 
-            <InputField
-              label="Work Email"
-              type="email"
-              placeholder="alex@organization.io"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (errors.email) setErrors((prev: FormErrors) => ({ ...prev, email: undefined }));
-              }}
-              error={errors.email}
-              icon={<Mail className="w-4 h-4" />}
-              required
-              autoComplete="email"
-            />
+          {/* Error Banner */}
+          {submitError && (
+            <div className="mb-5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300 flex items-start gap-2.5 font-mono animate-fadeIn">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <span>{submitError}</span>
+            </div>
+          )}
 
-            <div className="space-y-1">
-              <PasswordInput
-                label="Password"
-                placeholder="••••••••••••"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (errors.password) setErrors((prev: FormErrors) => ({ ...prev, password: undefined }));
-                }}
-                error={errors.password}
-                helperText="8+ characters with upper case, lower case and a number."
-                required
-                autoComplete="new-password"
-              />
-
-              {password && <PasswordStrengthMeter password={password} />}
+          {/* Form */}
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            {/* Full Name */}
+            <div>
+              <label className="block text-xs font-mono font-medium text-slate-300 mb-1.5">
+                Full Name <span className="text-rose-400">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <User className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => {
+                    setFullName(e.target.value);
+                    if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: undefined }));
+                  }}
+                  placeholder="Jane Doe"
+                  className={`w-full h-11 pl-10 pr-3.5 rounded-xl bg-white/[0.03] text-sm text-white placeholder-slate-500 border transition-all focus:outline-none focus:ring-1 ${
+                    errors.fullName
+                      ? 'border-rose-500/60 focus:border-rose-500 focus:ring-rose-500/30'
+                      : 'border-white/10 hover:border-white/20 focus:border-violet-500 focus:ring-violet-500/30'
+                  }`}
+                  autoComplete="name"
+                />
+              </div>
+              {errors.fullName && (
+                <p className="mt-1.5 text-xs text-rose-400 font-mono">{errors.fullName}</p>
+              )}
             </div>
 
-            <PasswordInput
-              label="Confirm Password"
-              placeholder="••••••••••••"
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                if (errors.confirmPassword) setErrors((prev: FormErrors) => ({ ...prev, confirmPassword: undefined }));
-              }}
-              error={errors.confirmPassword}
-              required
-              autoComplete="new-password"
-            />
+            {/* Email */}
+            <div>
+              <label className="block text-xs font-mono font-medium text-slate-300 mb-1.5">
+                Corporate Work Email <span className="text-rose-400">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                  }}
+                  placeholder="name@company.com"
+                  className={`w-full h-11 pl-10 pr-3.5 rounded-xl bg-white/[0.03] text-sm text-white placeholder-slate-500 border transition-all focus:outline-none focus:ring-1 ${
+                    errors.email
+                      ? 'border-rose-500/60 focus:border-rose-500 focus:ring-rose-500/30'
+                      : 'border-white/10 hover:border-white/20 focus:border-violet-500 focus:ring-violet-500/30'
+                  }`}
+                  autoComplete="email"
+                />
+              </div>
+              {errors.email && (
+                <p className="mt-1.5 text-xs text-rose-400 font-mono">{errors.email}</p>
+              )}
+            </div>
 
+            {/* Password */}
+            <div>
+              <label className="block text-xs font-mono font-medium text-slate-300 mb-1.5">
+                Password <span className="text-rose-400">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                  }}
+                  placeholder="At least 8 chars with upper, lower & number"
+                  className={`w-full h-11 pl-10 pr-12 rounded-xl bg-white/[0.03] text-sm text-white placeholder-slate-500 border transition-all focus:outline-none focus:ring-1 ${
+                    errors.password
+                      ? 'border-rose-500/60 focus:border-rose-500 focus:ring-rose-500/30'
+                      : 'border-white/10 hover:border-white/20 focus:border-violet-500 focus:ring-violet-500/30'
+                  }`}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs font-mono text-slate-400 hover:text-slate-200"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="mt-1.5 text-xs text-rose-400 font-mono">{errors.password}</p>
+              )}
+
+              {/* Strength Meter */}
+              {password && (
+                <div className="mt-2.5">
+                  <PasswordStrengthMeter password={password} />
+                </div>
+              )}
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-xs font-mono font-medium text-slate-300 mb-1.5">
+                Confirm Password <span className="text-rose-400">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                  }}
+                  placeholder="Repeat your password"
+                  className={`w-full h-11 pl-10 pr-12 rounded-xl bg-white/[0.03] text-sm text-white placeholder-slate-500 border transition-all focus:outline-none focus:ring-1 ${
+                    errors.confirmPassword
+                      ? 'border-rose-500/60 focus:border-rose-500 focus:ring-rose-500/30'
+                      : 'border-white/10 hover:border-white/20 focus:border-violet-500 focus:ring-violet-500/30'
+                  }`}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs font-mono text-slate-400 hover:text-slate-200"
+                >
+                  {showConfirmPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p className="mt-1.5 text-xs text-rose-400 font-mono">{errors.confirmPassword}</p>
+              )}
+            </div>
+
+            {/* Submit Button */}
             <div className="pt-2">
-              <Button
+              <button
                 type="submit"
-                className="w-full"
-                isLoading={isLoading}
-                loadingText="Setting up workspace…"
+                disabled={isLoading || isSuccess}
+                className="w-full h-11 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-semibold text-sm shadow-[0_0_24px_rgba(124,58,237,0.4)] hover:shadow-[0_0_32px_rgba(124,58,237,0.6)] transition-all flex items-center justify-center gap-2 group active:scale-[0.98]"
               >
-                Create account
-              </Button>
+                {isLoading ? (
+                  <span className="flex items-center gap-2 font-mono text-xs">
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Provisioning workspace...</span>
+                  </span>
+                ) : (
+                  <>
+                    <span>Create Free Workspace</span>
+                    <ArrowRight className="w-4 h-4 text-violet-200 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
             </div>
           </form>
-        )}
 
-        {/* Bottom link: Already registered? Sign in */}
-        <div className="mt-6 pt-5 border-t border-white/10 text-center">
-          <p className="text-xs text-gray-300">
-            Already registered?{' '}
+          {/* Divider */}
+          <div className="relative my-6 text-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/[0.08]" />
+            </div>
+            <span className="relative px-3 bg-[#090A14] text-[11px] font-mono text-slate-500 uppercase">
+              Already have an account?
+            </span>
+          </div>
+
+          {/* Sign In link */}
+          <div className="text-center">
             <button
               type="button"
               onClick={() => onNavigate('signin')}
-              className="font-medium text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1 py-1 px-1.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+              className="w-full h-10 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] text-slate-300 hover:text-white border border-white/10 text-xs font-mono font-medium transition-all flex items-center justify-center gap-2"
             >
-              <span>Sign in</span>
-              <ArrowRight className="w-3 h-3" />
+              <span>Sign in with existing credentials</span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
             </button>
-          </p>
+          </div>
+
+          {/* Security footnote */}
+          <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center justify-center gap-2 text-[11px] font-mono text-slate-500">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Zero-trust authentication · Encrypted secrets storage</span>
+          </div>
         </div>
-      </GlassCard>
+      </div>
     </div>
   );
 };
+
+export default SignUpPage;

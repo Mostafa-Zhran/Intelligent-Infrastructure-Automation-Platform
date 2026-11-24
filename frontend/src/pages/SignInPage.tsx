@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Shield, AlertCircle, ArrowRight, ArrowLeft, LogIn } from 'lucide-react';
-import { GlassCard } from '../components/ui/GlassCard';
-import { InputField } from '../components/ui/InputField';
-import { PasswordInput } from '../components/ui/PasswordInput';
-import { Button } from '../components/ui/Button';
+import { Mail, AlertCircle, ArrowRight, ArrowLeft, LogIn, Lock, ShieldCheck } from 'lucide-react';
 import { PageId } from '../types';
 import { authApi } from '../services/api';
 
@@ -18,6 +14,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -25,7 +22,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {};
     if (!email.trim()) {
-      newErrors.email = 'Work email is required.';
+      newErrors.email = 'Corporate work email is required.';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       newErrors.email = 'Please provide a valid corporate email address.';
     }
@@ -50,136 +47,192 @@ export const SignInPage: React.FC<SignInPageProps> = ({
       const result = await authApi.signIn({ email, password });
       onSignInSuccess(result.user);
     } catch (err: any) {
-      setAuthError(err.message || 'Invalid email or password. Please verify and retry.');
+      setAuthError(err.message || 'Invalid email or password. Please verify your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto px-3 sm:px-4 py-5 sm:py-12 animate-fadeIn">
-      {/* Back to Home Link */}
-      <div className="mb-3 sm:mb-4">
-        <button
-          type="button"
-          onClick={() => onNavigate('landing')}
-          className="inline-flex items-center gap-2 text-xs font-mono text-[#A1A1B5] hover:text-white transition-colors group py-1.5 px-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-          aria-label="Back to home page"
-        >
-          <ArrowLeft className="w-3.5 h-3.5 text-violet-400 group-hover:-translate-x-1 transition-transform" />
-          <span>Back to Home</span>
-        </button>
-      </div>
+    <div className="w-full min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-8 sm:py-12 animate-fadeIn relative">
+      {/* Background ambient lighting */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-violet-600/10 blur-[120px] pointer-events-none -z-10" />
 
-      <GlassCard glow="violet" size="lg" className="p-5 sm:p-8">
-        {/* Header with Icon */}
-        <div className="text-center mb-6">
-          <div
-            className="mx-auto w-12 h-12 rounded-2xl mb-4 flex items-center justify-center shadow-lg"
-            style={{
-              background: 'linear-gradient(135deg, rgba(109,40,217,0.9) 0%, rgba(67,56,202,0.85) 100%)',
-              border: '1px solid rgba(139,92,246,0.4)',
-              boxShadow: '0 8px 24px -6px rgba(124,58,237,0.5), inset 0 1px 0 rgba(255,255,255,0.15)',
-            }}
+      <div className="w-full max-w-md">
+        {/* Navigation back */}
+        <div className="mb-4 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => onNavigate('landing')}
+            className="inline-flex items-center gap-2 text-xs font-mono text-slate-400 hover:text-white transition-colors group py-1.5 px-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.06] border border-white/5"
           >
-            <LogIn className="w-5 h-5 text-white" />
-          </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-white">
-            Sign in to console
-          </h1>
-          <p className="text-sm text-[#C4C4D4] mt-1.5">
-            Welcome back. Enter your workspace credentials to access the automation pipeline.
-          </p>
+            <ArrowLeft className="w-3.5 h-3.5 text-violet-400 group-hover:-translate-x-1 transition-transform" />
+            <span>Back to Home</span>
+          </button>
+
+          <span className="text-[11px] font-mono text-slate-500 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>IIAP Auth Gateway</span>
+          </span>
         </div>
 
-        {/* Error State Banner */}
-        {authError && (
-          <div 
-            className="mb-5 p-3.5 rounded-xl bg-red-950/60 border border-red-500/40 text-xs text-red-200 flex items-start gap-2.5 animate-fadeIn"
-            role="alert"
-          >
-            <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <strong className="font-semibold block text-red-200">Authentication failed</strong>
-              <span className="text-red-300 leading-tight block mt-0.5">{authError}</span>
+        {/* Card Container */}
+        <div className="relative rounded-2xl sm:rounded-3xl bg-[#090A14] border border-white/[0.1] shadow-[0_24px_70px_-15px_rgba(0,0,0,0.9)] overflow-hidden p-6 sm:p-8 backdrop-blur-xl">
+          {/* Top specular hairline */}
+          <div className="absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="mx-auto w-12 h-12 rounded-2xl mb-4 bg-gradient-to-br from-violet-600/30 to-purple-800/20 border border-violet-500/40 flex items-center justify-center text-violet-300 shadow-[0_0_20px_rgba(139,92,246,0.3)]">
+              <LogIn className="w-6 h-6" />
             </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              Sign in to console
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1.5 leading-relaxed font-sans">
+              Enter your corporate credentials to access the automation pipeline.
+            </p>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          <InputField
-            label="Work Email"
-            type="email"
-            placeholder="name@company.com"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
-            }}
-            error={errors.email}
-            icon={<Mail className="w-4 h-4" />}
-            required
-            autoComplete="email"
-          />
+          {/* Error Banner */}
+          {authError && (
+            <div className="mb-5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300 flex items-start gap-2.5 font-mono animate-fadeIn">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <span>{authError}</span>
+            </div>
+          )}
 
-          <div className="space-y-1">
-            <PasswordInput
-              label="Password"
-              placeholder="••••••••••••"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
-              }}
-              error={errors.password}
-              required
-              autoComplete="current-password"
-            />
-            <div className="flex justify-end pt-1">
+          {/* Form */}
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            {/* Email Field */}
+            <div>
+              <label className="block text-xs font-mono font-medium text-slate-300 mb-1.5">
+                Work Email <span className="text-rose-400">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                  }}
+                  placeholder="name@company.com"
+                  className={`w-full h-11 pl-10 pr-3.5 rounded-xl bg-white/[0.03] text-sm text-white placeholder-slate-500 border transition-all focus:outline-none focus:ring-1 ${
+                    errors.email
+                      ? 'border-rose-500/60 focus:border-rose-500 focus:ring-rose-500/30'
+                      : 'border-white/10 hover:border-white/20 focus:border-violet-500 focus:ring-violet-500/30'
+                  }`}
+                  autoComplete="email"
+                />
+              </div>
+              {errors.email && (
+                <p className="mt-1.5 text-xs text-rose-400 font-mono">{errors.email}</p>
+              )}
+            </div>
+
+            {/* Password Field */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-mono font-medium text-slate-300">
+                  Password <span className="text-rose-400">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('forgot-password')}
+                  className="text-xs font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                  }}
+                  placeholder="••••••••••••"
+                  className={`w-full h-11 pl-10 pr-12 rounded-xl bg-white/[0.03] text-sm text-white placeholder-slate-500 border transition-all focus:outline-none focus:ring-1 ${
+                    errors.password
+                      ? 'border-rose-500/60 focus:border-rose-500 focus:ring-rose-500/30'
+                      : 'border-white/10 hover:border-white/20 focus:border-violet-500 focus:ring-violet-500/30'
+                  }`}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs font-mono text-slate-400 hover:text-slate-200"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="mt-1.5 text-xs text-rose-400 font-mono">{errors.password}</p>
+              )}
+            </div>
+
+            {/* Submit Button */}
+            <div className="pt-2">
               <button
-                type="button"
-                onClick={() => onNavigate('forgot-password')}
-                className="text-xs text-violet-300 hover:text-violet-200 py-1 px-1 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-11 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-semibold text-sm shadow-[0_0_24px_rgba(124,58,237,0.4)] hover:shadow-[0_0_32px_rgba(124,58,237,0.6)] transition-all flex items-center justify-center gap-2 group active:scale-[0.98]"
               >
-                Forgot password?
+                {isLoading ? (
+                  <span className="flex items-center gap-2 font-mono text-xs">
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Authenticating...</span>
+                  </span>
+                ) : (
+                  <>
+                    <span>Sign in to Dashboard</span>
+                    <ArrowRight className="w-4 h-4 text-violet-200 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </button>
             </div>
+          </form>
+
+          {/* Divider */}
+          <div className="relative my-6 text-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/[0.08]" />
+            </div>
+            <span className="relative px-3 bg-[#090A14] text-[11px] font-mono text-slate-500 uppercase">
+              New to IIAP?
+            </span>
           </div>
 
-          <div className="pt-2">
-            <Button
-              type="submit"
-              className="w-full"
-              isLoading={isLoading}
-              loadingText="Validating session…"
-            >
-              Sign in
-            </Button>
-          </div>
-        </form>
-
-        {/* Bottom link: No platform account? Sign up */}
-        <div className="mt-6 pt-5 border-t border-white/10 text-center space-y-2">
-          <p className="text-xs text-gray-300">
-            No platform account?{' '}
+          {/* Create Account link */}
+          <div className="text-center">
             <button
               type="button"
               onClick={() => onNavigate('signup')}
-              className="font-medium text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1 py-1 px-1.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+              className="w-full h-10 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] text-slate-300 hover:text-white border border-white/10 text-xs font-mono font-medium transition-all flex items-center justify-center gap-2"
             >
-              <span>Create account</span>
-              <ArrowRight className="w-3 h-3" />
+              <span>Create developer workspace</span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
             </button>
-          </p>
-        </div>
+          </div>
 
-        {/* Security label: Protected by Enterprise MFA IAM Policies */}
-        <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-gray-400">
-          <Shield className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Protected by Enterprise MFA IAM Policies</span>
+          {/* Security footnote */}
+          <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center justify-center gap-2 text-[11px] font-mono text-slate-500">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>256-bit TLS encrypted session · SOC2 Type II</span>
+          </div>
         </div>
-      </GlassCard>
+      </div>
     </div>
   );
 };
 
+export default SignInPage;
