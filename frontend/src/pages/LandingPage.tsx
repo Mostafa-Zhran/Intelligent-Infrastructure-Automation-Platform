@@ -159,11 +159,13 @@ spec:
             </div>
           </div>
 
-          {/* RIGHT: 3D Scene — contained side column */}
-          <div className="hidden lg:block lg:w-[48%] h-full relative opacity-55 mix-blend-screen pointer-events-auto">
-            <React.Suspense fallback={<div className="w-full h-full bg-transparent" />}>
-              <InfrastructureScene3D onNavigate={onNavigate} />
-            </React.Suspense>
+          {/* RIGHT: 3D Scene — contained side column, anchored to top */}
+          <div className="hidden lg:flex lg:w-[48%] h-full self-stretch relative pointer-events-auto overflow-visible">
+            <div className="absolute inset-0 opacity-60 mix-blend-screen">
+              <React.Suspense fallback={<div className="w-full h-full bg-transparent" />}>
+                <InfrastructureScene3D onNavigate={onNavigate} />
+              </React.Suspense>
+            </div>
           </div>
         </div>
 
