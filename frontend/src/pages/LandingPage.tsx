@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   ArrowRight,
   Terminal,
@@ -9,9 +9,6 @@ import {
   Container,
   Cpu,
   Server,
-  Code2,
-  Copy,
-  Check,
   Network,
   Zap,
 } from 'lucide-react';
@@ -30,8 +27,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigate,
   isAuthenticated = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<'pipeline' | 'manifest' | 'terraform'>('pipeline');
-  const [copiedCode, setCopiedCode] = useState(false);
   const featuresRef = useRef<HTMLDivElement>(null);
   const architectureRef = useRef<HTMLDivElement>(null);
 
@@ -39,63 +34,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     featuresRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleCopySnippet = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
-  };
-
-  const sampleManifest = `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: payment-service
-  namespace: production
-  labels:
-    app.kubernetes.io/managed-by: iiap
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: payment-service
-  template:
-    spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 10001
-      containers:
-        - name: service
-          image: ghcr.io/acme-cloud/payment-service:v2.4.0
-          ports:
-            - containerPort: 3000
-          resources:
-            requests: { cpu: 100m, memory: 128Mi }
-            limits: { cpu: 500m, memory: 512Mi }`;
-
-  const sampleTerraform = `module "production_cluster" {
-  source       = "terraform-aws-modules/eks/aws"
-  version      = "~> 20.0"
-  cluster_name = "iiap-prod-us-east-1"
-  
-  vpc_id                   = module.vpc.vpc_id
-  subnet_ids               = module.vpc.private_subnets
-  enable_irsa              = true
-  cluster_endpoint_public_access = true
-
-  eks_managed_node_groups = {
-    worker_nodes = {
-      instance_types = ["t3.medium"]
-      min_size       = 1
-      max_size       = 5
-      desired_size   = 2
-    }
-  }
-}`;
-
   return (
     <div className="w-full relative overflow-hidden select-none bg-[#07070D] text-slate-100">
-      {/* ── 1. Hero Viewport ────────────────────────────────────────────── */}
-      <section className="relative w-full min-h-[92vh] flex flex-col justify-between pt-8 sm:pt-14 pb-12">
-        {/* Ambient 3D Canvas in background */}
+      {/* ── 1. Hero Viewport — full-screen, no scroll ───────────────────── */}
+      <section className="relative w-full h-screen flex flex-col justify-center overflow-hidden">
+        {/* Ambient 3D Canvas in background — fills entire section */}
         <div className="absolute inset-0 z-0 opacity-45 mix-blend-screen pointer-events-auto">
           <React.Suspense fallback={<div className="w-full h-full bg-[#07070D]" />}>
             <InfrastructureScene3D onNavigate={onNavigate} />
@@ -106,26 +49,27 @@ spec:
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[720px] h-[360px] bg-violet-600/10 blur-[140px] pointer-events-none -z-10" />
         <div className="absolute top-48 left-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[130px] pointer-events-none -z-10" />
 
+        {/* Hero text — centred over the 3D background */}
         <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
           {/* Engineering Release Pill */}
           <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs font-mono text-slate-300 backdrop-blur-md shadow-lg mb-6">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-slate-400 font-semibold">IIAP Platform v2.4</span>
             <span className="text-slate-600">/</span>
-            <span className="text-cyan-300">CNCF Kubernetes & Terraform Native</span>
+            <span className="text-cyan-300">CNCF Kubernetes &amp; Terraform Native</span>
           </div>
 
-          {/* Primary Punchy Headline (No cheesy gradient text, pure typographic weight) */}
+          {/* Headline */}
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1] max-w-4xl text-balance">
             Automate cloud infrastructure. From Git commit to live cluster.
           </h1>
 
-          {/* Calibrated Body Copy (65-75ch measure) */}
+          {/* Body Copy */}
           <p className="mt-5 sm:mt-6 text-base sm:text-lg text-slate-300 max-w-[68ch] mx-auto leading-relaxed text-balance font-sans">
             Connect any GitHub repository. IIAP builds hermetic Docker containers, verifies Terraform AWS topologies, and orchestrates live Kubernetes rollouts with deterministic endpoints in seconds.
           </p>
 
-          {/* Main Action CTAs */}
+          {/* CTAs */}
           <div className="mt-8 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full max-w-sm sm:max-w-none">
             <button
               type="button"
@@ -150,7 +94,7 @@ spec:
           <div className="mt-7 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs text-slate-400 font-mono">
             <span className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Zero-Config K3s & EKS</span>
+              <span>Zero-Config K3s &amp; EKS</span>
             </span>
             <span className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
@@ -160,260 +104,6 @@ spec:
               <CheckCircle2 className="w-4 h-4 text-violet-400 shrink-0" />
               <span>Least-Privilege Security</span>
             </span>
-          </div>
-        </div>
-
-        {/* ── Interactive Engineering Console Preview ─────────────────────── */}
-        <div className="relative z-10 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 mt-10 sm:mt-12">
-          {/* Ambient Terminal Under-Glow */}
-          <div className="absolute -inset-1.5 bg-gradient-to-r from-violet-600/25 via-cyan-500/20 to-purple-600/25 rounded-3xl blur-2xl opacity-60 pointer-events-none" />
-
-          <div className="relative rounded-2xl sm:rounded-3xl bg-[#080911] border border-white/[0.12] shadow-[0_32px_100px_-20px_rgba(0,0,0,0.9)] overflow-hidden">
-            {/* Top Specular Hairline */}
-            <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-violet-400/50 to-transparent" />
-
-            {/* Window Chrome Header */}
-            <div className="px-4 py-3 bg-[#0D0E1A] border-b border-white/[0.08] flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]/60 inline-block" />
-                  <span className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]/60 inline-block" />
-                  <span className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]/60 inline-block" />
-                </div>
-                <div className="h-4 w-[1px] bg-white/10 hidden sm:block" />
-                <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-slate-300 font-semibold hidden sm:inline">iiap-agent@cluster-mesh</span>
-                  <span className="text-slate-500 hidden sm:inline">::</span>
-                  <span className="text-slate-400 font-mono text-[11px]">session #4092</span>
-                </div>
-              </div>
-
-              {/* Console Tabs */}
-              <div className="flex items-center gap-1.5 font-mono text-xs">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('pipeline')}
-                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-                    activeTab === 'pipeline'
-                      ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.3)] font-semibold'
-                      : 'text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent'
-                  }`}
-                >
-                  <Zap className="w-3.5 h-3.5 text-violet-400" />
-                  <span>Pipeline Execution</span>
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded font-bold">
-                    4/4 PASS
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('manifest')}
-                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-                    activeTab === 'manifest'
-                      ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.3)] font-semibold'
-                      : 'text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent'
-                  }`}
-                >
-                  <Code2 className="w-3.5 h-3.5 text-sky-400" />
-                  <span>K8s Manifest</span>
-                  <span className="text-[10px] bg-sky-500/20 text-sky-400 px-1.5 py-0.2 rounded font-mono">
-                    YAML
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('terraform')}
-                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-                    activeTab === 'terraform'
-                      ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.3)] font-semibold'
-                      : 'text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent'
-                  }`}
-                >
-                  <Box className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Terraform IaC</span>
-                  <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.2 rounded font-mono">
-                    HCL
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* Console Body Content */}
-            <div className="p-4 sm:p-6 font-mono text-xs text-slate-300 leading-relaxed overflow-x-auto min-h-[300px] max-h-[440px] bg-[#07080F]">
-              {activeTab === 'pipeline' && (
-                <div className="space-y-3.5">
-                  {/* Pipeline Metadata Bar */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-white/[0.06] text-[11px] text-slate-400">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1.5 text-white font-medium">
-                        <Terminal className="w-3.5 h-3.5 text-violet-400" />
-                        acme-cloud/payment-service
-                      </span>
-                      <span className="text-slate-600">/</span>
-                      <span className="text-slate-300">branch: main (9e4a1b7)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded bg-white/[0.04] text-slate-300 border border-white/5">
-                        Target: production
-                      </span>
-                      <span className="text-emerald-400 font-semibold">Total Time: 4.9s</span>
-                    </div>
-                  </div>
-
-                  {/* 4 Execution Stages */}
-                  <div className="space-y-2.5">
-                    {/* Stage 1 */}
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-start justify-between gap-3 hover:bg-white/[0.04] transition-colors">
-                      <div className="flex items-start gap-2.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                        <div>
-                          <div className="text-white font-bold flex items-center gap-2">
-                            <span>PIPE-04: SOURCE CHECKOUT</span>
-                            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20 font-mono">
-                              PASS 0.6s
-                            </span>
-                          </div>
-                          <p className="text-slate-400 text-[11px] mt-0.5 font-mono">
-                            git checkout acme-cloud/payment-service @ 9e4a1b7 · GPG signature verified · Clean tree
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stage 2 */}
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-start justify-between gap-3 hover:bg-white/[0.04] transition-colors">
-                      <div className="flex items-start gap-2.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                        <div>
-                          <div className="text-white font-bold flex items-center gap-2">
-                            <span>PIPE-05: HERMETIC CONTAINER BUILD</span>
-                            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20 font-mono">
-                              PASS 2.2s
-                            </span>
-                          </div>
-                          <p className="text-slate-400 text-[11px] mt-0.5 font-mono">
-                            Docker BuildKit (linux/amd64) · 94.2% cache hit · Pushed to ghcr.io/acme-cloud/payment-service:v2.4.0
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stage 3 */}
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-start justify-between gap-3 hover:bg-white/[0.04] transition-colors">
-                      <div className="flex items-start gap-2.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                        <div>
-                          <div className="text-white font-bold flex items-center gap-2">
-                            <span>PIPE-06: TERRAFORM STATE AUDIT</span>
-                            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20 font-mono">
-                              PASS 1.1s
-                            </span>
-                          </div>
-                          <p className="text-slate-400 text-[11px] mt-0.5 font-mono">
-                            AWS S3 state lock verified · 0 drift detected · Least-privilege IAM IRSA policy compliant
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stage 4 */}
-                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-start justify-between gap-3 hover:bg-white/[0.04] transition-colors">
-                      <div className="flex items-start gap-2.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                        <div>
-                          <div className="text-white font-bold flex items-center gap-2">
-                            <span>PIPE-07: ZERO-DOWNTIME K8S ROLLOUT</span>
-                            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20 font-mono">
-                              PASS 1.0s
-                            </span>
-                          </div>
-                          <p className="text-slate-400 text-[11px] mt-0.5 font-mono">
-                            Deployment applied to namespace production · 3/3 pods ready · NodePort ingress assigned
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Live Endpoint Assigned Banner */}
-                  <div className="p-3.5 rounded-2xl bg-emerald-500/[0.08] border border-emerald-500/25 mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_0_24px_rgba(16,185,129,0.12)]">
-                    <div className="flex items-center gap-3">
-                      <span className="relative flex h-3 w-3 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
-                      </span>
-                      <div>
-                        <div className="text-[11px] text-emerald-400 font-semibold uppercase tracking-wider">
-                          Live Application Endpoint
-                        </div>
-                        <a
-                          href="https://payment-service.acme-cloud.io"
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.preventDefault()}
-                          className="text-white text-xs font-bold underline decoration-emerald-500/50 hover:decoration-emerald-400 transition-colors"
-                        >
-                          https://payment-service.acme-cloud.io
-                        </a>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-[10px] font-mono">
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                        NodePort 30452
-                      </span>
-                      <span className="px-2 py-0.5 rounded bg-white/[0.04] text-slate-300 border border-white/5">
-                        Latency: 14ms
-                      </span>
-                      <span className="px-2 py-0.5 rounded bg-white/[0.04] text-slate-300 border border-white/5">
-                        TLS 1.3 Strict
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'manifest' && (
-                <div className="relative">
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/[0.06] text-[11px] text-slate-400">
-                    <span className="text-white font-medium">manifests/production/deployment.yaml</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopySnippet(sampleManifest)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/10 text-slate-300 hover:text-white transition-colors border border-white/5"
-                    >
-                      {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedCode ? 'Copied' : 'Copy Manifest'}</span>
-                    </button>
-                  </div>
-                  <pre className="text-slate-300 font-mono text-xs whitespace-pre overflow-x-auto leading-relaxed">
-                    {sampleManifest}
-                  </pre>
-                </div>
-              )}
-
-              {activeTab === 'terraform' && (
-                <div className="relative">
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/[0.06] text-[11px] text-slate-400">
-                    <span className="text-white font-medium">terraform/environments/production/main.tf</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopySnippet(sampleTerraform)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/10 text-slate-300 hover:text-white transition-colors border border-white/5"
-                    >
-                      {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedCode ? 'Copied' : 'Copy Terraform'}</span>
-                    </button>
-                  </div>
-                  <pre className="text-slate-300 font-mono text-xs whitespace-pre overflow-x-auto leading-relaxed">
-                    {sampleTerraform}
-                  </pre>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </section>
