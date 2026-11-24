@@ -202,39 +202,45 @@ export const DeploymentDetailsPage: React.FC<DeploymentDetailsPageProps> = ({
         </div>
       </div>
 
-      {/* ── Live Service Banner (When Succeeded) ────────────────── */}
+      {/* ── Live Service Banner (Bright / Luminous Accent) ────────────────── */}
       {deployment.serviceUrl && (
-        <div className="rounded-2xl bg-[#090A14] border border-emerald-500/30 p-5 shadow-[0_0_30px_rgba(16,185,129,0.12)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="rounded-2xl bg-gradient-to-r from-emerald-500/20 via-teal-500/15 to-emerald-500/10 border-2 border-emerald-400/50 p-5 sm:p-6 shadow-[0_0_40px_rgba(16,185,129,0.25)] flex flex-col sm:flex-row sm:items-center justify-between gap-4 backdrop-blur-xl relative overflow-hidden">
+          {/* Top specular glow line */}
+          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-300 to-transparent" />
+
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-              <Globe className="w-5 h-5" />
+            <div className="w-11 h-11 rounded-xl bg-emerald-400/30 border border-emerald-300/60 flex items-center justify-center text-emerald-200 shrink-0 shadow-[0_0_20px_rgba(52,211,153,0.4)]">
+              <Globe className="w-6 h-6 text-emerald-300" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-400">
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
+                </span>
+                <span className="text-xs font-mono font-extrabold uppercase tracking-wider text-emerald-300">
                   Live Service Ingress
                 </span>
-                <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300">
-                  200 OK
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-extrabold bg-emerald-400 text-slate-950 shadow-sm">
+                  ONLINE · 200 OK
                 </span>
               </div>
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-2 mt-1">
                 <a
                   href={deployment.serviceUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs font-mono text-white hover:text-emerald-300 underline font-semibold"
+                  className="text-xs sm:text-sm font-mono text-white hover:text-emerald-200 underline decoration-emerald-400 font-bold tracking-tight"
                 >
                   {deployment.serviceUrl}
                 </a>
                 <button
                   type="button"
                   onClick={() => handleCopy(deployment.serviceUrl)}
-                  className="text-slate-400 hover:text-white transition-colors"
+                  className="p-1 rounded-md text-emerald-300 hover:text-white hover:bg-emerald-400/20 transition-colors"
                   title="Copy URL"
                 >
-                  {copiedUrl ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedUrl ? <Check className="w-4 h-4 text-emerald-200" /> : <Copy className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -244,10 +250,10 @@ export const DeploymentDetailsPage: React.FC<DeploymentDetailsPageProps> = ({
             href={deployment.serviceUrl}
             target="_blank"
             rel="noreferrer"
-            className="h-10 px-5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs font-mono transition-all flex items-center justify-center gap-2 shrink-0 shadow-[0_0_20px_rgba(16,185,129,0.35)]"
+            className="h-11 px-6 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-extrabold text-xs font-mono transition-all flex items-center justify-center gap-2 shrink-0 shadow-[0_0_25px_rgba(52,211,153,0.5)] hover:shadow-[0_0_35px_rgba(52,211,153,0.7)] active:scale-[0.98]"
           >
             <span>Launch Application</span>
-            <ExternalLink className="w-3.5 h-3.5" />
+            <ExternalLink className="w-4 h-4" />
           </a>
         </div>
       )}
