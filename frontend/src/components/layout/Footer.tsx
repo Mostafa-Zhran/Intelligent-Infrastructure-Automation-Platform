@@ -88,10 +88,10 @@ export const Footer: React.FC = () => {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2.5">
                 <div
-                  className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                   style={{ background: 'linear-gradient(135deg, rgba(30,27,75,0.9) 0%, rgba(15,23,42,0.9) 100%)', border: '1px solid rgba(168,85,247,0.35)' }}
                 >
-                  <BrandLogo className="w-4 h-4" />
+                  <BrandLogo className="w-5 h-5" />
                 </div>
                 <span className="font-semibold text-white tracking-tight text-xs">Automated DevOps</span>
               </div>

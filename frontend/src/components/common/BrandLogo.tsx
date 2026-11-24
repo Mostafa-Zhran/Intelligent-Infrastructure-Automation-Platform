@@ -6,10 +6,15 @@ interface IconProps {
 }
 
 /**
- * Modern Cloud & DevOps Core Brand Logo
- * Features an infinity automation loop merging into interconnected cloud nodes
+ * Intelligent Infrastructure Automation Platform (IIAP)
+ * Brand Logo — Autonomous Infrastructure Nexus
+ * 
+ * Embodies:
+ * 1. Modular Cloud Architecture (Isometric 3-facet cluster)
+ * 2. Automated Pipeline Delivery (Integrated telemetry conduits)
+ * 3. AI Core Intelligence (Central luminous quantum spark)
  */
-export const BrandLogo: React.FC<IconProps> = ({ className = 'w-5 h-5', size }) => {
+export const BrandLogo: React.FC<IconProps> = ({ className = 'w-6 h-6', size }) => {
   return (
     <svg
       viewBox="0 0 32 32"
@@ -21,24 +26,87 @@ export const BrandLogo: React.FC<IconProps> = ({ className = 'w-5 h-5', size }) 
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="brand-core-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#C084FC" />
-          <stop offset="45%" stopColor="#818CF8" />
-          <stop offset="100%" stopColor="#22D3EE" />
+        {/* Top Facet: Cloud & Declarative IaC Plane */}
+        <linearGradient id="iiap-facet-top" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#22D3EE" />
+          <stop offset="50%" stopColor="#38BDF8" />
+          <stop offset="100%" stopColor="#6366F1" />
         </linearGradient>
+
+        {/* Left Facet: Container Engine & Compute Layer */}
+        <linearGradient id="iiap-facet-left" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#6366F1" />
+          <stop offset="100%" stopColor="#9333EA" />
+        </linearGradient>
+
+        {/* Right Facet: Automated Delivery & Telemetry Pipeline */}
+        <linearGradient id="iiap-facet-right" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#A855F7" />
+          <stop offset="60%" stopColor="#7C3AED" />
+          <stop offset="100%" stopColor="#06B6D4" />
+        </linearGradient>
+
+        {/* Glow filter for the central AI nexus */}
+        <filter id="iiap-core-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="1" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
-      {/* DevOps Infinity Cloud Automation Ribbon */}
+
+      {/* Top Segment — Cloud Infrastructure Layer */}
       <path
-        d="M10 11C6.68629 11 4 13.6863 4 17C4 20.3137 6.68629 23 10 23C13.5 23 16 17 16 17C16 17 18.5 11 22 11C25.3137 11 28 13.6863 28 17C28 20.3137 25.3137 23 22 23C18.5 23 16 17 16 17C16 17 13.5 11 10 11Z"
-        stroke="url(#brand-core-grad)"
-        strokeWidth="2.75"
+        d="M16 3.5L26.5 9.5L16 14.5L5.5 9.5Z"
+        fill="url(#iiap-facet-top)"
+      />
+      {/* Top segment directional flow accent */}
+      <path
+        d="M12 9.2L16 11.5L20 9.2"
+        stroke="#FFFFFF"
+        strokeWidth="1.2"
         strokeLinecap="round"
         strokeLinejoin="round"
+        strokeOpacity="0.5"
       />
-      {/* Interconnected Cloud Automation Nodes */}
-      <circle cx="10" cy="17" r="2.2" fill="#22D3EE" />
-      <circle cx="22" cy="17" r="2.2" fill="#C084FC" />
-      <circle cx="16" cy="17" r="1.6" fill="#FFFFFF" />
+
+      {/* Left Segment — Autonomous Container Core */}
+      <path
+        d="M4.5 11L14.5 16V27L4.5 21.5Z"
+        fill="url(#iiap-facet-left)"
+      />
+      {/* Left segment vertical telemetry bus */}
+      <path
+        d="M9.5 14.8V22.2"
+        stroke="#FFFFFF"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeOpacity="0.35"
+      />
+
+      {/* Right Segment — CI/CD Pipeline Orchestrator */}
+      <path
+        d="M17.5 16L27.5 11V21.5L17.5 27Z"
+        fill="url(#iiap-facet-right)"
+      />
+      {/* Right segment delivery trace */}
+      <path
+        d="M22.5 14.8V22.2"
+        stroke="#FFFFFF"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeOpacity="0.35"
+      />
+
+      {/* Central Intelligent AI Nexus Star */}
+      <g filter="url(#iiap-core-glow)">
+        <path
+          d="M16 11.8L17.5 15L20.5 16L17.5 17L16 20.2L14.5 17L11.5 16L14.5 15Z"
+          fill="#FFFFFF"
+        />
+        <circle cx="16" cy="16" r="1.2" fill="#22D3EE" />
+      </g>
     </svg>
   );
 };
