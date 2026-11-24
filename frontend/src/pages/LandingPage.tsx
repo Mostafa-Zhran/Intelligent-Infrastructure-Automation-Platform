@@ -49,15 +49,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const sampleManifest = `apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: app-production-mesh
-  namespace: app-development
+  name: payment-service
+  namespace: production
   labels:
     app.kubernetes.io/managed-by: iiap
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
-      app: app-production-mesh
+      app: payment-service
   template:
     spec:
       securityContext:
@@ -65,7 +65,7 @@ spec:
         runAsUser: 10001
       containers:
         - name: service
-          image: ghcr.io/org/service:ca815dc0
+          image: ghcr.io/acme-cloud/payment-service:v2.4.0
           ports:
             - containerPort: 3000
           resources:
@@ -226,7 +226,7 @@ spec:
                   <div className="text-slate-500"># Autonomous 4-Stage CI/CD Dispatch</div>
                   <div className="flex items-center gap-2 text-emerald-400">
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>[PIPE-04] Git Checkout: repo Mostafa-Zhran/app (commit ca815dc0)</span>
+                    <span>[PIPE-04] Git Checkout: repo acme-cloud/payment-service (commit 9e4a1b7)</span>
                   </div>
                   <div className="flex items-center gap-2 text-emerald-400">
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
@@ -238,13 +238,13 @@ spec:
                   </div>
                   <div className="flex items-center gap-2 text-emerald-400">
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>[PIPE-07] Kubernetes: namespace app-development ready. Pod 1/1 Running</span>
+                    <span>[PIPE-07] Kubernetes: namespace production ready. Pods 3/3 Running</span>
                   </div>
                   <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mt-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                       <span className="font-semibold text-emerald-300">Live Endpoint Assigned:</span>
-                      <span className="text-white underline decoration-emerald-500/50">http://35.172.193.37:32280</span>
+                      <span className="text-white underline decoration-emerald-500/50">https://payment-service.acme-cloud.io</span>
                     </div>
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
                       ONLINE
