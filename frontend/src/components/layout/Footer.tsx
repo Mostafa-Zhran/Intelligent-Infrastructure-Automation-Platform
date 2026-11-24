@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Shield, Lock, Activity, X, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Shield, Lock, Activity, X, CheckCircle2, ChevronRight } from 'lucide-react';
+import { BrandLogo } from '../common/BrandLogo';
 
 type ModalKey = 'privacy' | 'terms' | 'security' | 'status';
 
@@ -88,9 +89,9 @@ export const Footer: React.FC = () => {
               <div className="flex items-center gap-2.5">
                 <div
                   className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.85) 0%, rgba(79,70,229,0.8) 100%)', border: '1px solid rgba(139,92,246,0.35)' }}
+                  style={{ background: 'linear-gradient(135deg, rgba(30,27,75,0.9) 0%, rgba(15,23,42,0.9) 100%)', border: '1px solid rgba(168,85,247,0.35)' }}
                 >
-                  <Terminal className="w-3 h-3 text-white" />
+                  <BrandLogo className="w-4 h-4" />
                 </div>
                 <span className="font-semibold text-white tracking-tight text-xs">Automated DevOps</span>
               </div>

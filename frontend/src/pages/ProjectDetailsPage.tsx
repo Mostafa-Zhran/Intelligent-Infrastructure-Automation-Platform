@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { PageId } from '../types';
 import { projectsApi, deploymentsApi, Project, ApiDeployment } from '../services/api';
+import { ProjectIcon } from '../components/common/BrandLogo';
 
 interface ProjectDetailsPageProps {
   project?: any;
@@ -151,6 +152,9 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
             <span className="text-violet-400 font-semibold">{project.name}</span>
           </div>
           <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center text-violet-400 shrink-0 shadow-inner">
+              <ProjectIcon className="w-5 h-5" />
+            </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
               {project.name}
             </h1>

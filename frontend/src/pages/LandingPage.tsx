@@ -1,7 +1,6 @@
 import React, { useRef } from 'react';
 import {
   ArrowRight,
-  Terminal,
   CheckCircle2,
   ShieldCheck,
   GitBranch,
@@ -13,6 +12,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { PageId } from '../types';
+import { BrandLogo } from '../components/common/BrandLogo';
 
 const InfrastructureScene3D = React.lazy(() =>
   import('../components/3d/InfrastructureScene3D').then((m) => ({ default: m.InfrastructureScene3D }))
@@ -85,7 +85,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               onClick={scrollToFeatures}
               className="w-full sm:w-auto h-11 sm:h-12 px-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/10 text-sm font-medium transition-all flex items-center justify-center gap-2 backdrop-blur-md active:scale-[0.98]"
             >
-              <Terminal className="w-4 h-4 text-cyan-400" />
+              <BrandLogo className="w-4 h-4" />
               <span>Explore Architecture</span>
             </button>
           </div>

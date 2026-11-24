@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { ProjectIcon } from '../components/common/BrandLogo';
 import {
-  FolderGit2,
   RefreshCw,
   AlertTriangle,
   Plus,
@@ -816,7 +816,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
                           <td className="py-3.5 px-4">
                             <span className="text-white font-medium flex items-center gap-1.5">
-                              <Terminal className="w-3.5 h-3.5 text-violet-400" />
+                              <ProjectIcon className="w-3.5 h-3.5 text-violet-400" />
                               <span>{d.projectName}</span>
                             </span>
                             <span className="text-[10px] font-mono text-slate-500 truncate max-w-[180px] block">
@@ -931,7 +931,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
             ) : filteredProjects.length === 0 ? (
               <div className="py-16 text-center bg-[#0C0D17] border border-white/[0.08] rounded-2xl p-6">
-                <FolderGit2 className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                <ProjectIcon className="w-10 h-10 text-slate-600 mx-auto mb-3" />
                 <h4 className="text-white font-bold text-sm">No Workload Services Found</h4>
                 <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto mb-4">
                   Connect your repository to instantiate automated container builds and K8s node deployments.

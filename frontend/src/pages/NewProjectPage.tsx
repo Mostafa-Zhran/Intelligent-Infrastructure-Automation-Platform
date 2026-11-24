@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
-  FolderGit2,
   Layers,
   Plus,
   RefreshCw,
@@ -16,6 +15,7 @@ import {
 } from 'lucide-react';
 import { PageId } from '../types';
 import { githubApi, projectsApi, GitHubRepoOption, GitHubAccountOption, GitHubBranchOption, AnalyzeRepositoryResult } from '../services/api';
+import { ProjectIcon } from '../components/common/BrandLogo';
 
 const GithubIcon: React.FC<{ className?: string }> = ({ className = 'w-5 h-5' }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -479,7 +479,7 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
             </div>
           ) : filteredRepos.length === 0 ? (
             <div className="py-16 text-center space-y-2 border border-dashed border-white/10 rounded-2xl">
-              <FolderGit2 className="w-8 h-8 text-gray-500 mx-auto" />
+              <ProjectIcon className="w-8 h-8 text-gray-500 mx-auto" />
               <p className="text-sm font-semibold text-white">No repositories found</p>
               <p className="text-xs text-[#A1A1B5]">
                 {repoSearch ? 'Try a different filter term' : 'No accessible repositories found for this account.'}
@@ -501,7 +501,7 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <FolderGit2 className={`w-5 h-5 flex-shrink-0 ${isSelected ? 'text-violet-300' : 'text-[#A1A1B5]'}`} />
+                        <ProjectIcon className={`w-5 h-5 flex-shrink-0 ${isSelected ? 'text-violet-300' : 'text-[#A1A1B5]'}`} />
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-white truncate">{repo.name}</p>
                           <p className="text-xs font-mono text-[#A1A1B5] truncate">{repo.fullName}</p>

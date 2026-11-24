@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, LogOut, User, LogIn, Zap, Menu, X, ChevronRight, LayoutDashboard, ChevronDown, FolderGit2, Rocket } from 'lucide-react';
+import { LogOut, User, LogIn, Zap, Menu, X, ChevronRight, LayoutDashboard, ChevronDown, Rocket } from 'lucide-react';
 import { PageId, UserProfile } from '../../types';
+import { BrandLogo, ProjectIcon } from '../common/BrandLogo';
 
 interface HeaderProps {
   currentPage: PageId;
@@ -87,16 +88,17 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-2.5 sm:gap-3 text-left group focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded-xl p-1 -m-1 flex-shrink-0"
             aria-label="Automated DevOps home"
           >
-            {/* Icon container with violet gradient */}
+            {/* Brand Logo Container with Modern DevOps Core icon */}
             <div
-              className="relative w-8 h-8 rounded-xl flex items-center justify-center shadow-md overflow-hidden flex-shrink-0"
+              className="relative w-9 h-9 rounded-xl flex items-center justify-center shadow-lg overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform"
               style={{
-                background: 'linear-gradient(135deg, rgba(109,40,217,0.9) 0%, rgba(79,70,229,0.85) 100%)',
-                border: '1px solid rgba(139,92,246,0.4)',
+                background: 'linear-gradient(135deg, rgba(30,27,75,0.95) 0%, rgba(15,23,42,0.95) 100%)',
+                border: '1px solid rgba(168,85,247,0.45)',
+                boxShadow: '0 0 16px -2px rgba(168,85,247,0.25)',
               }}
             >
-              <Terminal className="w-4 h-4 text-white group-hover:text-cyan-200 transition-colors relative z-10" />
-              <div className="absolute inset-0 bg-gradient-to-br from-white/15 to-transparent pointer-events-none" />
+              <BrandLogo className="w-6 h-6 relative z-10" />
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/15 via-transparent to-cyan-500/15 pointer-events-none" />
             </div>
 
             <div className="flex flex-col leading-none min-w-0">
@@ -224,7 +226,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onClick={() => handleNavClick('projects')}
                     className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:text-white hover:bg-white/5 flex items-center gap-2 transition-colors"
                   >
-                    <FolderGit2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <ProjectIcon className="w-3.5 h-3.5 text-violet-400" />
                     <span>Projects</span>
                   </button>
 
@@ -403,7 +405,7 @@ export const Header: React.FC<HeaderProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <FolderGit2 className="w-4 h-4 text-emerald-400" />
+                        <ProjectIcon className="w-4 h-4 text-violet-400" />
                         <span>Projects</span>
                       </div>
                       <ChevronRight className="w-4 h-4 text-white/40" />
@@ -466,7 +468,7 @@ export const Header: React.FC<HeaderProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <Terminal className="w-4 h-4 text-violet-400" />
+                      <BrandLogo className="w-4 h-4" />
                       <span>Platform Overview</span>
                     </div>
                     <ChevronRight className="w-4 h-4 text-white/40" />

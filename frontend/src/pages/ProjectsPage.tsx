@@ -3,7 +3,6 @@ import {
   Plus,
   Search,
   ChevronRight,
-  Terminal,
   CheckCircle2,
   RefreshCw,
   Layers,
@@ -15,6 +14,7 @@ import {
 } from 'lucide-react';
 import { PageId } from '../types';
 import { projectsApi, Project } from '../services/api';
+import { ProjectIcon } from '../components/common/BrandLogo';
 
 interface ProjectsPageProps {
   onNavigate: (page: PageId) => void;
@@ -318,7 +318,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   <div className="flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 group-hover:scale-105 transition-transform">
-                        <Terminal className="w-4 h-4" />
+                        <ProjectIcon className="w-4 h-4" />
                       </div>
                       <span className="text-sm font-bold text-white group-hover:text-violet-300 transition-colors truncate">
                         {p.name}
@@ -383,7 +383,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                     >
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2.5">
-                          <Terminal className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                          <ProjectIcon className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                           <span className="font-bold text-white group-hover:text-violet-300 transition-colors">
                             {p.name}
                           </span>

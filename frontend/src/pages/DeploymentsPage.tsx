@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
-  Terminal,
   RefreshCw,
   GitBranch,
   Plus,
@@ -11,6 +10,7 @@ import {
 } from 'lucide-react';
 import { PageId } from '../types';
 import { deploymentsApi, ApiDeployment } from '../services/api';
+import { ProjectIcon } from '../components/common/BrandLogo';
 
 interface DeploymentsPageProps {
   onNavigate: (page: PageId) => void;
@@ -342,7 +342,7 @@ export const DeploymentsPage: React.FC<DeploymentsPageProps> = ({
 
                       <td className="py-3.5 px-4">
                         <span className="text-white font-medium flex items-center gap-1.5 font-mono">
-                          <Terminal className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                          <ProjectIcon className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                           <span>{d.project?.name || 'Workload'}</span>
                         </span>
                       </td>

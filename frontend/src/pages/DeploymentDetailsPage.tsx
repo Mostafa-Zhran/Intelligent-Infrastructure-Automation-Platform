@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { PageId } from '../types';
 import { deploymentsApi } from '../services/api';
+import { ProjectIcon } from '../components/common/BrandLogo';
 
 interface DeploymentDetailsPageProps {
   deployment?: any;
@@ -169,8 +170,9 @@ export const DeploymentDetailsPage: React.FC<DeploymentDetailsPageProps> = ({
               <span>{deployment.status}</span>
             </span>
 
-            <span className="text-xs font-mono text-slate-400 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/10">
-              {deployment.project?.name || deployment.project || 'Project'}
+            <span className="text-xs font-mono text-slate-400 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/10 flex items-center gap-1.5">
+              <ProjectIcon className="w-3 h-3 text-violet-400 shrink-0" />
+              <span>{deployment.project?.name || deployment.project || 'Project'}</span>
             </span>
           </div>
 
