@@ -50,9 +50,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="absolute top-48 left-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[130px] pointer-events-none -z-10" />
 
         {/* Hero text — centred over the 3D background */}
-        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
+        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center pointer-events-none">
           {/* Engineering Release Pill */}
-          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs font-mono text-slate-300 backdrop-blur-md shadow-lg mb-6">
+          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs font-mono text-slate-300 backdrop-blur-md shadow-lg mb-6 pointer-events-auto">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-slate-400 font-semibold">IIAP Platform v2.4</span>
             <span className="text-slate-600">/</span>
@@ -60,17 +60,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Headline */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1] max-w-4xl text-balance">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1] max-w-4xl text-balance pointer-events-none">
             Automate cloud infrastructure. From Git commit to live cluster.
           </h1>
 
           {/* Body Copy */}
-          <p className="mt-5 sm:mt-6 text-base sm:text-lg text-slate-300 max-w-[68ch] mx-auto leading-relaxed text-balance font-sans">
+          <p className="mt-5 sm:mt-6 text-base sm:text-lg text-slate-300 max-w-[68ch] mx-auto leading-relaxed text-balance font-sans pointer-events-none">
             Connect any GitHub repository. IIAP builds hermetic Docker containers, verifies Terraform AWS topologies, and orchestrates live Kubernetes rollouts with deterministic endpoints in seconds.
           </p>
 
           {/* CTAs */}
-          <div className="mt-8 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full max-w-sm sm:max-w-none">
+          <div className="mt-8 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full max-w-sm sm:max-w-none pointer-events-auto">
             <button
               type="button"
               onClick={() => onNavigate(isAuthenticated ? 'projects' : 'signin')}
@@ -91,7 +91,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Live Proof Badges */}
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs text-slate-400 font-mono">
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs text-slate-400 font-mono pointer-events-auto">
             <span className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>Zero-Config K3s &amp; EKS</span>

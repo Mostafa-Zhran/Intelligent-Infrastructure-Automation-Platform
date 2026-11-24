@@ -338,9 +338,16 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
       const nodeLight = new THREE.PointLight(new THREE.Color(info.color), 1.4, 4.0, 1.5);
       nodeGroup.add(nodeLight);
 
+      // 6. Invisible Enlarged Hit Target Sphere for effortless hover & click
+      const hitSphereGeom = new THREE.SphereGeometry(1.05, 12, 12);
+      const hitSphereMat = new THREE.MeshBasicMaterial({ visible: false });
+      const hitSphereMesh = new THREE.Mesh(hitSphereGeom, hitSphereMat);
+      hitSphereMesh.userData = { nodeId: info.id, info };
+      nodeGroup.add(hitSphereMesh);
+
       scene.add(nodeGroup);
-      nodeMeshes.push(coreMesh);
-      interactiveMap.set(coreMesh, info);
+      nodeMeshes.push(hitSphereMesh);
+      interactiveMap.set(hitSphereMesh, info);
 
       nodeBundles.push({
         group: nodeGroup,
@@ -515,7 +522,7 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
       const h = container.clientHeight;
       const isMobile = w < 768;
       camera.aspect = w / h;
-      camera.position.z = isMobile ? 12.5 : 8.5;
+      camera.position.z = isMobile ? 13.5 : 10.5;
       camera.position.y = isMobile ? 0.35 : 0;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
@@ -767,43 +774,47 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
       {/* ── Hover HUD — via portal so it escapes opacity/blend/overflow of any parent ── */}
       {hoveredNode && !selectedNode &&
         createPortal(
-          <div className="fixed bottom-8 right-8 z-[9000] pointer-events-none">
+          <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-[9000] pointer-events-auto cursor-pointer animate-scaleIn"
+               onClick={() => setSelectedNode(hoveredNode)}>
             <div
-              className="p-4 rounded-2xl border shadow-2xl backdrop-blur-2xl flex items-center gap-4 max-w-xs"
+              className="p-4 rounded-2xl border shadow-2xl backdrop-blur-2xl flex items-center gap-4 max-w-sm hover:scale-[1.02] transition-transform"
               style={{
-                background: 'rgba(8, 8, 18, 0.97)',
+                background: 'rgba(10, 11, 22, 0.95)',
                 borderColor: hoveredNode.color,
-                boxShadow: `0 20px 50px -10px rgba(0,0,0,0.9), 0 0 30px -5px ${hoveredNode.color}60`,
+                boxShadow: `0 24px 60px -12px rgba(0,0,0,0.95), 0 0 35px -5px ${hoveredNode.color}70`,
               }}
             >
               {/* Icon */}
               <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                 style={{
-                  background: `${hoveredNode.color}18`,
-                  border: `1.5px solid ${hoveredNode.color}70`,
+                  background: `${hoveredNode.color}25`,
+                  border: `1.5px solid ${hoveredNode.color}80`,
                   color: hoveredNode.color,
                 }}
               >
-                <Sparkles className="w-5 h-5" />
+                <Sparkles className="w-6 h-6" />
               </div>
               {/* Info */}
-              <div className="min-w-0">
+              <div className="min-w-0 pr-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h4 className="text-sm font-bold text-white tracking-tight">{hoveredNode.name}</h4>
                   <span
-                    className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
+                    className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
                     style={{
                       color: hoveredNode.color,
                       background: `${hoveredNode.color}20`,
-                      border: `1px solid ${hoveredNode.color}40`,
+                      border: `1px solid ${hoveredNode.color}50`,
                     }}
                   >
                     {hoveredNode.role}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-0.5 font-mono">{hoveredNode.metric}</p>
-                <p className="text-[10px] text-slate-600 mt-0.5 font-mono">↵ Click to inspect</p>
+                <p className="text-xs text-slate-300 mt-1 font-mono font-medium">{hoveredNode.metric}</p>
+                <div className="flex items-center gap-1.5 text-[11px] text-cyan-400 mt-1 font-mono font-semibold">
+                  <span>Tap to inspect node</span>
+                  <ArrowRight className="w-3 h-3" />
+                </div>
               </div>
             </div>
           </div>,
