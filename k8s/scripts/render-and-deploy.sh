@@ -229,11 +229,18 @@ if [ "${HAS_CLUSTER}" = "true" ]; then
 
   # Build real NodePort URL and export for GitHub Actions callback
   if [ -n "${CLUSTER_NODE_IP}" ]; then
-    REAL_SERVICE_URL="http://${CLUSTER_NODE_IP}:${NODE_PORT}"
+    REAL_HOST="${CLUSTER_NODE_IP}"
   else
-    _EXT_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}' 2>/dev/null || true)
-    REAL_SERVICE_URL="http://${_EXT_IP:-localhost}:${NODE_PORT}"
+    # Extract public IP from kubeconfig cluster server URL (e.g. https://35.172.193.37:6443 -> 35.172.193.37)
+    _KUBE_SERVER=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)
+    _SERVER_IP=$(echo "${_KUBE_SERVER}" | sed -E 's|https?://([^:/]+).*|\1|')
+    if [ -n "${_SERVER_IP}" ] && [ "${_SERVER_IP}" != "127.0.0.1" ] && [ "${_SERVER_IP}" != "localhost" ]; then
+      REAL_HOST="${_SERVER_IP}"
+    else
+      REAL_HOST=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}' 2>/dev/null || echo "localhost")
+    fi
   fi
+  REAL_SERVICE_URL="http://${REAL_HOST}:${NODE_PORT}"
   echo "✓ NodePort URL: ${REAL_SERVICE_URL}"
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
     echo "IIAP_SERVICE_URL=${REAL_SERVICE_URL}" >> "${GITHUB_OUTPUT}"

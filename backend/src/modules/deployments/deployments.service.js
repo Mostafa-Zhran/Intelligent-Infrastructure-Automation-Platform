@@ -63,11 +63,11 @@ function formatDeployment(d) {
                   url: d.ci_jobs[0].url,
               }
             : null,
-        // Extract serviceUrl from the latest SUCCEEDED event metadata
+        // Extract serviceUrl from deployment event metadata
         serviceUrl: (() => {
             const events = d.deployment_events || [];
-            for (let i = events.length - 1; i >= 0; i--) {
-                const meta = events[i].metadata;
+            for (const ev of events) {
+                const meta = ev?.metadata;
                 if (meta && typeof meta === 'object' && meta.serviceUrl) {
                     return meta.serviceUrl;
                 }
@@ -149,6 +149,7 @@ async function getDeploymentById(deploymentId, user) {
                     status: newStatus,
                     runId: found.runId,
                     runUrl: found.runUrl,
+                    serviceUrl: found.serviceUrl,
                     finishedAt: new Date().toISOString(),
                 });
                 deployment.status = newStatus;
@@ -240,6 +241,7 @@ async function getDeploymentLogs(deploymentId, user, query = {}) {
                             status: newStatus,
                             runId: found.runId,
                             runUrl: found.runUrl,
+                            serviceUrl: found.serviceUrl,
                             finishedAt: new Date().toISOString(),
                         });
                         deployment.status = newStatus;

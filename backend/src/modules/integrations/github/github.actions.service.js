@@ -298,12 +298,25 @@ async function findWorkflowRunForDeployment(deploymentId, createdAt = null, user
         for (const run of sortedRuns.slice(0, 5)) {
             const logsText = await fetchWorkflowRunLogs(run.id, token);
             if (logsText && logsText.includes(deploymentId)) {
+                let serviceUrl = null;
+                const nodePortMatch = logsText.match(/NodePort URL:\s*http:\/\/([^\s:]+):(\d+)/i);
+                if (nodePortMatch) {
+                    let host = nodePortMatch[1];
+                    const port = nodePortMatch[2];
+                    if (host === 'localhost' || !host) {
+                        const serverMatch = logsText.match(/https:\/\/([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+):6443/);
+                        host = serverMatch ? serverMatch[1] : (process.env.K8S_CLUSTER_IP || '35.172.193.37');
+                    }
+                    serviceUrl = `http://${host}:${port}`;
+                }
+
                 return {
                     runId: run.id,
                     rawLogs: logsText,
                     status: run.status,
                     conclusion: run.conclusion,
                     runUrl: run.html_url,
+                    serviceUrl,
                 };
             }
         }
