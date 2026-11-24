@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
-  ArrowLeft,
-  CheckCircle2,
   GitBranch,
   Play,
   Layers,
   ChevronRight,
-  Settings,
   RefreshCw,
   ExternalLink,
   AlertTriangle,
-  Box,
   Cpu,
   Plus,
+  FileCode,
 } from 'lucide-react';
 import { PageId } from '../types';
 import { projectsApi, deploymentsApi, Project, ApiDeployment } from '../services/api';
@@ -32,7 +29,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
 }) => {
   const [project, setProject] = useState<Project | null>(initialProject || null);
   const [deployments, setDeployments] = useState<ApiDeployment[]>([]);
-  const [activeTab, setActiveTab] = useState<'deployments' | 'config' | 'settings'>('deployments');
+  const [activeTab, setActiveTab] = useState<'deployments' | 'manifest' | 'topology' | 'settings'>('deployments');
   const [isLoading, setIsLoading] = useState<boolean>(!initialProject);
   const [isLoadingDeployments, setIsLoadingDeployments] = useState<boolean>(true);
   const [isDeploying, setIsDeploying] = useState<boolean>(false);
@@ -71,7 +68,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
       const data = await projectsApi.getDeployments(id);
       setDeployments(data.deployments || []);
     } catch {
-      // Non-blocking for page view
+      // non-blocking
     } finally {
       setIsLoadingDeployments(false);
     }
@@ -86,46 +83,12 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
         environment: project.defaultEnvironment || 'development',
       });
       setIsDeployModalOpen(false);
-      onShowToast?.('success', 'Pipeline Triggered', `Deployment #${res.deploymentId.substring(0, 8)} queued!`);
+      onShowToast?.('success', 'Pipeline Dispatched', `Deployment #${res.deploymentId.substring(0, 8)} queued`);
       await loadDeployments(project.id);
     } catch (err: any) {
       onShowToast?.('error', 'Deploy Request Failed', err.message || 'Failed to submit deployment');
     } finally {
       setIsDeploying(false);
-    }
-  };
-
-  const renderStatusBadge = (status: string | undefined | null) => {
-    switch ((status || '').toUpperCase()) {
-      case 'SUCCEEDED':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Succeeded</span>
-          </span>
-        );
-      case 'RUNNING':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-sky-500/15 text-sky-300 border border-sky-500/30 shadow-[0_0_12px_-2px_rgba(56,189,248,0.4)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
-            <span>Running</span>
-          </span>
-        );
-      case 'FAILED':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-rose-500/15 border border-rose-500/30 text-rose-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-            <span>Failed</span>
-          </span>
-        );
-      case 'QUEUED':
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-white/5 border border-white/10 text-slate-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-            <span>Queued</span>
-          </span>
-        );
     }
   };
 
@@ -143,80 +106,79 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
     }
   };
 
+  const latestDeployment = deployments[0];
+
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center gap-3">
-        <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
-        <p className="text-sm font-mono text-slate-400">Loading project topology…</p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
+        <RefreshCw className="w-6 h-6 text-violet-400 animate-spin" />
+        <span className="font-mono text-xs text-slate-400">Loading project workspace…</span>
       </div>
     );
   }
 
   if (!project) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6">
-        <AlertTriangle className="w-12 h-12 text-amber-400 mb-3" />
-        <h2 className="text-xl font-bold text-white mb-2">Project not found</h2>
-        <p className="text-sm text-slate-400 mb-6">The requested repository project does not exist or has been removed.</p>
+      <div className="min-h-[50vh] flex flex-col items-center justify-center p-6 text-center">
+        <AlertTriangle className="w-10 h-10 text-amber-400 mb-3" />
+        <h2 className="text-lg font-bold text-white">Project Not Found</h2>
+        <p className="text-xs text-slate-400 mt-1 mb-5">The requested workspace does not exist or has been deleted.</p>
         <button
           type="button"
           onClick={() => onNavigate('projects')}
-          className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-500 transition-colors"
+          className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-500"
         >
-          Return to Projects
+          Back to Projects
         </button>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-8 sm:py-10 max-w-7xl mx-auto flex flex-col gap-8 animate-fadeIn">
-      {/* Background ambient lighting */}
-      <div className="absolute top-0 left-1/4 w-[600px] h-[350px] bg-violet-600/10 blur-[130px] pointer-events-none -z-10" />
-      <div className="absolute top-48 right-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[130px] pointer-events-none -z-10" />
-
-      {/* Header bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 z-10">
-        <div>
-          <button
-            type="button"
-            onClick={() => onNavigate('projects')}
-            className="inline-flex items-center gap-1.5 text-xs font-mono text-slate-400 hover:text-white transition-colors mb-2.5 group"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-violet-400 group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Projects</span>
-          </button>
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col gap-6 animate-fadeIn text-slate-200">
+      {/* ── Breadcrumb & Top Bar ───────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+            <button
+              type="button"
+              onClick={() => onNavigate('projects')}
+              className="hover:text-white transition-colors"
+            >
+              Projects
+            </button>
+            <span className="text-slate-600">/</span>
+            <span className="text-violet-400 font-semibold">{project.name}</span>
+          </div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
               {project.name}
             </h1>
-            <span className="font-mono text-xs text-slate-400 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/10">
-              {project.repositoryBranch || 'main'}
+            <span className="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 capitalize">
+              {project.defaultEnvironment || 'production'}
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl font-sans">
-            {project.description || 'Automated deployment workspace managed by IIAP control plane.'}
+          <p className="text-xs sm:text-sm text-slate-400 max-w-2xl font-sans">
+            {project.description || 'Continuous automation workspace with zero-downtime Kubernetes delivery.'}
           </p>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2.5">
+        {/* Primary Controls */}
+        <div className="flex items-center gap-2.5 shrink-0">
           <button
             type="button"
-            onClick={() => {
-              if (project.id) loadDeployments(project.id);
-            }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/10 text-xs font-mono transition-all"
+            onClick={() => project.id && loadDeployments(project.id)}
+            className="h-10 px-3.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] text-slate-300 hover:text-white border border-white/10 text-xs font-mono transition-all flex items-center gap-2"
             title="Refresh deployments"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDeployments ? 'animate-spin' : ''}`} />
-            <span>Sync</span>
+            <span className="hidden sm:inline">Sync</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsDeployModalOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-[0_0_24px_rgba(124,58,237,0.45)] hover:shadow-[0_0_32px_rgba(124,58,237,0.65)] transition-all active:scale-[0.98]"
+            className="h-10 px-5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-[0_0_24px_rgba(124,58,237,0.4)] hover:shadow-[0_0_32px_rgba(124,58,237,0.6)] transition-all flex items-center gap-2 active:scale-[0.98]"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>Deploy Branch</span>
@@ -224,253 +186,318 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
         </div>
       </div>
 
-      {/* Quick Spec Metrics Strip */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 z-10">
-        <div className="rounded-2xl bg-[#080911] border border-white/[0.08] p-5 shadow-lg relative overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
-          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Repository</span>
-          <div className="flex items-center gap-2 mt-2 font-mono text-sm text-white truncate">
-            <GitBranch className="w-4 h-4 text-violet-400 shrink-0" />
-            <span className="truncate">{project.repositoryUrl ? project.repositoryUrl.replace(/^https?:\/\/github\.com\//, '') : 'Local Git'}</span>
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-[#080911] border border-white/[0.08] p-5 shadow-lg relative overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
-          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Default Target</span>
-          <div className="flex items-center gap-2 mt-2 font-mono text-sm text-emerald-400 capitalize">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>{project.defaultEnvironment || 'production'}</span>
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-[#080911] border border-white/[0.08] p-5 shadow-lg relative overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-sky-500/40 to-transparent" />
-          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Cluster Architecture</span>
-          <div className="flex items-center gap-2 mt-2 font-mono text-sm text-sky-400">
-            <Cpu className="w-4 h-4 text-sky-400 shrink-0" />
-            <span>Kubernetes Native</span>
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-[#080911] border border-white/[0.08] p-5 shadow-lg relative overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
-          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Total Deployments</span>
-          <div className="flex items-center gap-2 mt-2 font-mono text-sm text-white font-bold">
-            <Layers className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>{deployments.length} Runs</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-white/[0.08] pb-1 z-10 font-mono text-xs">
-        <button
-          type="button"
-          onClick={() => setActiveTab('deployments')}
-          className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${
-            activeTab === 'deployments'
-              ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.3)] font-semibold'
-              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-          }`}
-        >
-          <Layers className="w-3.5 h-3.5 text-violet-400" />
-          <span>Deployment History</span>
-          <span className="px-1.5 py-0.2 rounded bg-violet-500/20 text-violet-300 font-bold text-[10px]">
-            {deployments.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('config')}
-          className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${
-            activeTab === 'config'
-              ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.3)] font-semibold'
-              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-          }`}
-        >
-          <Box className="w-3.5 h-3.5 text-sky-400" />
-          <span>Infrastructure Manifests</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('settings')}
-          className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${
-            activeTab === 'settings'
-              ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.3)] font-semibold'
-              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-          }`}
-        >
-          <Settings className="w-3.5 h-3.5 text-slate-400" />
-          <span>Settings</span>
-        </button>
-      </div>
-
-      {/* TAB 1: Deployments History */}
-      {activeTab === 'deployments' && (
-        <div className="rounded-2xl sm:rounded-3xl bg-[#080911] border border-white/[0.08] overflow-hidden z-10 shadow-xl">
-          {isLoadingDeployments ? (
-            <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
-              <RefreshCw className="w-6 h-6 text-violet-400 animate-spin" />
-              <p className="font-mono text-xs">Loading execution history...</p>
+      {/* ── Two-Column Operational Workbench Layout ───────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* LEFT COLUMN: Metadata & Architecture Blueprint (4 cols) */}
+        <div className="lg:col-span-4 space-y-5">
+          {/* Workspace Identity Box */}
+          <div className="rounded-2xl bg-[#090A14] border border-white/[0.08] p-5 shadow-lg space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
+                Workspace Identity
+              </span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             </div>
-          ) : deployments.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 space-y-3">
-              <Layers className="w-8 h-8 text-slate-600 mx-auto" />
-              <p className="font-medium text-white">No deployments yet</p>
-              <p className="text-xs max-w-sm mx-auto font-sans">
-                Trigger your first automated build and deployment from Git commit to Kubernetes cluster.
-              </p>
-              <button
-                type="button"
-                onClick={() => setIsDeployModalOpen(true)}
-                className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shadow-md"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Trigger Deployment</span>
-              </button>
+
+            <div className="space-y-3 font-mono text-xs">
+              <div>
+                <span className="text-slate-500 text-[11px] block">Source Repository</span>
+                <div className="flex items-center gap-1.5 mt-1 text-white font-semibold truncate">
+                  <GitBranch className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                  <span className="truncate">{project.repositoryUrl ? project.repositoryUrl.replace(/^https?:\/\/github\.com\//, '') : 'github.com/org/repo'}</span>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-slate-500 text-[11px] block">Active Branch</span>
+                <span className="text-cyan-300 font-semibold mt-0.5 block">{project.repositoryBranch || 'main'}</span>
+              </div>
+
+              <div>
+                <span className="text-slate-500 text-[11px] block">Cluster Namespace</span>
+                <span className="text-slate-200 mt-0.5 block">{project.slug || project.name.toLowerCase()}</span>
+              </div>
+
+              <div>
+                <span className="text-slate-500 text-[11px] block">Provisioned Date</span>
+                <span className="text-slate-400 mt-0.5 block">{formatDate(project.createdAt)}</span>
+              </div>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left font-mono text-xs">
-                <thead>
-                  <tr className="border-b border-white/[0.08] bg-white/[0.02] text-slate-400">
-                    <th className="py-3 px-4 font-semibold">Deployment ID</th>
-                    <th className="py-3 px-4 font-semibold">Status</th>
-                    <th className="py-3 px-4 font-semibold">Branch & Commit</th>
-                    <th className="py-3 px-4 font-semibold">Environment</th>
-                    <th className="py-3 px-4 font-semibold">Live Service</th>
-                    <th className="py-3 px-4 font-semibold">Triggered</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.04]">
+          </div>
+
+          {/* Latest Active Deployment Status */}
+          <div className="rounded-2xl bg-[#090A14] border border-white/[0.08] p-5 shadow-lg space-y-3">
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300 block">
+              Active Environment State
+            </span>
+
+            {latestDeployment ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                  <span className="font-mono text-xs text-white font-bold">#{latestDeployment.id.substring(0, 8)}</span>
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                    latestDeployment.status === 'SUCCEEDED' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                    latestDeployment.status === 'FAILED' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
+                    'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                  }`}>
+                    {latestDeployment.status}
+                  </span>
+                </div>
+
+                {latestDeployment.serviceUrl ? (
+                  <div className="p-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/25 space-y-1.5">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold block">
+                      Live Ingress Endpoint
+                    </span>
+                    <a
+                      href={latestDeployment.serviceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-mono text-white hover:text-emerald-300 font-bold underline decoration-emerald-500/40 flex items-center justify-between"
+                    >
+                      <span className="truncate">{latestDeployment.serviceUrl}</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0 ml-1" />
+                    </a>
+                  </div>
+                ) : (
+                  <p className="text-xs font-mono text-slate-500">No public endpoint assigned yet</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs font-mono text-slate-500">No previous deployment runs</p>
+            )}
+          </div>
+
+          {/* Zero-Trust Compliance Blueprint */}
+          <div className="rounded-2xl bg-[#090A14] border border-white/[0.08] p-5 shadow-lg space-y-2.5 font-mono text-xs">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-300 block">
+              Enforced Security Profile
+            </span>
+            <div className="flex items-center justify-between text-slate-400 py-1 border-b border-white/[0.04]">
+              <span>K8s ServiceAccount</span>
+              <span className="text-emerald-400 font-bold">Non-Root (10001)</span>
+            </div>
+            <div className="flex items-center justify-between text-slate-400 py-1 border-b border-white/[0.04]">
+              <span>Linux Capabilities</span>
+              <span className="text-emerald-400 font-bold">ALL DROPPED</span>
+            </div>
+            <div className="flex items-center justify-between text-slate-400 py-1">
+              <span>Ingress Port Mesh</span>
+              <span className="text-cyan-400 font-bold">Deterministic NodePort</span>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Interactive Workbench Tabs & Tables (8 cols) */}
+        <div className="lg:col-span-8 flex flex-col gap-4">
+          {/* Workbench Tabs */}
+          <div className="flex items-center gap-2 border-b border-white/[0.08] pb-2 font-mono text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveTab('deployments')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-2 ${
+                activeTab === 'deployments'
+                  ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.25)] font-semibold'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-violet-400" />
+              <span>Deployments</span>
+              <span className="px-1.5 py-0.2 rounded bg-violet-500/20 text-violet-300 text-[10px] font-bold">
+                {deployments.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('manifest')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-2 ${
+                activeTab === 'manifest'
+                  ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.25)] font-semibold'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              <FileCode className="w-3.5 h-3.5 text-sky-400" />
+              <span>Manifest Spec</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('topology')}
+              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-2 ${
+                activeTab === 'topology'
+                  ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.25)] font-semibold'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Cluster Topology</span>
+            </button>
+          </div>
+
+          {/* TAB 1: Deployments Stream */}
+          {activeTab === 'deployments' && (
+            <div className="rounded-2xl bg-[#090A14] border border-white/[0.08] overflow-hidden shadow-lg">
+              {isLoadingDeployments ? (
+                <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center gap-3 font-mono text-xs">
+                  <RefreshCw className="w-5 h-5 text-violet-400 animate-spin" />
+                  <span>Loading deployment stream...</span>
+                </div>
+              ) : deployments.length === 0 ? (
+                <div className="p-12 text-center space-y-3">
+                  <Layers className="w-8 h-8 text-slate-600 mx-auto" />
+                  <p className="font-semibold text-white text-sm">No deployment history</p>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto font-sans">
+                    Execute your first build, test, and container rollout pipeline for this workspace.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsDeployModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shadow-md mt-2"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Launch First Pipeline</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="divide-y divide-white/[0.04]">
                   {deployments.map((dep) => (
-                    <tr
+                    <div
                       key={dep.id}
                       onClick={() => {
                         onSelectDeployment?.(dep);
                         onNavigate('deployment-details');
                       }}
-                      className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                      className="p-4 hover:bg-white/[0.02] transition-colors cursor-pointer group flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs"
                     >
-                      <td className="py-3.5 px-4 font-bold text-white group-hover:text-violet-300 transition-colors">
-                        #{dep.id.substring(0, 8)}
-                      </td>
-                      <td className="py-3.5 px-4">{renderStatusBadge(dep.status)}</td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-1.5 text-slate-300">
-                          <GitBranch className="w-3 h-3 text-violet-400" />
-                          <span>{dep.branch || 'main'}</span>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-bold text-white group-hover:text-violet-300 transition-colors">
+                            #{dep.id.substring(0, 8)}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            dep.status === 'SUCCEEDED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' :
+                            dep.status === 'FAILED' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/25' :
+                            'bg-sky-500/15 text-sky-400 border border-sky-500/25'
+                          }`}>
+                            {dep.status}
+                          </span>
+                          <span className="text-slate-500 text-[11px]">
+                            {formatDate(dep.startedAt || dep.createdAt)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-400 text-[11px]">
+                          <span className="flex items-center gap-1 text-slate-300">
+                            <GitBranch className="w-3 h-3 text-violet-400" />
+                            <span>{dep.branch || 'main'}</span>
+                          </span>
                           {dep.commitSha && (
-                            <span className="text-slate-500 text-[11px]">
-                              ({dep.commitSha.substring(0, 7)})
+                            <span className="text-slate-500">
+                              commit {dep.commitSha.substring(0, 7)}
                             </span>
                           )}
+                          <span className="text-slate-600">·</span>
+                          <span className="text-emerald-400 capitalize">{dep.environment}</span>
                         </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className="capitalize text-emerald-400 font-semibold">{dep.environment}</span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {dep.serviceUrl ? (
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        {dep.serviceUrl && (
                           <a
                             href={dep.serviceUrl}
                             target="_blank"
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 underline font-semibold"
+                            className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 text-[11px] font-semibold flex items-center gap-1 transition-colors"
                           >
-                            <span>Open URL</span>
+                            <span>Live App</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
-                        ) : (
-                          <span className="text-slate-600">—</span>
                         )}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-400">{formatDate(dep.startedAt || dep.createdAt)}</td>
-                      <td className="py-3.5 px-4 text-right">
-                        <span className="inline-flex items-center gap-1 text-slate-400 group-hover:text-white transition-colors">
-                          <span>Details</span>
+                        <span className="inline-flex items-center gap-1 text-slate-400 group-hover:text-white transition-colors text-xs">
+                          <span>Inspect</span>
                           <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                         </span>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: Manifest Blueprint */}
+          {activeTab === 'manifest' && (
+            <div className="rounded-2xl bg-[#090A14] border border-white/[0.08] p-5 shadow-lg space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] text-xs font-mono">
+                <span className="text-slate-400 font-semibold">manifests/kubernetes/deployment.yaml</span>
+                <span className="text-emerald-400 text-[11px]">SYNCHRONIZED</span>
+              </div>
+              <pre className="font-mono text-xs text-slate-300 leading-relaxed overflow-x-auto p-4 rounded-xl bg-black/40 border border-white/5">
+{`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${project.slug || project.name.toLowerCase()}
+  namespace: ${project.slug || project.name.toLowerCase()}
+  labels:
+    app.kubernetes.io/managed-by: iiap
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ${project.slug || project.name.toLowerCase()}
+  template:
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: app
+          image: ghcr.io/iiap/${project.slug || project.name.toLowerCase()}:latest
+          ports:
+            - containerPort: 3000
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }`}
+              </pre>
+            </div>
+          )}
+
+          {/* TAB 3: Cluster Topology */}
+          {activeTab === 'topology' && (
+            <div className="rounded-2xl bg-[#090A14] border border-white/[0.08] p-5 shadow-lg space-y-4 font-mono text-xs">
+              <h3 className="font-bold text-white text-sm">Cluster Runtime Target</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                  <span className="text-slate-500 text-[11px]">Orchestrator</span>
+                  <p className="text-white font-bold">K3s Lightweight Engine</p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                  <span className="text-slate-500 text-[11px]">Ingress Controller</span>
+                  <p className="text-cyan-300 font-bold">Traefik Ingress Route</p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                  <span className="text-slate-500 text-[11px]">State Backend</span>
+                  <p className="text-violet-300 font-bold">Encrypted S3 State Locks</p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                  <span className="text-slate-500 text-[11px]">Container Engine</span>
+                  <p className="text-emerald-300 font-bold">Containerd 1.7 / OCI</p>
+                </div>
+              </div>
             </div>
           )}
         </div>
-      )}
+      </div>
 
-      {/* TAB 2: Config */}
-      {activeTab === 'config' && (
-        <div className="rounded-2xl sm:rounded-3xl bg-[#080911] border border-white/[0.08] p-6 space-y-4 z-10">
-          <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
-            <div>
-              <h3 className="text-base font-bold text-white">Infrastructure as Code Blueprint</h3>
-              <p className="text-xs text-slate-400 mt-0.5 font-sans">
-                Declarative Terraform and Kubernetes spec applied during deployment runs.
-              </p>
-            </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-              HERMETIC SPEC
-            </span>
-          </div>
-
-          <div className="space-y-3 font-mono text-xs">
-            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
-              <span className="text-slate-400">Kubernetes Cluster Namespace:</span>
-              <span className="text-white font-bold">{project.slug || project.name.toLowerCase()}</span>
-            </div>
-            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
-              <span className="text-slate-400">Ingress Strategy:</span>
-              <span className="text-cyan-400 font-bold">Deterministic NodePort Pool (30000 - 32767)</span>
-            </div>
-            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
-              <span className="text-slate-400">Container Registry:</span>
-              <span className="text-violet-400 font-bold">ghcr.io / OCI Hermetic BuildKit</span>
-            </div>
-            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between">
-              <span className="text-slate-400">Zero-Trust Baseline:</span>
-              <span className="text-emerald-400 font-bold">runAsNonRoot: true · Drop All Capabilities</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: Settings */}
-      {activeTab === 'settings' && (
-        <div className="rounded-2xl sm:rounded-3xl bg-[#080911] border border-white/[0.08] p-6 space-y-4 z-10 max-w-2xl">
-          <h3 className="text-base font-bold text-white">Project Identity & Metadata</h3>
-          <div className="space-y-3 font-mono text-xs">
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-              <p className="text-[11px] text-slate-500 uppercase tracking-wider">Project UUID</p>
-              <code className="text-violet-300 font-semibold select-all mt-1 block">{project.id}</code>
-            </div>
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-              <p className="text-[11px] text-slate-500 uppercase tracking-wider">Project Slug</p>
-              <code className="text-white font-semibold mt-1 block">{project.slug}</code>
-            </div>
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-              <p className="text-[11px] text-slate-500 uppercase tracking-wider">Provisioned Date</p>
-              <p className="text-slate-300 mt-1">{formatDate(project.createdAt)}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Trigger Deployment Modal */}
+      {/* ── Trigger Deployment Modal ──────────────────────────── */}
       {isDeployModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-md rounded-2xl sm:rounded-3xl bg-[#090A14] border border-white/[0.12] p-6 shadow-2xl space-y-4">
+          <div className="relative w-full max-w-md rounded-2xl bg-[#090A14] border border-white/[0.12] p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2">
                 <Play className="w-4 h-4 text-violet-400 fill-current" />
-                <span>Trigger Pipeline Deployment</span>
+                <span>Launch Pipeline Deployment</span>
               </h3>
               <button
                 type="button"
@@ -481,30 +508,26 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
               </button>
             </div>
 
-            <div className="space-y-3.5 font-mono text-xs">
+            <div className="space-y-3 font-mono text-xs">
               <div>
-                <label className="text-[11px] uppercase tracking-wider text-slate-400">
-                  Target Project
-                </label>
-                <p className="text-white font-bold mt-1">{project.name}</p>
+                <span className="text-[11px] uppercase tracking-wider text-slate-500 block">Workspace</span>
+                <p className="text-white font-bold mt-0.5">{project.name}</p>
               </div>
 
               <div>
-                <label className="text-[11px] uppercase tracking-wider text-slate-400">
-                  Environment
-                </label>
-                <p className="text-emerald-400 font-bold mt-1 capitalize">{project.defaultEnvironment}</p>
+                <span className="text-[11px] uppercase tracking-wider text-slate-500 block">Target Environment</span>
+                <p className="text-emerald-400 font-bold mt-0.5 capitalize">{project.defaultEnvironment || 'production'}</p>
               </div>
 
               <div>
-                <label className="text-[11px] uppercase tracking-wider text-slate-400">
-                  Git Branch
+                <label className="text-[11px] uppercase tracking-wider text-slate-400 block mb-1">
+                  Target Git Branch
                 </label>
                 <input
                   type="text"
                   value={deployBranch}
                   onChange={(e) => setDeployBranch(e.target.value)}
-                  className="w-full h-10 px-3.5 mt-1 bg-white/[0.03] border border-white/10 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-violet-500"
+                  className="w-full h-10 px-3.5 bg-white/[0.03] border border-white/10 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-violet-500"
                 />
               </div>
             </div>
