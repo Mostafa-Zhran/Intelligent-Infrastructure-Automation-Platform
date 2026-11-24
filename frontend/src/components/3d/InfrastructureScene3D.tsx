@@ -676,7 +676,7 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
   return (
     <div
       style={{ touchAction: 'pan-y' }}
-      className="relative w-full h-full overflow-hidden select-none"
+      className="relative w-full h-full min-h-[520px] sm:min-h-[620px] lg:min-h-[700px] overflow-hidden select-none"
     >
       {/* ── Instant Cyber Topology Placeholder (Renders at 0ms so page is NEVER blank) ── */}
       <div
@@ -757,57 +757,57 @@ export const InfrastructureScene3D: React.FC<InfrastructureScene3DProps> = ({ on
         role="img"
       />
 
-      {/* Ambient gradient vignettes — top/bottom fade only; no left/right so it fills side-column */}
-      <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-[#07070D] via-[#07070D]/50 to-transparent pointer-events-none z-10" />
-      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#07070D] via-[#07070D]/60 to-transparent pointer-events-none z-10" />
+      {/* Ambient gradient vignettes to blend seamlessly into page background */}
+      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-[#07070D] via-[#07070D]/70 to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#07070D] via-[#07070D]/80 to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#07070D] to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#07070D] to-transparent pointer-events-none z-10" />
 
 
-      {/* ── Bottom Right: Active Hover HUD Badge (Portal so it escapes opacity/blend wrappers) ── */}
-      {hoveredNode && !selectedNode &&
-        createPortal(
-          <div className="fixed bottom-6 right-6 z-[90] animate-scaleIn pointer-events-none">
+      {/* ── Bottom Right: Active Hover HUD Badge ──────────────────────── */}
+      {hoveredNode && !selectedNode && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-20 animate-scaleIn pointer-events-none">
+          <div
+            className="p-3.5 rounded-2xl border shadow-2xl backdrop-blur-xl flex items-center gap-3.5 max-w-sm"
+            style={{
+              background: 'rgba(10, 10, 18, 0.94)',
+              borderColor: hoveredNode.color,
+              boxShadow: `0 16px 40px -8px rgba(0,0,0,0.8), 0 0 20px -4px ${hoveredNode.color}40`,
+            }}
+          >
             <div
-              className="p-3.5 rounded-2xl border shadow-2xl backdrop-blur-xl flex items-center gap-3.5 max-w-sm"
+              className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-md flex-shrink-0"
               style={{
-                background: 'rgba(10, 10, 18, 0.96)',
-                borderColor: hoveredNode.color,
-                boxShadow: `0 16px 40px -8px rgba(0,0,0,0.9), 0 0 24px -4px ${hoveredNode.color}60`,
+                background: `${hoveredNode.color}20`,
+                border: `1px solid ${hoveredNode.color}60`,
+                color: hoveredNode.color,
               }}
             >
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-md flex-shrink-0"
-                style={{
-                  background: `${hoveredNode.color}20`,
-                  border: `1px solid ${hoveredNode.color}60`,
-                  color: hoveredNode.color,
-                }}
-              >
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div className="min-w-0 pr-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="text-sm font-bold text-white tracking-tight truncate">
-                    {hoveredNode.name}
-                  </h4>
-                  <span
-                    className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
-                    style={{
-                      color: hoveredNode.color,
-                      background: `${hoveredNode.color}20`,
-                      border: `1px solid ${hoveredNode.color}40`,
-                    }}
-                  >
-                    {hoveredNode.role}
-                  </span>
-                </div>
-                <p className="text-xs text-[#A1A1B5] mt-0.5 font-mono">{hoveredNode.metric}</p>
-                <p className="text-[10px] text-slate-500 mt-0.5 font-mono">Click to inspect</p>
-              </div>
+              <Sparkles className="w-5 h-5" />
             </div>
-          </div>,
-          document.body
-        )
-      }
+            <div className="min-w-0 pr-2">
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-white tracking-tight truncate">
+                  {hoveredNode.name}
+                </h4>
+                <span
+                  className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded-full"
+                  style={{
+                    color: hoveredNode.color,
+                    background: `${hoveredNode.color}20`,
+                    border: `1px solid ${hoveredNode.color}40`,
+                  }}
+                >
+                  {hoveredNode.role}
+                </span>
+              </div>
+              <p className="text-xs text-[#A1A1B5] truncate mt-0.5 font-mono">
+                {hoveredNode.metric}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Center / Modal: Selected Node Detailed Inspection Card (Rendered via Portal) ────── */}
       {selectedNode &&
