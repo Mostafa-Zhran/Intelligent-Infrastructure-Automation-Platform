@@ -1,8 +1,20 @@
-import React, { useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  ArrowRight, Zap, CheckCircle2, ShieldCheck, RefreshCw,
-  GitBranch, Box, Layers, Container, Cpu, Sparkles,
-  ChevronDown, Eye, Server, BarChart3, ChevronRight, Activity
+  ArrowRight,
+  Terminal,
+  CheckCircle2,
+  ShieldCheck,
+  GitBranch,
+  Box,
+  Container,
+  Cpu,
+  Server,
+  Code2,
+  Copy,
+  Check,
+  Play,
+  Network,
+  Zap,
 } from 'lucide-react';
 import { PageId } from '../types';
 
@@ -15,364 +27,499 @@ interface LandingPageProps {
   isAuthenticated?: boolean;
 }
 
-const featuresData = [
-  {
-    id: 'infra-auto',
-    title: 'Infrastructure Automation',
-    subtitle: 'Declarative Cloud Topology',
-    desc: 'Automate complex multi-cloud VPCs, Kubernetes clusters, and storage fabrics with zero manual configuration. Continuous drift reconciliation ensures production always mirrors your Git repository state.',
-    icon: Box,
-    badge: 'Terraform & OpenTofu',
-    badgeClass: 'badge-violet',
-    stat: '100% Declarative',
-    color: '#A78BFA',
-  },
-  {
-    id: 'cicd-mgmt',
-    title: 'CI/CD Pipeline Management',
-    subtitle: 'Hermetic Delivery Loops',
-    desc: 'Pre-configured, battle-tested pipeline stages execute parallelized tests, artifact caching, container signing, and multi-cloud rollouts with sub-minute execution speeds.',
-    icon: Layers,
-    badge: 'Automated Rails',
-    badgeClass: 'badge-cyan',
-    stat: '< 45s Execution',
-    color: '#38BDF8',
-  },
-  {
-    id: 'sec-comp',
-    title: 'Security and Compliance',
-    subtitle: 'Zero-Trust Defense Fabric',
-    desc: 'Built-in automated IAM policy audits, runtime secret injection via HashiCorp Vault, vulnerability SBOM scans, and end-to-end mTLS encryption exceeding SOC2 Type II benchmarks.',
-    icon: ShieldCheck,
-    badge: 'mTLS + Vault',
-    badgeClass: 'badge-emerald',
-    stat: 'SOC2 Type II',
-    color: '#34D399',
-  },
-  {
-    id: 'env-prov',
-    title: 'Environment Provisioning',
-    subtitle: 'Ephemeral Preview Stacks',
-    desc: 'Spin up on-demand staging and sandbox environments for every pull request with isolated network namespaces, realistic database seeding, and automated teardown triggers.',
-    icon: Server,
-    badge: 'Instant On-Demand',
-    badgeClass: 'badge-amber',
-    stat: '0 Waste Overhead',
-    color: '#FCD34D',
-  },
-  {
-    id: 'mon-obs',
-    title: 'Monitoring and Observability',
-    subtitle: 'Real-Time Edge Telemetry',
-    desc: 'Unified streaming telemetry integrating OpenTelemetry metrics, structured distributed tracing, and automated health checks that trigger canary rollbacks before outages occur.',
-    icon: BarChart3,
-    badge: 'OpenTelemetry',
-    badgeClass: 'badge-violet',
-    stat: '99.99% Availability',
-    color: '#C084FC',
-  },
-];
-
-const workflowSteps = [
-  {
-    number: '01',
-    title: 'Code Commit & Trigger',
-    desc: 'Developers push commits or open pull requests. Webhook triggers cryptographic identity verification.',
-    tech: 'Git · GitHub · GitLab',
-    icon: GitBranch,
-    accent: '#FBBF24',
-  },
-  {
-    number: '02',
-    title: 'Declarative IaC Plan',
-    desc: 'Terraform runs automated speculative plans, security compliance audits, and cloud cost calculations.',
-    tech: 'Terraform · Policy-as-Code',
-    icon: Box,
-    accent: '#A78BFA',
-  },
-  {
-    number: '03',
-    title: 'Hermetic Containerization',
-    desc: 'Multi-stage Docker BuildKit compiles microservice binaries, attaches SBOM, and signs artifacts.',
-    tech: 'Docker · BuildKit · Cosign',
-    icon: Container,
-    accent: '#38BDF8',
-  },
-  {
-    number: '04',
-    title: 'Automated Canary Rollout',
-    desc: 'Kubernetes ingress orchestrates progressive blue/green traffic migration with real-time SLA verification.',
-    tech: 'Kubernetes · Helm · Istio',
-    icon: Cpu,
-    accent: '#34D399',
-  },
-];
-
 export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigate,
   isAuthenticated = false,
 }) => {
+  const [activeTab, setActiveTab] = useState<'pipeline' | 'manifest' | 'terraform'>('pipeline');
+  const [copiedCode, setCopiedCode] = useState(false);
   const featuresRef = useRef<HTMLDivElement>(null);
+  const architectureRef = useRef<HTMLDivElement>(null);
 
   const scrollToFeatures = () => {
     featuresRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const handleCopySnippet = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const sampleManifest = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-production-mesh
+  namespace: app-development
+  labels:
+    app.kubernetes.io/managed-by: iiap
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: app-production-mesh
+  template:
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: service
+          image: ghcr.io/org/service:ca815dc0
+          ports:
+            - containerPort: 3000
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }`;
+
+  const sampleTerraform = `module "production_cluster" {
+  source       = "terraform-aws-modules/eks/aws"
+  version      = "~> 20.0"
+  cluster_name = "iiap-prod-us-east-1"
+  
+  vpc_id                   = module.vpc.vpc_id
+  subnet_ids               = module.vpc.private_subnets
+  enable_irsa              = true
+  cluster_endpoint_public_access = true
+
+  eks_managed_node_groups = {
+    worker_nodes = {
+      instance_types = ["t3.medium"]
+      min_size       = 1
+      max_size       = 5
+      desired_size   = 2
+    }
+  }
+}`;
+
   return (
-    <div className="w-full relative overflow-hidden select-none animate-fadeIn">
-      {/* ── 1. Full-Width 3D Hero Scene ─────────────────────────────────── */}
-      <section className="relative w-full min-h-[92vh] flex flex-col justify-between pt-6 sm:pt-10">
-        {/* Background 3D Canvas */}
-        <div className="absolute inset-0 z-0">
+    <div className="w-full relative overflow-hidden select-none bg-[#07070D] text-slate-100">
+      {/* ── 1. Hero Viewport ────────────────────────────────────────────── */}
+      <section className="relative w-full min-h-[92vh] flex flex-col justify-between pt-8 sm:pt-14 pb-12">
+        {/* Ambient 3D Canvas in background */}
+        <div className="absolute inset-0 z-0 opacity-40 mix-blend-screen pointer-events-none">
           <React.Suspense fallback={<div className="w-full h-full bg-[#07070D]" />}>
             <InfrastructureScene3D onNavigate={onNavigate} />
           </React.Suspense>
         </div>
 
-        {/* Foreground Hero Content with backdrop scrim for maximum readability */}
-        <div className="relative z-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-8 sm:pt-14 pointer-events-none">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-950/50 backdrop-blur-xl border border-violet-500/35 text-xs text-violet-300 shadow-xl mb-6 pointer-events-auto animate-scaleIn">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="font-semibold tracking-wide uppercase font-mono text-[11px]">
-              Intelligent DevOps & Cloud Infrastructure
-            </span>
+        {/* Ambient background glows */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[720px] h-[360px] bg-violet-600/10 blur-[140px] pointer-events-none -z-10" />
+        <div className="absolute top-48 left-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[130px] pointer-events-none -z-10" />
+
+        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
+          {/* Engineering Release Pill */}
+          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs font-mono text-slate-300 backdrop-blur-md shadow-lg mb-6">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-slate-400 font-semibold">IIAP Platform v2.4</span>
+            <span className="text-slate-600">/</span>
+            <span className="text-cyan-300">CNCF Kubernetes & Terraform Native</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.15] drop-shadow-2xl">
-            Fill a form.{' '}
-            <span className="text-gradient-violet block sm:inline">
-              We run the pipeline.
-            </span>
+          {/* Primary Punchy Headline (No cheesy gradient text, pure typographic weight) */}
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1] max-w-4xl text-balance">
+            Automate cloud infrastructure. From Git commit to live cluster.
           </h1>
 
-          <p className="mt-4 sm:mt-5 text-sm sm:text-lg lg:text-xl text-[#D1D1E0] max-w-2xl mx-auto leading-relaxed drop-shadow-md px-1">
-            Deploy enterprise-grade cloud environments with Terraform, Ansible, Docker, and Kubernetes through one unified 3D-orchestrated workflow.
+          {/* Calibrated Body Copy (65-75ch measure) */}
+          <p className="mt-5 sm:mt-6 text-base sm:text-lg text-slate-300 max-w-[68ch] mx-auto leading-relaxed text-balance font-sans">
+            Connect any GitHub repository. IIAP builds hermetic Docker containers, verifies Terraform AWS topologies, and orchestrates live Kubernetes rollouts with deterministic endpoints in seconds.
           </p>
 
-          {/* Interactive Hero CTAs */}
-          <div className="mt-7 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none mx-auto pointer-events-auto">
+          {/* Main Action CTAs */}
+          <div className="mt-8 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full max-w-sm sm:max-w-none">
             <button
               type="button"
-              onClick={() => onNavigate(isAuthenticated ? 'profile' : 'signin')}
-              className="w-full sm:w-auto min-h-[48px] px-8 py-3 rounded-xl text-white font-semibold text-base shadow-xl flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-95 group hover:brightness-110"
-              style={{
-                background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
-                border: '1px solid rgba(139,92,246,0.6)',
-                boxShadow: '0 8px 32px -4px rgba(124,58,237,0.6), inset 0 1px 0 rgba(255,255,255,0.25)',
-              }}
+              onClick={() => onNavigate(isAuthenticated ? 'projects' : 'signin')}
+              className="w-full sm:w-auto h-12 px-7 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm shadow-[0_0_28px_rgba(124,58,237,0.45)] hover:shadow-[0_0_36px_rgba(124,58,237,0.65)] transition-all flex items-center justify-center gap-2 group active:scale-[0.98]"
             >
-              <span>{isAuthenticated ? 'Open Dashboard' : 'Get Started'}</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              <span>{isAuthenticated ? 'Open Projects Console' : 'Start Deploying Free'}</span>
+              <ArrowRight className="w-4 h-4 text-violet-200 group-hover:translate-x-1 transition-transform" />
             </button>
 
             <button
               type="button"
               onClick={scrollToFeatures}
-              className="w-full sm:w-auto min-h-[48px] px-7 py-3 rounded-xl text-gray-200 font-semibold text-base bg-white/[0.06] hover:bg-white/[0.12] active:bg-white/[0.18] backdrop-blur-md border border-white/15 hover:border-white/30 transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto h-12 px-6 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/10 text-sm font-medium transition-all flex items-center justify-center gap-2 backdrop-blur-md active:scale-[0.98]"
             >
-              <Eye className="w-4 h-4 text-cyan-400" />
-              <span>Explore Platform</span>
+              <Terminal className="w-4 h-4 text-cyan-400" />
+              <span>Explore Architecture</span>
             </button>
           </div>
 
-          {/* Trust Guarantees */}
-          <div className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-3.5 sm:gap-10 text-xs text-[#A1A1B5] font-mono pointer-events-auto px-2">
-            <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              Zero Configuration
+          {/* Live Proof Badges */}
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs text-slate-400 font-mono">
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Zero-Config K3s & EKS</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-              Self-Healing Meshes
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+              <span>Automated GHCR Registry</span>
             </span>
-            <span className="hidden sm:flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-violet-400" />
-              SOC2 Type II Ready
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-violet-400 shrink-0" />
+              <span>Least-Privilege Security</span>
             </span>
           </div>
         </div>
 
-        {/* Scroll Indicator */}
-        <div className="relative z-20 pb-6 flex flex-col items-center justify-center pointer-events-auto">
-          <button
-            type="button"
-            onClick={scrollToFeatures}
-            className="flex flex-col items-center gap-1.5 text-xs font-mono text-[#A1A1B5] hover:text-white transition-colors group p-2"
-            aria-label="Scroll to platform capabilities"
-          >
-            <span className="tracking-wider uppercase text-[10px]">Explore Capabilities</span>
-            <ChevronDown className="w-4 h-4 text-cyan-400 group-hover:translate-y-1 transition-transform animate-bounce" />
-          </button>
-        </div>
-      </section>
+        {/* ── Interactive Engineering Console Preview ─────────────────────── */}
+        <div className="relative z-10 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 mt-10 sm:mt-12">
+          <div className="rounded-2xl bg-[#0B0B14] border border-white/10 shadow-[0_24px_70px_-16px_rgba(0,0,0,0.85)] overflow-hidden">
+            {/* Window Chrome Header */}
+            <div className="px-4 py-3 bg-[#11111E] border-b border-white/10 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
+                <span className="text-xs font-mono text-slate-400 ml-2 hidden sm:inline">
+                  iiap-runner :: live-delivery-telemetry
+                </span>
+              </div>
 
-      {/* ── 2. Platform Features Grid ───────────────────────────────────── */}
-      <section ref={featuresRef} id="features" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-24 space-y-8 sm:space-y-12">
-        <div className="text-center max-w-2xl mx-auto space-y-2.5 sm:space-y-3">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/40 border border-cyan-500/30 text-[11px] font-mono text-cyan-300">
-            <Activity className="w-3 h-3 text-cyan-400" />
-            <span>Core Architecture Pillars</span>
-          </div>
-          <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-            Intelligent Infrastructure Automation
-          </h2>
-          <p className="text-xs sm:text-base text-[#A1A1B5] leading-relaxed">
-            Eliminate fragile scripts and manual provisioning with self-healing, declarative infrastructure building blocks.
-          </p>
-        </div>
+              {/* Console Tabs */}
+              <div className="flex items-center gap-1 font-mono text-xs">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('pipeline')}
+                  className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 ${
+                    activeTab === 'pipeline'
+                      ? 'bg-violet-600 text-white font-semibold'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Play className="w-3 h-3" />
+                  <span>Pipeline Execution</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('manifest')}
+                  className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 ${
+                    activeTab === 'manifest'
+                      ? 'bg-violet-600 text-white font-semibold'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Code2 className="w-3 h-3" />
+                  <span>K8s Manifest</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('terraform')}
+                  className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 ${
+                    activeTab === 'terraform'
+                      ? 'bg-violet-600 text-white font-semibold'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Box className="w-3 h-3" />
+                  <span>Terraform IaC</span>
+                </button>
+              </div>
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {featuresData.map((f) => {
-            const Icon = f.icon;
-            return (
-              <div
-                key={f.id}
-                className="p-5 sm:p-7 rounded-2xl sm:rounded-3xl bg-white/[0.025] hover:bg-white/[0.045] backdrop-blur-xl border border-white/[0.08] hover:border-white/20 transition-all duration-300 group flex flex-col justify-between hover:-translate-y-1 hover:shadow-2xl"
-                style={{
-                  boxShadow: '0 20px 48px -12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)',
-                }}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-4 sm:mb-5">
-                    <div
-                      className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110"
-                      style={{
-                        background: `${f.color}20`,
-                        border: `1px solid ${f.color}50`,
-                      }}
-                    >
-                      <Icon className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: f.color }} />
-                    </div>
-                    <span className={`badge ${f.badgeClass}`}>{f.badge}</span>
+            {/* Console Body Content */}
+            <div className="p-4 sm:p-5 font-mono text-xs text-slate-300 leading-relaxed overflow-x-auto min-h-[260px] max-h-[360px]">
+              {activeTab === 'pipeline' && (
+                <div className="space-y-2">
+                  <div className="text-slate-500"># Autonomous 4-Stage CI/CD Dispatch</div>
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>[PIPE-04] Git Checkout: repo Mostafa-Zhran/app (commit ca815dc0)</span>
                   </div>
-
-                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight group-hover:text-violet-200 transition-colors">
-                    {f.title}
-                  </h3>
-                  <p className="text-[11px] sm:text-xs font-mono font-semibold text-cyan-300/90 mt-1">
-                    {f.subtitle}
-                  </p>
-                  <p className="text-xs sm:text-sm text-[#A1A1B5] leading-relaxed mt-2.5 sm:mt-3">
-                    {f.desc}
-                  </p>
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>[PIPE-05] Docker BuildKit: container compiled and pushed to ghcr.io</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>[PIPE-06] Terraform: security compliance audit passed (0 drift detected)</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>[PIPE-07] Kubernetes: namespace app-development ready. Pod 1/1 Running</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mt-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      <span className="font-semibold text-emerald-300">Live Endpoint Assigned:</span>
+                      <span className="text-white underline decoration-emerald-500/50">http://35.172.193.37:32280</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
+                      ONLINE
+                    </span>
+                  </div>
                 </div>
+              )}
 
-                <div className="pt-4 sm:pt-5 mt-4 sm:mt-5 border-t border-white/[0.06] flex items-center justify-between">
-                  <span className="text-xs font-mono font-semibold text-white/90">
-                    {f.stat}
-                  </span>
+              {activeTab === 'manifest' && (
+                <div className="relative">
                   <button
                     type="button"
-                    onClick={() => onNavigate('signin')}
-                    className="text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1 group-hover:translate-x-0.5"
+                    onClick={() => handleCopySnippet(sampleManifest)}
+                    className="absolute top-0 right-0 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                    title="Copy Manifest"
                   >
-                    <span>Inspect</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
+                  <pre className="text-slate-300 whitespace-pre">{sampleManifest}</pre>
                 </div>
-              </div>
-            );
-          })}
+              )}
+
+              {activeTab === 'terraform' && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => handleCopySnippet(sampleTerraform)}
+                    className="absolute top-0 right-0 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                    title="Copy Terraform"
+                  >
+                    {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                  <pre className="text-slate-300 whitespace-pre">{sampleTerraform}</pre>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ── 3. How It Works (End-to-End Workflow) ───────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20 space-y-8 sm:space-y-12">
-        <div className="text-center max-w-2xl mx-auto space-y-2.5 sm:space-y-3">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-950/40 border border-violet-500/30 text-[11px] font-mono text-violet-300">
-            <RefreshCw className="w-3 h-3 text-violet-400" />
-            <span>Autonomous Pipeline Lifecycle</span>
+      {/* ── 2. Cloud Native Ecosystem Strip ──────────────────────────────── */}
+      <section className="border-y border-white/5 bg-[#090912]/80 backdrop-blur-xl py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-xs font-mono uppercase tracking-widest text-slate-500 mb-6">
+            Engineered natively for the standard modern cloud stack
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-14 text-slate-400 font-mono text-sm">
+            <span className="flex items-center gap-2 hover:text-white transition-colors">
+              <Box className="w-4 h-4 text-violet-400" />
+              <span>Terraform</span>
+            </span>
+            <span className="flex items-center gap-2 hover:text-white transition-colors">
+              <Cpu className="w-4 h-4 text-sky-400" />
+              <span>Kubernetes K3s</span>
+            </span>
+            <span className="flex items-center gap-2 hover:text-white transition-colors">
+              <Container className="w-4 h-4 text-cyan-400" />
+              <span>Docker BuildKit</span>
+            </span>
+            <span className="flex items-center gap-2 hover:text-white transition-colors">
+              <Server className="w-4 h-4 text-amber-400" />
+              <span>AWS EC2 & EKS</span>
+            </span>
+            <span className="flex items-center gap-2 hover:text-white transition-colors">
+              <GitBranch className="w-4 h-4 text-emerald-400" />
+              <span>GitHub Actions</span>
+            </span>
+            <span className="flex items-center gap-2 hover:text-white transition-colors">
+              <ShieldCheck className="w-4 h-4 text-rose-400" />
+              <span>HashiCorp Vault</span>
+            </span>
           </div>
-          <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
-            How The Platform Works
+        </div>
+      </section>
+
+      {/* ── 3. High-Craft Bento Architecture Grid ────────────────────────── */}
+      <section ref={featuresRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
+        <div className="max-w-2xl mx-auto text-center mb-14 sm:mb-18">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight text-balance">
+            Zero-friction delivery. Enterprise-grade compliance.
           </h2>
-          <p className="text-xs sm:text-base text-[#A1A1B5]">
-            From local git commit to fully verified multi-cloud production in four automated steps.
+          <p className="mt-4 text-slate-400 text-sm sm:text-base leading-relaxed text-balance">
+            Replace complex bash scripts and fragmented tooling with an end-to-end, declarative control plane designed for high-velocity teams.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-          {workflowSteps.map((step) => {
-            const Icon = step.icon;
-            return (
-              <div
-                key={step.number}
-                className="relative p-5 sm:p-6 rounded-2xl bg-white/[0.025] border border-white/[0.08] hover:border-white/20 transition-all duration-200 group flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-3.5 sm:mb-4">
-                    <span className="text-xl sm:text-2xl font-black font-mono text-white/30 group-hover:text-violet-400 transition-colors">
-                      {step.number}
-                    </span>
-                    <div
-                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center"
-                      style={{
-                        background: `${step.accent}15`,
-                        border: `1px solid ${step.accent}40`,
-                      }}
-                    >
-                      <Icon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: step.accent }} />
-                    </div>
-                  </div>
-
-                  <h3 className="text-sm sm:text-base font-bold text-white tracking-tight mb-1.5 sm:mb-2">
-                    {step.title}
-                  </h3>
-                  <p className="text-xs text-[#A1A1B5] leading-relaxed mb-3.5 sm:mb-4">
-                    {step.desc}
-                  </p>
-                </div>
-
-                <div className="pt-3 border-t border-white/[0.05] text-[10px] sm:text-[11px] font-mono text-cyan-300/80">
-                  {step.tech}
-                </div>
+        {/* Asymmetrical Bento Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Bento Item 1: Wide Featured Card */}
+          <div className="md:col-span-2 rounded-2xl bg-[#0B0B14] border border-white/10 p-7 sm:p-9 flex flex-col justify-between hover:border-white/20 transition-all group">
+            <div>
+              <div className="w-11 h-11 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-6">
+                <Box className="w-6 h-6" />
               </div>
-            );
-          })}
+              <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                Declarative Multi-Cloud Infrastructure as Code
+              </h3>
+              <p className="mt-3 text-slate-400 text-sm leading-relaxed max-w-xl">
+                Define cloud topology in pure HCL. The platform verifies plans, audits cloud credentials, injects least-privilege security policies, and commits reproducible state directly to S3 and DynamoDB lock tables.
+              </p>
+            </div>
+
+            <div className="mt-8 p-4 rounded-xl bg-white/[0.02] border border-white/5 font-mono text-xs text-slate-300 flex items-center justify-between">
+              <span className="text-emerald-400 font-semibold">✓ 100% Hermetic Execution</span>
+              <span className="text-slate-500">Automated State Locking & Backup</span>
+            </div>
+          </div>
+
+          {/* Bento Item 2: Dynamic Port Routing */}
+          <div className="rounded-2xl bg-[#0B0B14] border border-white/10 p-7 sm:p-9 flex flex-col justify-between hover:border-white/20 transition-all group">
+            <div>
+              <div className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-6">
+                <Network className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                Deterministic NodePort Ingress
+              </h3>
+              <p className="mt-3 text-slate-400 text-sm leading-relaxed">
+                Every project gets an isolated NodePort mapped dynamically between 30000 and 32767. Zero port collisions across concurrent deployments.
+              </p>
+            </div>
+
+            <div className="mt-8 pt-4 border-t border-white/5 font-mono text-xs text-cyan-300">
+              Auto-dispatched DNS & Ingress
+            </div>
+          </div>
+
+          {/* Bento Item 3: Automated Container BuildKit */}
+          <div className="rounded-2xl bg-[#0B0B14] border border-white/10 p-7 sm:p-9 flex flex-col justify-between hover:border-white/20 transition-all group">
+            <div>
+              <div className="w-11 h-11 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 mb-6">
+                <Container className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                High-Speed BuildKit Pipeline
+              </h3>
+              <p className="mt-3 text-slate-400 text-sm leading-relaxed">
+                Multi-stage container builds with layer caching directly on GitHub Container Registry (GHCR) for sub-40s compile and tag workflows.
+              </p>
+            </div>
+
+            <div className="mt-8 pt-4 border-t border-white/5 font-mono text-xs text-sky-300">
+              SHA-Pinned Reproducible Images
+            </div>
+          </div>
+
+          {/* Bento Item 4: Wide Card Zero-Trust Security */}
+          <div className="md:col-span-2 rounded-2xl bg-[#0B0B14] border border-white/10 p-7 sm:p-9 flex flex-col justify-between hover:border-white/20 transition-all group">
+            <div>
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                Hardened Zero-Trust Execution Baseline
+              </h3>
+              <p className="mt-3 text-slate-400 text-sm leading-relaxed max-w-xl">
+                Containers drop ALL Linux capabilities, run as unprivileged non-root users (UID 10001), disable token automounting on ServiceAccounts, and enforce strict liveness and readiness probe gates.
+              </p>
+            </div>
+
+            <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3 font-mono text-xs">
+              <span className="p-2.5 rounded-lg bg-white/[0.02] border border-white/5 text-slate-300 text-center">
+                runAsNonRoot: true
+              </span>
+              <span className="p-2.5 rounded-lg bg-white/[0.02] border border-white/5 text-slate-300 text-center">
+                capabilities: [DROP ALL]
+              </span>
+              <span className="p-2.5 rounded-lg bg-white/[0.02] border border-white/5 text-slate-300 text-center col-span-2 sm:col-span-1">
+                Zero TOFU SSH Bypass
+              </span>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ── 4. Final Conversion Call To Action ───────────────────────────── */}
-      <section className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-12 sm:py-20">
-        <div
-          className="relative p-6 sm:p-12 lg:p-14 rounded-2xl sm:rounded-3xl overflow-hidden text-center space-y-5 sm:space-y-6"
-          style={{
-            background: 'linear-gradient(135deg, rgba(26,20,48,0.95) 0%, rgba(10,10,20,0.98) 100%)',
-            border: '1px solid rgba(139,92,246,0.4)',
-            boxShadow: '0 32px 80px -16px rgba(124,58,237,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-          }}
-        >
-          {/* Top specular */}
-          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent pointer-events-none" />
-
-          <div className="max-w-2xl mx-auto space-y-2.5 sm:space-y-3">
-            <span className="badge badge-emerald">Ready for Production</span>
-            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-              Ready to automate your cloud infrastructure?
+      {/* ── 4. End-to-End Delivery Architecture ──────────────────────────── */}
+      <section ref={architectureRef} className="border-t border-white/5 bg-[#08080F] py-20 sm:py-28">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl mx-auto text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight text-balance">
+              The End-to-End Automation Loop
             </h2>
-            <p className="text-xs sm:text-base text-[#C4C4D4] leading-relaxed">
-              Launch your 3D-orchestrated cloud console and execute reproducible Terraform, Ansible, and Kubernetes pipelines in seconds.
+            <p className="mt-4 text-slate-400 text-sm sm:text-base leading-relaxed text-balance">
+              How a code push translates to an active production workload across four orchestrated pipeline gates.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-3.5 pt-2 w-full max-w-xs sm:max-w-none mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              {
+                step: '01',
+                title: 'Commit Webhook',
+                desc: 'Developer pushes code. GitHub OAuth verifies repository identity and triggers the authenticated workflow dispatch.',
+                tech: 'GitHub API & Webhooks',
+                icon: GitBranch,
+                accent: 'text-amber-400',
+              },
+              {
+                step: '02',
+                title: 'Artifact Synthesis',
+                desc: 'Multi-stage Docker BuildKit compiles microservice binaries, tags the commit SHA, and signs images on GHCR.',
+                tech: 'Docker & GHCR',
+                icon: Container,
+                accent: 'text-cyan-400',
+              },
+              {
+                step: '03',
+                title: 'Topology Verification',
+                desc: 'Terraform and Ansible execute speculative dry-runs against the AWS VPC and compute nodes without leaking secrets.',
+                tech: 'Terraform & OpenTofu',
+                icon: Box,
+                accent: 'text-violet-400',
+              },
+              {
+                step: '04',
+                title: 'Live Cluster Apply',
+                desc: 'Kubectl renders manifests and rolls out workloads to K3s with verified readiness probes and a live public endpoint.',
+                tech: 'Kubernetes Engine',
+                icon: Cpu,
+                accent: 'text-emerald-400',
+              },
+            ].map((st) => {
+              const Icon = st.icon;
+              return (
+                <div
+                  key={st.step}
+                  className="p-6 rounded-2xl bg-[#0D0D18] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-mono font-bold text-slate-500">STAGE {st.step}</span>
+                      <Icon className={`w-5 h-5 ${st.accent}`} />
+                    </div>
+                    <h3 className="text-base font-bold text-white mb-2">{st.title}</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">{st.desc}</p>
+                  </div>
+                  <div className="mt-6 pt-3 border-t border-white/5 text-[11px] font-mono text-slate-500">
+                    {st.tech}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 5. Hardened Conversion Call to Action ─────────────────────────── */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
+        <div className="rounded-3xl bg-gradient-to-b from-[#121222] to-[#0A0A14] border border-white/10 p-8 sm:p-14 text-center relative overflow-hidden shadow-2xl">
+          {/* Subtle top specular accent */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
+          
+          <div className="max-w-2xl mx-auto space-y-4">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight text-balance">
+              Deploy your infrastructure with confidence.
+            </h2>
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed text-balance">
+              Join engineering teams shipping with automated Terraform plans, hermetic container builds, and live Kubernetes clusters.
+            </p>
+          </div>
+
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full max-w-sm sm:max-w-none mx-auto">
             <button
               type="button"
-              onClick={() => onNavigate('signin')}
-              className="w-full sm:w-auto min-h-[48px] px-8 py-3 rounded-xl text-white font-semibold text-base shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95 hover:brightness-110"
-              style={{
-                background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
-                border: '1px solid rgba(139,92,246,0.6)',
-              }}
+              onClick={() => onNavigate(isAuthenticated ? 'projects' : 'signin')}
+              className="w-full sm:w-auto h-12 px-8 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm shadow-[0_0_28px_rgba(124,58,237,0.45)] hover:shadow-[0_0_36px_rgba(124,58,237,0.65)] transition-all flex items-center justify-center gap-2 group active:scale-[0.98]"
             >
-              <span>Sign In to Console</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>{isAuthenticated ? 'Open Dashboard' : 'Get Started Now'}</span>
+              <ArrowRight className="w-4 h-4 text-violet-200 group-hover:translate-x-1 transition-transform" />
             </button>
 
             <button
               type="button"
               onClick={() => onNavigate('signup')}
-              className="w-full sm:w-auto min-h-[48px] px-7 py-3 rounded-xl text-gray-200 font-semibold text-base bg-white/[0.05] hover:bg-white/[0.1] active:bg-white/[0.15] border border-white/10 transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto h-12 px-7 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/10 text-sm font-medium transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
             >
               <Zap className="w-4 h-4 text-cyan-400" />
               <span>Create Account</span>
@@ -383,3 +530,5 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     </div>
   );
 };
+
+export default LandingPage;
