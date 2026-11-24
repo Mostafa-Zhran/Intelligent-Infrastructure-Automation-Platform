@@ -56,7 +56,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-          const maxDim = 512;
+          const maxDim = 1024;
           let { width, height } = img;
           if (width > maxDim || height > maxDim) {
             if (width > height) {
@@ -76,7 +76,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             return;
           }
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.88));
+          resolve(canvas.toDataURL('image/jpeg', 0.92));
         };
         img.onerror = () => reject(new Error('Failed to process image file.'));
         img.src = e.target?.result as string;
@@ -238,7 +238,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         style={{ background: 'rgba(13,13,22,0.85)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 16px 40px -8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07)' }}
       >
         {/* Avatar with gradient ring */}
-        <div className="relative flex-shrink-0 group">
+        <div className="relative flex-shrink-0 group self-center sm:self-auto">
           <input
             type="file"
             ref={fileInputRef}
@@ -248,39 +248,53 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           />
           <div
             onClick={() => !isUploadingPhoto && fileInputRef.current?.click()}
-            className="p-[2px] rounded-2xl cursor-pointer transition-transform hover:scale-[1.03] active:scale-[0.98] relative"
-            style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.9) 0%, rgba(34,211,238,0.7) 100%)' }}
+            className="p-[3px] rounded-2xl sm:rounded-3xl cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] relative shadow-xl hover:shadow-violet-500/20"
+            style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.95) 0%, rgba(34,211,238,0.85) 100%)' }}
             title="Click to change profile picture"
           >
             <div
-              className="w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] flex items-center justify-center text-lg sm:text-xl font-extrabold text-white overflow-hidden relative"
-              style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.8) 0%, rgba(67,56,202,0.7) 100%)' }}
+              className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-[14px] sm:rounded-[22px] flex items-center justify-center text-2xl sm:text-3xl font-black text-white overflow-hidden relative shadow-inner bg-[#121324]"
             >
               {user.avatarUrl ? (
                 <img
                   src={user.avatarUrl}
                   alt={user.fullName}
-                  className="w-full h-full object-cover rounded-[14px]"
+                  className="w-full h-full object-cover rounded-[14px] sm:rounded-[22px]"
                 />
               ) : (
-                user.avatarInitials
+                <div
+                  className="w-full h-full flex items-center justify-center font-extrabold tracking-wider"
+                  style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.9) 0%, rgba(67,56,202,0.85) 100%)' }}
+                >
+                  {user.avatarInitials}
+                </div>
               )}
 
               {/* Hover or loading overlay */}
-              <div className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] rounded-[14px] flex items-center justify-center transition-opacity ${isUploadingPhoto ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+              <div
+                className={`absolute inset-0 bg-black/65 backdrop-blur-[2px] rounded-[14px] sm:rounded-[22px] flex flex-col items-center justify-center transition-opacity ${
+                  isUploadingPhoto ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                }`}
+              >
                 {isUploadingPhoto ? (
-                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  <>
+                    <Loader2 className="w-6 h-6 text-white animate-spin mb-1" />
+                    <span className="text-[11px] font-medium text-white/90">Uploading...</span>
+                  </>
                 ) : (
-                  <Camera className="w-5 h-5 text-white/90" />
+                  <>
+                    <Camera className="w-6 h-6 text-white mb-1" />
+                    <span className="text-[11px] font-semibold text-white tracking-wide">Change photo</span>
+                  </>
                 )}
               </div>
             </div>
           </div>
           <div
-            className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full border-2 border-[#07070D] flex items-center justify-center shadow-md z-10 pointer-events-none"
+            className="absolute -bottom-1 -right-1 sm:-bottom-1.5 sm:-right-1.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-[#07070D] flex items-center justify-center shadow-lg z-10 pointer-events-none"
             style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}
           >
-            <BadgeCheck className="w-3.5 h-3.5 text-white" />
+            <BadgeCheck className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white" />
           </div>
         </div>
 

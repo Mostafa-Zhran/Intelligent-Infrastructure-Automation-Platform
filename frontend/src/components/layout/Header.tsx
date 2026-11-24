@@ -178,10 +178,10 @@ export const Header: React.FC<HeaderProps> = ({
                   <img
                     src={user.avatarUrl}
                     alt={user.fullName}
-                    className="w-7 h-7 rounded-full object-cover ring-1 ring-violet-500/40 shadow-sm flex-shrink-0"
+                    className="w-8 h-8 rounded-full object-cover ring-1 ring-violet-500/40 shadow-sm flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-violet-600 to-sky-500 flex items-center justify-center text-white text-xs font-bold shadow-sm flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-600 to-sky-500 flex items-center justify-center text-white text-xs font-bold shadow-sm flex-shrink-0">
                     {user.avatarInitials || 'AM'}
                   </div>
                 )}
@@ -197,10 +197,10 @@ export const Header: React.FC<HeaderProps> = ({
                       <img
                         src={user.avatarUrl}
                         alt={user.fullName}
-                        className="w-8 h-8 rounded-full object-cover ring-1 ring-white/10 flex-shrink-0"
+                        className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10 flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-600 to-sky-500 flex items-center justify-center text-white text-xs font-bold shadow-sm flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-violet-600 to-sky-500 flex items-center justify-center text-white text-sm font-bold shadow-sm flex-shrink-0">
                         {user.avatarInitials || 'AM'}
                       </div>
                     )}
@@ -303,10 +303,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <img
                   src={user.avatarUrl}
                   alt={user.fullName}
-                  className="w-5 h-5 rounded-md object-cover flex-shrink-0"
+                  className="w-6 h-6 rounded-md object-cover flex-shrink-0"
                 />
               ) : (
-                <div className="w-5 h-5 rounded-md bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+                <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
                   {user.avatarInitials}
                 </div>
               )}
@@ -357,10 +357,10 @@ export const Header: React.FC<HeaderProps> = ({
                         <img
                           src={user.avatarUrl}
                           alt={user.fullName}
-                          className="w-10 h-10 rounded-xl object-cover ring-1 ring-white/10 shadow-md flex-shrink-0"
+                          className="w-12 h-12 rounded-2xl object-cover ring-1 ring-white/10 shadow-md flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 flex items-center justify-center font-bold text-white text-sm shadow-md flex-shrink-0">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 flex items-center justify-center font-bold text-white text-sm shadow-md flex-shrink-0">
                           {user.avatarInitials}
                         </div>
                       )}
