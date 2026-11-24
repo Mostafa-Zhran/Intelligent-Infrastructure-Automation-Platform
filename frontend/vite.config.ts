@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
             three: ['three'],
             vendor: ['react', 'react-dom'],
             icons: ['lucide-react'],
+            charts: ['recharts'],
           },
         },
       },
