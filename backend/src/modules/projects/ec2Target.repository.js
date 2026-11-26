@@ -79,7 +79,7 @@ async function updateHealthStatus(
 }
 
 async function deleteByProjectId(projectId) {
-    return prisma.ec2_deploy_targets.delete({
+    return prisma.ec2_deploy_targets.deleteMany({
         where: { project_id: projectId },
     });
 }

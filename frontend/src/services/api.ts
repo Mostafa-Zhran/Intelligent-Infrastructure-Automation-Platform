@@ -447,6 +447,13 @@ export const ec2ConfigApi = {
     });
     return res.data!;
   },
+
+  async deleteConfig(projectId: string): Promise<{ projectId: string; deleted: boolean }> {
+    const res = await projectsRequest<ApiResponse<{ projectId: string; deleted: boolean }>>(`/${projectId}/ec2-config`, {
+      method: 'DELETE',
+    });
+    return res.data!;
+  },
 };
 
 export interface AwsClusterTargetConfig {
@@ -520,6 +527,16 @@ export const awsClusterConfigApi = {
       `/${projectId}/cluster-verify`,
       {
         method: 'POST',
+      }
+    );
+    return res.data!;
+  },
+
+  async deleteConfig(projectId: string): Promise<{ projectId: string; deleted: boolean }> {
+    const res = await projectsRequest<ApiResponse<{ projectId: string; deleted: boolean }>>(
+      `/${projectId}/cluster-config`,
+      {
+        method: 'DELETE',
       }
     );
     return res.data!;

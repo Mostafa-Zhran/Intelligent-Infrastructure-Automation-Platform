@@ -108,6 +108,8 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
   // Delete project confirmation state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [isDeletingProject, setIsDeletingProject] = useState<boolean>(false);
+  const [isDeletingEc2, setIsDeletingEc2] = useState<boolean>(false);
+  const [isDeletingCluster, setIsDeletingCluster] = useState<boolean>(false);
 
   const projectId = initialProject?.id;
 
@@ -314,6 +316,40 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
       onShowToast?.('error', 'Delete Failed', err.message || 'Could not delete project');
     } finally {
       setIsDeletingProject(false);
+    }
+  };
+
+  const handleDeleteEc2Config = async () => {
+    if (!projectId) return;
+    setIsDeletingEc2(true);
+    try {
+      await ec2ConfigApi.deleteConfig(projectId);
+      setEc2Target(null);
+      setEc2PublicIp('');
+      setEc2SshKey('');
+      onShowToast?.('info', 'EC2 Target Removed', 'EC2 configuration disconnected from this project.');
+    } catch (err: any) {
+      onShowToast?.('error', 'Remove Failed', err.message || 'Could not remove EC2 target');
+    } finally {
+      setIsDeletingEc2(false);
+    }
+  };
+
+  const handleDeleteClusterConfig = async () => {
+    if (!projectId) return;
+    setIsDeletingCluster(true);
+    try {
+      await awsClusterConfigApi.deleteConfig(projectId);
+      setClusterTarget(null);
+      setClusterRoleArn('');
+      setClusterExternalId('');
+      setClusterAccessKeyId('');
+      setClusterSecretKey('');
+      onShowToast?.('info', 'Cluster Target Removed', 'AWS BYOC cluster configuration disconnected.');
+    } catch (err: any) {
+      onShowToast?.('error', 'Remove Failed', err.message || 'Could not remove cluster target');
+    } finally {
+      setIsDeletingCluster(false);
     }
   };
 
@@ -1030,9 +1066,20 @@ spec:
 
                 <div className="flex flex-wrap items-center justify-end gap-3 pt-3 border-t border-white/[0.06]">
                   {clusterTarget && (
-                    <button
-                      type="button"
-                      disabled={isVerifyingCluster || isSavingCluster}
+                    <>
+                      <button
+                        type="button"
+                        disabled={isDeletingCluster || isSavingCluster || isVerifyingCluster}
+                        onClick={handleDeleteClusterConfig}
+                        className="h-10 px-4 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-semibold flex items-center gap-2 disabled:opacity-50 mr-auto"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>{isDeletingCluster ? 'Removing...' : 'Remove Cluster Config'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isVerifyingCluster || isSavingCluster}
                       onClick={async () => {
                         if (!projectId) return;
                         setIsVerifyingCluster(true);
@@ -1051,6 +1098,7 @@ spec:
                       <Zap className="w-4 h-4" />
                       <span>{isVerifyingCluster ? 'Verifying...' : 'Verify AWS Credentials'}</span>
                     </button>
+                    </>
                   )}
 
                   <button
@@ -1339,15 +1387,27 @@ spec:
 
               <div className="flex flex-wrap items-center justify-end gap-3 pt-3 border-t border-white/[0.06]">
                 {ec2Target && (
-                  <button
-                    type="button"
-                    onClick={handleVerifyEc2}
-                    disabled={isVerifyingEc2 || isSavingEc2}
-                    className="h-10 px-4 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-semibold flex items-center gap-2 transition-colors disabled:opacity-50"
-                  >
-                    <Zap className="w-4 h-4" />
-                    <span>{isVerifyingEc2 ? 'Testing SSH...' : 'Test SSH Connection'}</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleDeleteEc2Config}
+                      disabled={isDeletingEc2 || isSavingEc2 || isVerifyingEc2}
+                      className="h-10 px-4 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-semibold flex items-center gap-2 transition-colors disabled:opacity-50 mr-auto"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>{isDeletingEc2 ? 'Removing...' : 'Remove EC2 Target'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleVerifyEc2}
+                      disabled={isVerifyingEc2 || isSavingEc2}
+                      className="h-10 px-4 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-semibold flex items-center gap-2 transition-colors disabled:opacity-50"
+                    >
+                      <Zap className="w-4 h-4" />
+                      <span>{isVerifyingEc2 ? 'Testing SSH...' : 'Test SSH Connection'}</span>
+                    </button>
+                  </>
                 )}
 
                 <button

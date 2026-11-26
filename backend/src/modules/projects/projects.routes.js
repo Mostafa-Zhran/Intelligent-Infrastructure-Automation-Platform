@@ -729,6 +729,12 @@ router.get(
     projectsController.getEc2Config
 );
 
+router.delete(
+    '/:projectId/ec2-config',
+    validateRequest(projectIdParamSchema, 'params'),
+    projectsController.deleteEc2Config
+);
+
 /**
  * @openapi
  * /api/projects/{projectId}/ec2-verify:
@@ -771,6 +777,12 @@ router.get(
     '/:projectId/cluster-config',
     validateRequest(projectIdParamSchema, 'params'),
     projectsController.getClusterConfig
+);
+
+router.delete(
+    '/:projectId/cluster-config',
+    validateRequest(projectIdParamSchema, 'params'),
+    projectsController.deleteClusterConfig
 );
 
 router.post(

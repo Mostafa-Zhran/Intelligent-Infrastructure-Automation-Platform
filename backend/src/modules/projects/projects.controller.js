@@ -224,6 +224,28 @@ const deleteProject = asyncHandler(async (req, res) => {
     });
 });
 
+const deleteEc2Config = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const result = await ec2TargetService.deleteEc2Config(projectId, req.user);
+
+    res.status(200).json({
+        success: true,
+        message: 'EC2 deployment target removed.',
+        data: result,
+    });
+});
+
+const deleteClusterConfig = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const result = await awsClusterService.deleteClusterConfig(projectId, req.user);
+
+    res.status(200).json({
+        success: true,
+        message: 'AWS BYOC cluster target removed.',
+        data: result,
+    });
+});
+
 module.exports = {
     listProjects,
     createProject,
@@ -242,5 +264,7 @@ module.exports = {
     saveClusterConfig,
     getClusterConfig,
     verifyClusterConfig,
+    deleteEc2Config,
+    deleteClusterConfig,
     deleteProject,
 };

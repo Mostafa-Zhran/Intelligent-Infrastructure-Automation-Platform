@@ -192,10 +192,30 @@ async function verifyClusterCredentials(projectId, user) {
     };
 }
 
+/**
+ * Remove AWS BYOC cluster target configuration for a project.
+ */
+async function deleteClusterConfig(projectId, user) {
+    if (!user || !user.id) {
+        throw new ApiError(401, 'Authentication required');
+    }
+
+    await projectsService.verifyProjectAccess(
+        projectId,
+        user.id,
+        user.role || user.platform_role,
+        'deploy'
+    );
+
+    const res = await awsClusterRepository.deleteByProjectId(projectId);
+    return { projectId, deleted: res.count > 0 };
+}
+
 module.exports = {
     sanitizeClusterTarget,
     saveClusterConfig,
     getClusterConfig,
     getDecryptedClusterForExecution,
     verifyClusterCredentials,
+    deleteClusterConfig,
 };

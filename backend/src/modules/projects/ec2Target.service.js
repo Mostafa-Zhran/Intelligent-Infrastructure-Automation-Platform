@@ -179,10 +179,30 @@ async function verifyEc2Connection(projectId, user) {
     }
 }
 
+/**
+ * Remove EC2 deployment target configuration for a project.
+ */
+async function deleteEc2Config(projectId, user) {
+    if (!user || !user.id) {
+        throw new ApiError(401, 'Authentication required');
+    }
+
+    await projectsService.verifyProjectAccess(
+        projectId,
+        user.id,
+        user.role || user.platform_role,
+        'deploy'
+    );
+
+    const res = await ec2TargetRepository.deleteByProjectId(projectId);
+    return { projectId, deleted: res.count > 0 };
+}
+
 module.exports = {
     sanitizeTarget,
     saveEc2Config,
     getEc2Config,
     getDecryptedTargetForExecution,
     verifyEc2Connection,
+    deleteEc2Config,
 };
