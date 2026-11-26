@@ -695,6 +695,11 @@ async function buildAndPushViaKaniko({
     }
 
     onLog(`[KANIKO] Image built & pushed to ${imageUri} successfully!`);
+    await runCliCommand(
+        'kubectl',
+        ['delete', 'job', jobName, '-n', namespace, '--ignore-not-found'],
+        { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 20_000 }
+    );
     return { imageUri, exposedPort };
 }
 
@@ -1028,11 +1033,25 @@ async function executeByocClusterDeployment({
             ['rollout', 'restart', `deployment/${appName}`, '-n', namespace],
             { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 30_000, onLog }
         );
-        await runCliCommand(
+        const rolloutRes = await runCliCommand(
             'kubectl',
             ['rollout', 'status', `deployment/${appName}`, '-n', namespace, '--timeout=180s'],
             { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 190_000, onLog }
         );
+        if (rolloutRes.exitCode !== 0) {
+            const podsRes = await runCliCommand(
+                'kubectl',
+                ['get', 'pods', '-n', namespace, '-o', 'wide'],
+                { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 20_000, onLog }
+            );
+            const podLogsRes = await runCliCommand(
+                'kubectl',
+                ['logs', '-l', `app=${appName}`, '-n', namespace, '--tail=25'],
+                { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 20_000, onLog }
+            );
+            const detail = (podLogsRes.stdout || podsRes.stdout || rolloutRes.stderr || '').trim().split(/\r?\n/).slice(-4).join(' | ');
+            throw new Error(`Kubernetes rollout did not become ready${detail ? `: ${detail}` : '.'}`);
+        }
 
         // Best-effort LoadBalancer URL lookup
         let serviceUrl = null;
