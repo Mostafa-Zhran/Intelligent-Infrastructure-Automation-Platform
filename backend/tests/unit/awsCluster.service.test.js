@@ -13,6 +13,7 @@ const path = require('path');
 const {
     buildAwsEnv,
     sanitizeK8sName,
+    detectExposedPort,
     renderK8sManifests,
 } = require('../../src/modules/deployments/byoc-cluster.orchestrator');
 
@@ -148,6 +149,12 @@ describe('BYOC Cluster Mode — awsClusterService & orchestrator', () => {
         });
         assert.equal(keyEnv.AWS_ACCESS_KEY_ID, 'AKIA123');
         assert.equal(keyEnv.AWS_SECRET_ACCESS_KEY, 'SEC456');
+    });
+
+    it('detectExposedPort parses EXPOSE port from Dockerfile', () => {
+        assert.equal(detectExposedPort('FROM node:22\nEXPOSE 8080\nCMD ["node","app.js"]'), 8080);
+        assert.equal(detectExposedPort('FROM nginx:alpine\nEXPOSE 80/tcp'), 80);
+        assert.equal(detectExposedPort('FROM alpine'), null);
     });
 
     it('sanitizeK8sName and renderK8sManifests generate isolated namespace, deployment, service, and secret', () => {

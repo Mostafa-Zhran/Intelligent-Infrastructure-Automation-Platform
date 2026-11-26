@@ -158,18 +158,17 @@ function renderK8sManifests({
 }
 
 /**
- * Builds the project Docker image from GitHub and pushes it to the user's AWS ECR repository.
+ * Parses `EXPOSE <port>` from a Dockerfile (if present).
  */
-async function buildAndPushToEcr({
-    appName,
-    repoUrl,
-    branch = 'main',
-    githubToken = null,
-    awsRegion = 'us-east-1',
-    awsEnv,
-    dockerfilePath = 'Dockerfile',
-    onLog = () => {},
-}) {
+function detectExposedPort(dockerfileContent = '') {
+    const match = String(dockerfileContent).match(/^\s*EXPOSE\s+(\d+)(?:\/(?:tcp|udp))?/im);
+    return match ? Number(match[1]) : null;
+}
+
+/**
+ * Resolves the caller's AWS Account ID and ensures the target ECR repository exists.
+ */
+async function ensureEcrRepository({ appName, awsRegion, awsEnv, onLog = () => {} }) {
     onLog('[ECR] Resolving AWS Account ID for ECR registry...');
     const stsRes = await runCliCommand(
         'aws',
@@ -202,6 +201,256 @@ async function buildAndPushToEcr({
         }
     }
 
+    return { accountId, registry, ecrRepo, imageUri };
+}
+
+/**
+ * Builds the project Docker image from GitHub and pushes it to AWS ECR using AWS CodeBuild.
+ * Used when the backend host (e.g., Railway) has no local Docker daemon.
+ */
+async function buildAndPushViaCodeBuild({
+    appName,
+    accountId,
+    registry,
+    imageUri,
+    repoUrl,
+    branch = 'main',
+    githubToken = null,
+    awsRegion = 'us-east-1',
+    awsEnv,
+    dockerfilePath = 'Dockerfile',
+    onLog = () => {},
+}) {
+    const workParent = fs.mkdtempSync(path.join(os.tmpdir(), 'iiap-cb-'));
+    const cloneDir = path.join(workParent, 'src');
+    const zipPath = path.join(workParent, 'source.zip');
+
+    try {
+        let effectiveUrl = repoUrl;
+        if (githubToken && repoUrl.startsWith('https://')) {
+            effectiveUrl = repoUrl.replace('https://', `https://${githubToken}@`);
+        }
+
+        onLog(`[CODEBUILD] Cloning ${repoUrl} (${branch}) for cloud image build...`);
+        const cloneRes = await runCliCommand(
+            'git',
+            ['clone', '--depth=1', '--branch', branch, effectiveUrl, cloneDir],
+            { cwd: REPO_ROOT, timeoutMs: 120_000, onLog }
+        );
+        if (cloneRes.exitCode !== 0) {
+            throw new Error(`Git clone failed (exit ${cloneRes.exitCode}).`);
+        }
+
+        const cleanDfPath = String(dockerfilePath || 'Dockerfile').replace(/^\.\//, '');
+        const fullDfPath = path.join(cloneDir, cleanDfPath);
+        const exposedPort = fs.existsSync(fullDfPath)
+            ? detectExposedPort(fs.readFileSync(fullDfPath, 'utf8'))
+            : null;
+
+        const buildspec = [
+            'version: 0.2',
+            'phases:',
+            '  pre_build:',
+            '    commands:',
+            '      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY',
+            '  build:',
+            '    commands:',
+            '      - docker build -f "$DOCKERFILE_PATH" -t "$IMAGE_URI" .',
+            '  post_build:',
+            '    commands:',
+            '      - docker push "$IMAGE_URI"',
+            '',
+        ].join('\n');
+        fs.writeFileSync(path.join(cloneDir, '.iiap-buildspec.yml'), buildspec, 'utf8');
+
+        onLog('[CODEBUILD] Packaging source archive...');
+        const zipRes = await runCliCommand('zip', ['-qr', zipPath, '.', '-x', '.git/*'], {
+            cwd: cloneDir,
+            timeoutMs: 60_000,
+        });
+        if (zipRes.exitCode !== 0) {
+            throw new Error(`Failed to package source zip (exit ${zipRes.exitCode}).`);
+        }
+
+        const bucketName = `iiap-codebuild-src-${accountId}-${awsRegion}`;
+        const headBucket = await runCliCommand(
+            'aws',
+            ['s3api', 'head-bucket', '--bucket', bucketName, '--region', awsRegion],
+            { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 20_000 }
+        );
+        if (headBucket.exitCode !== 0) {
+            onLog(`[CODEBUILD] Creating S3 source bucket '${bucketName}'...`);
+            const mbRes = await runCliCommand(
+                'aws',
+                ['s3', 'mb', `s3://${bucketName}`, '--region', awsRegion],
+                { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 30_000, onLog }
+            );
+            if (mbRes.exitCode !== 0) {
+                throw new Error(`Failed to create S3 source bucket '${bucketName}'.`);
+            }
+        }
+
+        const s3Key = `${appName}/source.zip`;
+        onLog(`[CODEBUILD] Uploading source to s3://${bucketName}/${s3Key}...`);
+        const cpRes = await runCliCommand(
+            'aws',
+            ['s3', 'cp', zipPath, `s3://${bucketName}/${s3Key}`, '--region', awsRegion],
+            { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 120_000, onLog }
+        );
+        if (cpRes.exitCode !== 0) {
+            throw new Error('Failed to upload source archive to S3 for CodeBuild.');
+        }
+
+        const cbRoleName = 'iiap-codebuild-service-role';
+        const cbRoleArn = `arn:aws:iam::${accountId}:role/${cbRoleName}`;
+        const getRoleRes = await runCliCommand(
+            'aws',
+            ['iam', 'get-role', '--role-name', cbRoleName],
+            { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 20_000 }
+        );
+        if (getRoleRes.exitCode !== 0) {
+            onLog(`[CODEBUILD] Creating IAM service role '${cbRoleName}'...`);
+            const trustPolicy = JSON.stringify({
+                Version: '2012-10-17',
+                Statement: [
+                    {
+                        Effect: 'Allow',
+                        Principal: { Service: 'codebuild.amazonaws.com' },
+                        Action: 'sts:AssumeRole',
+                    },
+                ],
+            });
+            const createRoleRes = await runCliCommand(
+                'aws',
+                ['iam', 'create-role', '--role-name', cbRoleName, '--assume-role-policy-document', trustPolicy],
+                { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 30_000, onLog }
+            );
+            if (createRoleRes.exitCode !== 0) {
+                throw new Error(`Failed to create IAM role '${cbRoleName}' for CodeBuild.`);
+            }
+            for (const policyArn of [
+                'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser',
+                'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess',
+                'arn:aws:iam::aws:policy/CloudWatchLogsFullAccess',
+            ]) {
+                await runCliCommand(
+                    'aws',
+                    ['iam', 'attach-role-policy', '--role-name', cbRoleName, '--policy-arn', policyArn],
+                    { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 20_000 }
+                );
+            }
+            onLog('[CODEBUILD] Waiting 8s for IAM role propagation...');
+            await new Promise((r) => setTimeout(r, 8000));
+        }
+
+        const cbProjectName = 'iiap-eks-builder';
+        const getProjRes = await runCliCommand(
+            'aws',
+            ['codebuild', 'batch-get-projects', '--names', cbProjectName, '--region', awsRegion, '--output', 'json'],
+            { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 20_000 }
+        );
+        let projectExists = false;
+        if (getProjRes.exitCode === 0) {
+            try {
+                const parsed = JSON.parse(getProjRes.stdout || '{}');
+                projectExists = Array.isArray(parsed.projects) && parsed.projects.length > 0;
+            } catch {
+                projectExists = false;
+            }
+        }
+
+        if (!projectExists) {
+            onLog(`[CODEBUILD] Creating CodeBuild project '${cbProjectName}'...`);
+            const createProjPayload = JSON.stringify({
+                name: cbProjectName,
+                source: { type: 'S3', location: `${bucketName}/${s3Key}`, buildspec: '.iiap-buildspec.yml' },
+                artifacts: { type: 'NO_ARTIFACTS' },
+                environment: {
+                    type: 'LINUX_CONTAINER',
+                    image: 'aws/codebuild/standard:7.0',
+                    computeType: 'BUILD_GENERAL1_SMALL',
+                    privilegedMode: true,
+                },
+                serviceRole: cbRoleArn,
+            });
+            const createProjRes = await runCliCommand(
+                'aws',
+                ['codebuild', 'create-project', '--region', awsRegion, '--cli-input-json', createProjPayload],
+                { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 30_000, onLog }
+            );
+            if (createProjRes.exitCode !== 0) {
+                const errText = (createProjRes.stderr || createProjRes.stdout || '').trim();
+                throw new Error(`Failed to create CodeBuild project: ${errText.slice(0, 200)}`);
+            }
+        }
+
+        onLog(`[CODEBUILD] Starting cloud Docker build for ${imageUri}...`);
+        const startBuildPayload = JSON.stringify({
+            projectName: cbProjectName,
+            sourceLocationOverride: `${bucketName}/${s3Key}`,
+            buildspecOverride: '.iiap-buildspec.yml',
+            environmentVariablesOverride: [
+                { name: 'ECR_REGISTRY', value: registry, type: 'PLAINTEXT' },
+                { name: 'IMAGE_URI', value: imageUri, type: 'PLAINTEXT' },
+                { name: 'DOCKERFILE_PATH', value: cleanDfPath, type: 'PLAINTEXT' },
+            ],
+        });
+        const startRes = await runCliCommand(
+            'aws',
+            ['codebuild', 'start-build', '--region', awsRegion, '--cli-input-json', startBuildPayload, '--output', 'json'],
+            { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 30_000 }
+        );
+        if (startRes.exitCode !== 0) {
+            const errText = (startRes.stderr || startRes.stdout || '').trim();
+            throw new Error(`Failed to start CodeBuild: ${errText.slice(0, 200)}`);
+        }
+
+        const buildId = JSON.parse(startRes.stdout).build.id;
+        onLog(`[CODEBUILD] Build started: ${buildId}`);
+
+        const deadline = Date.now() + 600_000;
+        while (Date.now() < deadline) {
+            await new Promise((r) => setTimeout(r, 5000));
+            const pollRes = await runCliCommand(
+                'aws',
+                ['codebuild', 'batch-get-builds', '--ids', buildId, '--region', awsRegion, '--output', 'json'],
+                { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 20_000 }
+            );
+            if (pollRes.exitCode !== 0) continue;
+            const build = JSON.parse(pollRes.stdout).builds?.[0];
+            if (!build) continue;
+
+            if (build.buildStatus === 'SUCCEEDED') {
+                onLog(`[CODEBUILD] Image built & pushed to ${imageUri} successfully!`);
+                return { imageUri, exposedPort };
+            }
+            if (['FAILED', 'FAULT', 'STOPPED', 'TIMED_OUT'].includes(build.buildStatus)) {
+                throw new Error(`AWS CodeBuild ${build.buildStatus} (phase: ${build.currentPhase}). Check AWS CodeBuild logs for ${buildId}.`);
+            }
+            onLog(`[CODEBUILD] Status: ${build.buildStatus} (${build.currentPhase || 'IN_PROGRESS'})...`);
+        }
+
+        throw new Error(`AWS CodeBuild timed out after 10 minutes (${buildId}).`);
+    } finally {
+        fs.rmSync(workParent, { recursive: true, force: true });
+    }
+}
+
+/**
+ * Builds the project Docker image from GitHub and pushes it to the user's AWS ECR repository.
+ */
+async function buildAndPushToEcr({
+    appName,
+    repoUrl,
+    branch = 'main',
+    githubToken = null,
+    awsRegion = 'us-east-1',
+    awsEnv,
+    dockerfilePath = 'Dockerfile',
+    onLog = () => {},
+}) {
+    const { registry, imageUri } = await ensureEcrRepository({ appName, awsRegion, awsEnv, onLog });
+
     onLog(`[ECR] Authenticating Docker to ${registry}...`);
     const pwRes = await runCliCommand(
         'aws',
@@ -222,6 +471,7 @@ async function buildAndPushToEcr({
     }
 
     const cloneDir = fs.mkdtempSync(path.join(os.tmpdir(), 'iiap-ecr-src-'));
+    let exposedPort = null;
     try {
         let effectiveUrl = repoUrl;
         if (githubToken && repoUrl.startsWith('https://')) {
@@ -238,10 +488,16 @@ async function buildAndPushToEcr({
             throw new Error(`Git clone failed (exit ${cloneRes.exitCode}).`);
         }
 
+        const cleanDfPath = String(dockerfilePath || 'Dockerfile').replace(/^\.\//, '');
+        const fullDfPath = path.join(cloneDir, cleanDfPath);
+        if (fs.existsSync(fullDfPath)) {
+            exposedPort = detectExposedPort(fs.readFileSync(fullDfPath, 'utf8'));
+        }
+
         onLog(`[DOCKER] Building image ${imageUri}...`);
         const buildRes = await runCliCommand(
             'docker',
-            ['build', '-f', dockerfilePath || 'Dockerfile', '-t', imageUri, '.'],
+            ['build', '-f', cleanDfPath, '-t', imageUri, '.'],
             { cwd: cloneDir, timeoutMs: 600_000, onLog }
         );
         if (buildRes.exitCode !== 0) {
@@ -261,7 +517,7 @@ async function buildAndPushToEcr({
         fs.rmSync(cloneDir, { recursive: true, force: true });
     }
 
-    return imageUri;
+    return { imageUri, exposedPort };
 }
 
 /**
@@ -459,7 +715,7 @@ async function executeByocClusterDeployment({
         if (!resolvedImageUri && repoUrl) {
             await deploymentsRepository.updateDeploymentStatus(deploymentId, { status: 'BUILDING' });
             try {
-                resolvedImageUri = await buildAndPushToEcr({
+                const buildOut = await buildAndPushToEcr({
                     appName,
                     repoUrl,
                     branch,
@@ -469,14 +725,33 @@ async function executeByocClusterDeployment({
                     dockerfilePath,
                     onLog,
                 });
+                resolvedImageUri = buildOut.imageUri;
+                if (buildOut.exposedPort) effectiveContainerPort = buildOut.exposedPort;
             } catch (ecrErr) {
                 const msg = String(ecrErr?.message || '');
                 if (ecrErr?.code === 'ENOENT' || msg.includes('ENOENT') || msg.toLowerCase().includes('not found')) {
-                    resolvedImageUri = process.env.BYOC_FALLBACK_IMAGE || 'nginx:alpine';
-                    if (resolvedImageUri.startsWith('nginx')) {
-                        effectiveContainerPort = 80;
-                    }
-                    onLog(`[ECR] Docker daemon is unavailable on this runner host (${msg}). Deploying fallback image '${resolvedImageUri}' on port ${effectiveContainerPort}.`);
+                    onLog('[ECR] Local Docker unavailable — switching to AWS CodeBuild for cloud image build...');
+                    const { accountId, registry, imageUri: ecrUri } = await ensureEcrRepository({
+                        appName,
+                        awsRegion: clusterTarget.awsRegion,
+                        awsEnv,
+                        onLog,
+                    });
+                    const cbOut = await buildAndPushViaCodeBuild({
+                        appName,
+                        accountId,
+                        registry,
+                        imageUri: ecrUri,
+                        repoUrl,
+                        branch,
+                        githubToken,
+                        awsRegion: clusterTarget.awsRegion,
+                        awsEnv,
+                        dockerfilePath,
+                        onLog,
+                    });
+                    resolvedImageUri = cbOut.imageUri;
+                    if (cbOut.exposedPort) effectiveContainerPort = cbOut.exposedPort;
                 } else {
                     throw ecrErr;
                 }
@@ -600,6 +875,7 @@ async function executeByocClusterDeployment({
 module.exports = {
     buildAwsEnv,
     sanitizeK8sName,
+    detectExposedPort,
     renderK8sManifests,
     executeByocClusterDeployment,
 };
