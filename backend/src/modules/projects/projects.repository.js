@@ -451,6 +451,12 @@ async function updateProjectSetupStatus(projectId, status) {
     });
 }
 
+async function deleteProjectById(projectId) {
+    return prisma.projects.delete({
+        where: { id: projectId },
+    });
+}
+
 module.exports = {
     listProjectsForUser,
     findProjectBySlug,
@@ -472,4 +478,5 @@ module.exports = {
     createSetupDeploymentRecord,
     getLatestSetupDeployment,
     updateProjectSetupStatus,
+    deleteProjectById,
 };

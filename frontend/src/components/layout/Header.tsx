@@ -147,6 +147,18 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 Deployments
               </button>
+              <button
+                type="button"
+                onClick={() => handleNavClick('new-project')}
+                className={`ml-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 border ${
+                  currentPage === 'new-project'
+                    ? 'bg-violet-600/30 border-violet-400/50 text-white'
+                    : 'bg-violet-600/15 hover:bg-violet-600/25 border-violet-500/30 text-violet-200 hover:text-white'
+                }`}
+              >
+                <Rocket className="w-3.5 h-3.5" />
+                <span>New Project</span>
+              </button>
             </nav>
           )}
         </div>

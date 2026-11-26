@@ -3,6 +3,8 @@ const ApiError = require('../../utils/ApiError');
 const projectsRepository = require('./projects.repository');
 const githubService = require('../integrations/github/github.service');
 const githubActionsService = require('../integrations/github/github.actions.service');
+const ec2TargetRepository = require('./ec2Target.repository');
+const awsClusterRepository = require('./awsCluster.repository');
 
 function getCiProvider() {
     return (process.env.CI_PROVIDER || 'GITHUB_ACTIONS').toUpperCase();
@@ -289,19 +291,27 @@ async function submitDeploymentRequest(projectId, user, input, correlationId) {
         );
     }
 
-    // Disallow deployment if infrastructure setup is not completely READY
-    if (project.setup_status === 'FAILED') {
-        throw new ApiError(
-            400,
-            'Project setup status is FAILED. Please resolve project configuration before deploying.'
-        );
-    }
+    // Check if project has a BYOS EC2 or BYOC AWS EKS Cluster target configured
+    const ec2Target = await ec2TargetRepository.findByProjectId(projectId).catch(() => null);
+    const awsClusterTarget = !ec2Target
+        ? await awsClusterRepository.findByProjectId(projectId).catch(() => null)
+        : null;
 
-    if (project.setup_status !== 'READY') {
-        throw new ApiError(
-            400,
-            `Project infrastructure setup is not ready (current status: '${project.setup_status}'). Deployment requests are only allowed when setup status is 'READY'.`
-        );
+    // Disallow deployment if infrastructure setup is not completely READY (unless EC2 BYOS or BYOC Cluster target is configured)
+    if (!ec2Target && !awsClusterTarget) {
+        if (project.setup_status === 'FAILED') {
+            throw new ApiError(
+                400,
+                'Project setup status is FAILED. Please resolve project configuration before deploying.'
+            );
+        }
+
+        if (project.setup_status !== 'READY') {
+            throw new ApiError(
+                400,
+                `Project infrastructure setup is not ready (current status: '${project.setup_status}'). Deployment requests are only allowed when setup status is 'READY'.`
+            );
+        }
     }
 
     // 3. Validate target environment
@@ -406,12 +416,26 @@ async function submitDeploymentRequest(projectId, user, input, correlationId) {
             dockerfilePath: input.dockerfilePath || 'Dockerfile',
             replicas: input.replicas || 1,
         },
-        target: {
-            platform: 'Kubernetes',
-            provider: 'AWS_EKS',
-            namespace: `app-${project.slug}`,
-            cluster: 'k8s-cluster',
-        },
+        target: ec2Target
+            ? {
+                  platform: 'Docker',
+                  provider: 'AWS_EC2',
+                  host: `${ec2Target.public_ip}:${ec2Target.host_port}`,
+              }
+            : awsClusterTarget
+              ? {
+                    platform: 'Kubernetes',
+                    provider: 'AWS_EKS_BYOC',
+                    namespace: `app-${project.slug}`,
+                    cluster: awsClusterTarget.cluster_name,
+                    region: awsClusterTarget.aws_region,
+                }
+              : {
+                    platform: 'Kubernetes',
+                    provider: 'AWS_EKS',
+                    namespace: `app-${project.slug}`,
+                    cluster: 'k8s-cluster',
+                },
         secretReferences: [
             {
                 name: 'APP_SECRETS',
@@ -492,7 +516,96 @@ async function submitDeploymentRequest(projectId, user, input, correlationId) {
 
     const { deployment, ciJob } = txResult;
 
-    // 9. Build deployment contract and dispatch to active CI service
+    // 9a. SAAS BYOS EC2 Deployment Path
+    if (ec2Target) {
+        // Fetch GitHub token for private repo access (non-blocking on failure)
+        let ec2GithubToken = null;
+        try {
+            ec2GithubToken = await githubService.getUserAccessToken(user.id);
+            if (!ec2GithubToken && project.owner_user_id && project.owner_user_id !== user.id) {
+                ec2GithubToken = await githubService.getUserAccessToken(project.owner_user_id);
+            }
+        } catch {
+            // Public repos will work without token
+        }
+
+        let storedEnvVars = {};
+        try {
+            const envVarsService = require('./envVars.service');
+            storedEnvVars = await envVarsService.getDecryptedEnvMap(project.id);
+        } catch {
+            // Non-blocking fallback
+        }
+        const mergedEnvVars = { ...storedEnvVars, ...(input.envVars || {}) };
+
+        setImmediate(() => {
+            const ec2DeploymentOrchestrator = require('../deployments/ec2-deployment.orchestrator');
+            void ec2DeploymentOrchestrator.executeEc2Deployment({
+                deploymentId: deployment.id,
+                projectId: project.id,
+                projectName: project.slug || project.name,
+                repoUrl,
+                branch: finalBranch,
+                envVars: mergedEnvVars,
+                githubToken: ec2GithubToken,
+            });
+        });
+
+        return {
+            deploymentId: deployment.id,
+            status: 'QUEUED',
+            target: 'AWS_EC2',
+            host: `${ec2Target.public_ip}:${ec2Target.host_port}`,
+            environment: targetEnvironment,
+            branch: finalBranch,
+            commitSha: finalCommitSha,
+            createdAt: deployment.created_at,
+            correlationId,
+        };
+    }
+
+    // 9b-BYOC. Cluster Mode (BYOC AWS EKS via Terraform + ECR + K8s)
+    if (awsClusterTarget) {
+        let byocGithubToken = null;
+        try {
+            byocGithubToken = await githubService.getUserAccessToken(user.id);
+            if (!byocGithubToken && project.owner_user_id && project.owner_user_id !== user.id) {
+                byocGithubToken = await githubService.getUserAccessToken(project.owner_user_id);
+            }
+        } catch {
+            // Public repos work without token
+        }
+
+        setImmediate(() => {
+            const byocClusterOrchestrator = require('../deployments/byoc-cluster.orchestrator');
+            void byocClusterOrchestrator.executeByocClusterDeployment({
+                deploymentId: deployment.id,
+                projectId: project.id,
+                projectName: project.slug || project.name,
+                repoUrl,
+                branch: finalBranch,
+                githubToken: byocGithubToken,
+                replicas: input.replicas || 1,
+                dockerfilePath: input.dockerfilePath || 'Dockerfile',
+                envVars: input.envVars || {},
+            });
+        });
+
+        return {
+            deploymentId: deployment.id,
+            status: 'QUEUED',
+            target: 'AWS_EKS_BYOC',
+            clusterName: awsClusterTarget.cluster_name,
+            region: awsClusterTarget.aws_region,
+            environment: targetEnvironment,
+            branch: finalBranch,
+            commitSha: finalCommitSha,
+            createdAt: deployment.created_at,
+            correlationId,
+        };
+    }
+
+    // 9b. Legacy CI service dispatch path
     const activeCiService = getCiService();
     const jobContract = activeCiService.buildDeploymentContract({
         project,
@@ -957,7 +1070,27 @@ async function getSetupStatus(projectId, user) {
     };
 }
 
-module.exports = {
+async function deleteProject(projectId, user) {
+    if (!user || !user.id) {
+        throw new ApiError(401, 'Authentication required');
+    }
+
+    const access = await verifyProjectAccess(
+        projectId,
+        user.id,
+        user.role || user.platform_role,
+        'deploy'
+    );
+
+    if (!access.isOwner && !access.isAdmin) {
+        throw new ApiError(403, 'Only the project owner or platform admin can delete this project');
+    }
+
+    await projectsRepository.deleteProjectById(projectId);
+    return { id: projectId, deleted: true };
+}
+
+Object.assign(module.exports, {
     listProjects,
     createProject,
     ALLOWED_ENVIRONMENTS,
@@ -969,4 +1102,5 @@ module.exports = {
     // SETUP-05
     startProjectSetup,
     getSetupStatus,
-};
+    deleteProject,
+});

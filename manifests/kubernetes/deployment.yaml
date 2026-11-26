@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: __APP_NAME__
+  namespace: __NAMESPACE__
+  labels:
+    app: __APP_NAME__
+    app.kubernetes.io/managed-by: iiap
+spec:
+  replicas: __REPLICAS__
+  selector:
+    matchLabels:
+      app: __APP_NAME__
+  template:
+    metadata:
+      labels:
+        app: __APP_NAME__
+    spec:
+      containers:
+        - name: __APP_NAME__
+          image: __IMAGE_URI__
+          imagePullPolicy: Always
+          ports:
+            - containerPort: __CONTAINER_PORT__
+          envFrom:
+            - secretRef:
+                name: __SECRET_NAME__
+                optional: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            tcpSocket:
+              port: __CONTAINER_PORT__
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: __CONTAINER_PORT__
+            initialDelaySeconds: 15
+            periodSeconds: 20

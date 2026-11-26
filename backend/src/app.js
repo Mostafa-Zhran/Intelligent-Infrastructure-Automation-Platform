@@ -8,6 +8,7 @@ const githubRoutes = require('./modules/integrations/github/github.routes');
 const projectsRoutes = require('./modules/projects/projects.routes');
 const deploymentsRoutes = require('./modules/deployments/deployments.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
+const { handleGithubWebhook } = require('./modules/integrations/github/github.webhook.controller');
 const correlationId = require('./middleware/correlationId');
 const notFound = require('./middleware/notFound');
 const globalError = require('./middleware/globalError');
@@ -17,7 +18,14 @@ const prisma = require('./db/prisma');
 
 const app = express();
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+    limit: '10mb',
+    verify: (req, _res, buf) => {
+        if (req.originalUrl && req.originalUrl.startsWith('/api/webhooks/')) {
+            req.rawBody = buf;
+        }
+    },
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(cors(corsOptions));
@@ -95,6 +103,7 @@ app.get('/health', async (req, res) => {
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/integrations/github', githubRoutes);
+app.post('/api/webhooks/github', handleGithubWebhook);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/v1/projects', projectsRoutes);
 app.use('/api/deployments', deploymentsRoutes);

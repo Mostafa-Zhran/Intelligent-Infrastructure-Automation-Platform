@@ -38,6 +38,9 @@ export const DeploymentDetailsPage: React.FC<DeploymentDetailsPageProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(!initialDeployment);
   const [isRerunning, setIsRerunning] = useState<boolean>(false);
   const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
+  const [liveLogs, setLiveLogs] = useState<Array<{ level: string; source: string; message: string; loggedAt: string }>>([]);
+  const [isStreaming, setIsStreaming] = useState<boolean>(false);
+  const [sseError, setSseError] = useState<string | null>(null);
 
   const deploymentId = initialDeployment?.id;
 
@@ -51,6 +54,52 @@ export const DeploymentDetailsPage: React.FC<DeploymentDetailsPageProps> = ({
       setIsLoading(false);
     }
   }, [deploymentId, initialDeployment]);
+
+  // SSE live log streaming for RUNNING deployments
+  useEffect(() => {
+    const terminalStatuses = ['SUCCEEDED', 'FAILED', 'CANCELLED'];
+    if (!deploymentId || terminalStatuses.includes(deployment?.status)) return;
+
+    const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000';
+    const token =
+      localStorage.getItem('accessToken') ||
+      sessionStorage.getItem('accessToken') ||
+      localStorage.getItem('auth_token') ||
+      sessionStorage.getItem('auth_token') ||
+      '';
+
+    const url = `${API_BASE}/api/deployments/${deploymentId}/stream-logs${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    const es = new EventSource(url);
+    setIsStreaming(true);
+    setSseError(null);
+
+    es.addEventListener('log', (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data);
+        setLiveLogs((prev) => [...prev.slice(-500), data]);
+      } catch {
+        /* ignore parse errors */
+      }
+    });
+
+    es.addEventListener('done', () => {
+      setIsStreaming(false);
+      es.close();
+      // Refresh final deployment status
+      loadDeploymentDetails(deploymentId);
+    });
+
+    es.onerror = () => {
+      setSseError('Live stream disconnected');
+      es.close();
+      setIsStreaming(false);
+    };
+
+    return () => {
+      es.close();
+      setIsStreaming(false);
+    };
+  }, [deploymentId, deployment?.status]);
 
   const loadDeploymentDetails = async (id: string) => {
     try {
@@ -134,7 +183,7 @@ export const DeploymentDetailsPage: React.FC<DeploymentDetailsPageProps> = ({
 
   const isSuccess = deployment.status === 'SUCCEEDED';
   const isFailed = deployment.status === 'FAILED';
-  const isRunning = deployment.status === 'RUNNING';
+  const isRunning = ['RUNNING', 'BUILDING', 'DEPLOYING', 'VERIFYING', 'PROVISIONING', 'CONFIGURING', 'VALIDATING', 'PLANNING'].includes(deployment.status);
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col gap-6 animate-fadeIn text-slate-200">
@@ -271,6 +320,46 @@ export const DeploymentDetailsPage: React.FC<DeploymentDetailsPageProps> = ({
             <p className="text-xs font-mono text-rose-200/90 whitespace-pre-wrap break-all leading-relaxed">
               {deployment.errorMessage}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Live Deployment Console ───────────────────────────── */}
+      {(isStreaming || liveLogs.length > 0 || sseError) && (
+        <div className="rounded-2xl bg-black border border-white/[0.08] p-4 font-mono text-xs space-y-1 shadow-lg">
+          <div className="flex items-center gap-2 pb-2 border-b border-white/5 mb-2">
+            <Terminal className="w-3.5 h-3.5 text-green-400" />
+            <span className="text-slate-400 font-bold uppercase tracking-wider">Live Deployment Console</span>
+            {isStreaming && (
+              <span className="ml-auto flex items-center gap-1.5 text-green-400 text-[10px]">
+                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                STREAMING
+              </span>
+            )}
+            {sseError && (
+              <span className="ml-auto text-amber-400 text-[10px]">{sseError}</span>
+            )}
+          </div>
+          <div className="max-h-80 overflow-y-auto space-y-0.5 pr-1 scrollbar-thin scrollbar-thumb-white/10">
+            {liveLogs.length === 0 && isStreaming && (
+              <p className="text-slate-500 italic">Waiting for log output…</p>
+            )}
+            {liveLogs.map((log, i) => (
+              <div
+                key={i}
+                className={`flex gap-2 leading-5 ${
+                  log.level === 'ERROR' ? 'text-rose-300' :
+                  log.level === 'WARN' ? 'text-amber-300' :
+                  log.source === 'docker' ? 'text-sky-300' :
+                  'text-green-300'
+                }`}
+              >
+                <span className="text-slate-600 shrink-0 select-none">
+                  {new Date(log.loggedAt).toLocaleTimeString()}
+                </span>
+                <span className="break-all">{log.message}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -136,6 +136,31 @@ router.get(
 
 /**
  * @openapi
+ * /api/deployments/{deploymentId}/stream-logs:
+ *   get:
+ *     tags: [Deployments]
+ *     summary: SAAS-06 — Live SSE Deployment Log Stream
+ *     description: Streams real-time redacted deployment logs via Server-Sent Events (SSE).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: deploymentId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: SSE stream of log events
+ */
+router.get(
+    '/:deploymentId/stream-logs',
+    authenticate,
+    validateRequest(deploymentIdParamSchema, 'params'),
+    deploymentsController.streamDeploymentLogs
+);
+
+/**
+ * @openapi
  * /api/deployments/{deploymentId}/status:
  *   post:
  *     tags: [Deployments]

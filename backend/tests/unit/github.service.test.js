@@ -196,7 +196,74 @@ describe('GitHub Service: Repository Analysis & .NET Classification', () => {
         });
 
         assert.equal(result.supported, true);
+        assert.equal(result.hasDockerfile, true);
         assert.equal(result.framework, 'Node.js');
         assert.deepEqual(result.manifests, ['package.json']);
+    });
+
+    it('SAAS-01: should detect Dockerfile inside .docker/ directory when missing from root', async () => {
+        mock.method(githubApiService, 'fetchRepositoryContents', async ({ path }) => {
+            if (path === '') {
+                return {
+                    ok: true,
+                    isDirectory: true,
+                    entries: [
+                        { name: 'package.json', type: 'file' },
+                        { name: '.docker', type: 'dir' },
+                    ],
+                };
+            }
+            if (path === '.docker/Dockerfile') {
+                return {
+                    ok: true,
+                    isDirectory: false,
+                    file: { name: 'Dockerfile', path: '.docker/Dockerfile' },
+                };
+            }
+            return { ok: false, reason: 'not_found' };
+        });
+
+        const result = await githubService.analyzeRepository({
+            userId: mockUserId,
+            owner: 'acme-corp',
+            repo: 'node-app',
+            branch: 'main',
+        });
+
+        assert.equal(result.supported, true);
+        assert.equal(result.hasDockerfile, true);
+        assert.equal(result.dockerfilePath, '.docker/Dockerfile');
+    });
+
+    it('SAAS-01: should normalize leading ./ in custom dockerfilePath', async () => {
+        mock.method(githubApiService, 'fetchRepositoryContents', async ({ path }) => {
+            if (path === '') {
+                return {
+                    ok: true,
+                    isDirectory: true,
+                    entries: [{ name: 'backend', type: 'dir' }],
+                };
+            }
+            if (path === 'backend/Dockerfile') {
+                return {
+                    ok: true,
+                    isDirectory: false,
+                    file: { name: 'Dockerfile', path: 'backend/Dockerfile' },
+                };
+            }
+            return { ok: false, reason: 'not_found' };
+        });
+
+        const result = await githubService.analyzeRepository({
+            userId: mockUserId,
+            owner: 'acme-corp',
+            repo: 'monorepo',
+            branch: 'main',
+            dockerfilePath: './backend/Dockerfile',
+        });
+
+        assert.equal(result.supported, true);
+        assert.equal(result.hasDockerfile, true);
+        assert.equal(result.dockerfilePath, 'backend/Dockerfile');
     });
 });

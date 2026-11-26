@@ -12,9 +12,15 @@ import {
   Sparkles,
   Trash2,
   AlertTriangle,
+  Server,
+  Zap,
+  Eye,
+  EyeOff,
+  Shield,
+  Cpu,
 } from 'lucide-react';
 import { PageId } from '../types';
-import { githubApi, projectsApi, GitHubRepoOption, GitHubAccountOption, GitHubBranchOption, AnalyzeRepositoryResult } from '../services/api';
+import { githubApi, projectsApi, ec2ConfigApi, awsClusterConfigApi, envVarsApi, Project, GitHubRepoOption, GitHubAccountOption, GitHubBranchOption, AnalyzeRepositoryResult } from '../services/api';
 import { ProjectIcon } from '../components/common/BrandLogo';
 
 const GithubIcon: React.FC<{ className?: string }> = ({ className = 'w-5 h-5' }) => (
@@ -29,13 +35,15 @@ const GithubIcon: React.FC<{ className?: string }> = ({ className = 'w-5 h-5' })
 
 interface NewProjectPageProps {
   onNavigate: (page: PageId) => void;
+  onProjectCreated?: (project: Project) => void;
   onShowToast: (type: 'success' | 'error' | 'info', title: string, message: string) => void;
 }
 
-type WizardStep = 1 | 2 | 3 | 4;
+type WizardStep = 1 | 2 | 3 | 4 | 5;
 
 export const NewProjectPage: React.FC<NewProjectPageProps> = ({
   onNavigate,
+  onProjectCreated,
   onShowToast,
 }) => {
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
@@ -62,24 +70,59 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
   // Configuration fields
   const [projectName, setProjectName] = useState('');
   const [environment, setEnvironment] = useState<'Development' | 'Staging' | 'Production'>('Development');
-  const [buildCommand, setBuildCommand] = useState('npm run build');
-  const [outputDirectory, setOutputDirectory] = useState('dist');
   const [envVars, setEnvVars] = useState<{ key: string; value: string }[]>([
     { key: 'NODE_ENV', value: 'production' },
     { key: 'PORT', value: '8080' },
   ]);
 
   const [isDeploying, setIsDeploying] = useState(false);
+  const [dockerfilePath, setDockerfilePath] = useState('Dockerfile');
   const [analysisResult, setAnalysisResult] = useState<AnalyzeRepositoryResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
 
-  const runRepositoryAnalysis = async (owner: string, repo: string, branch: string) => {
+  // ── EC2 BYOS configuration state ──
+  const [ec2PublicIp, setEc2PublicIp] = useState('');
+  const [ec2SshUser, setEc2SshUser] = useState('ubuntu');
+  const [ec2SshPort, setEc2SshPort] = useState(22);
+  const [ec2SshKey, setEc2SshKey] = useState('');
+  const [ec2ShowKey, setEc2ShowKey] = useState(false);
+  const [ec2HostPort, setEc2HostPort] = useState(80);
+  const [ec2ContainerPort, setEc2ContainerPort] = useState(3000);
+  const [ec2AwsRegion, setEc2AwsRegion] = useState('us-east-1');
+  const [isSavingEc2, setIsSavingEc2] = useState(false);
+  const [isVerifyingEc2, setIsVerifyingEc2] = useState(false);
+  const [ec2VerifyResult, setEc2VerifyResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [savedProjectId, setSavedProjectId] = useState<string | null>(null);
+  const [savedProject, setSavedProject] = useState<Project | null>(null);
+
+  // ── Deployment Target Mode (EC2 BYOS vs Cluster Mode BYOC) ──
+  const [targetMode, setTargetMode] = useState<'ec2' | 'cluster'>('ec2');
+  const [clusterAuthMode, setClusterAuthMode] = useState<'IAM_ROLE' | 'ACCESS_KEYS'>('IAM_ROLE');
+  const [clusterRoleArn, setClusterRoleArn] = useState('');
+  const [clusterExternalId, setClusterExternalId] = useState('');
+  const [clusterAccessKeyId, setClusterAccessKeyId] = useState('');
+  const [clusterSecretKey, setClusterSecretKey] = useState('');
+  const [clusterRegion, setClusterRegion] = useState('us-east-1');
+  const [clusterName, setClusterName] = useState('');
+  const [clusterInstanceType, setClusterInstanceType] = useState('t3.medium');
+  const [clusterDesiredNodes, setClusterDesiredNodes] = useState(2);
+  const [isSavingCluster, setIsSavingCluster] = useState(false);
+  const [isVerifyingCluster, setIsVerifyingCluster] = useState(false);
+  const [clusterVerifyResult, setClusterVerifyResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const runRepositoryAnalysis = async (
+    owner: string,
+    repo: string,
+    branch: string,
+    customDockerfilePath: string = dockerfilePath
+  ) => {
     setIsAnalyzing(true);
     try {
       const result = await projectsApi.analyzeRepository({
         owner,
         repo,
         branch,
+        dockerfilePath: customDockerfilePath.trim() || 'Dockerfile',
       });
       setAnalysisResult(result);
     } catch (err: any) {
@@ -214,7 +257,7 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
     }
     setIsDeploying(true);
     try {
-      await projectsApi.create({
+      const result = await projectsApi.create({
         name: projectName.trim(),
         repositoryUrl: selectedRepo.htmlUrl || undefined,
         repositoryBranch: selectedBranch,
@@ -222,16 +265,82 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
         githubRepoId: selectedRepo.id,
         githubRepoOwner: selectedOwner || selectedRepo.fullName.split('/')[0],
         githubRepoFullName: selectedRepo.fullName,
-        buildCommand: buildCommand || undefined,
-        outputDirectory: outputDirectory || undefined,
         envVars: envVars.filter((v) => v.key.trim()),
       });
+      const pid = result.project?.id;
+      setSavedProjectId(pid || null);
+      setSavedProject(result.project || null);
+
+      // Persist configured environment variables (AES-256-GCM encrypted in backend)
+      if (pid) {
+        const validVars = envVars.filter((v) => v.key.trim() && v.value.trim());
+        await Promise.allSettled(
+          validVars.map((v) =>
+            envVarsApi.save(pid, {
+              key: v.key.trim().toUpperCase(),
+              value: v.value,
+              isSecret: true,
+            })
+          )
+        );
+      }
+
       onShowToast('success', 'Project Created', `Project "${projectName}" has been created successfully!`);
-      onNavigate('projects');
+      setCurrentStep(5);
     } catch (err) {
       onShowToast('error', 'Create Failed', (err instanceof Error ? err.message : null) || 'Failed to create project. Please try again.');
     } finally {
       setIsDeploying(false);
+    }
+  };
+
+  const handleSaveEc2Config = async () => {
+    if (!savedProjectId) {
+      onShowToast('error', 'No Project', 'Project must be created first');
+      return;
+    }
+    if (!ec2PublicIp.trim()) {
+      onShowToast('error', 'Missing IP', 'Please enter the EC2 Public IP address');
+      return;
+    }
+    if (!ec2SshKey.trim()) {
+      onShowToast('error', 'Missing SSH Key', 'Please paste your SSH private key (.pem)');
+      return;
+    }
+    setIsSavingEc2(true);
+    try {
+      await ec2ConfigApi.saveConfig(savedProjectId, {
+        publicIp: ec2PublicIp.trim(),
+        sshUser: ec2SshUser.trim() || 'ubuntu',
+        sshPort: ec2SshPort,
+        sshPrivateKey: ec2SshKey.trim(),
+        dockerfilePath: dockerfilePath.trim() || 'Dockerfile',
+        awsRegion: ec2AwsRegion.trim() || 'us-east-1',
+        hostPort: ec2HostPort,
+        containerPort: ec2ContainerPort,
+      });
+      onShowToast('success', 'EC2 Configured', 'SSH target saved. You can now trigger a deployment!');
+      setEc2VerifyResult(null);
+    } catch (err: any) {
+      onShowToast('error', 'Save Failed', err.message || 'Could not save EC2 configuration');
+    } finally {
+      setIsSavingEc2(false);
+    }
+  };
+
+  const handleVerifyEc2 = async () => {
+    if (!savedProjectId) return;
+    setIsVerifyingEc2(true);
+    setEc2VerifyResult(null);
+    try {
+      const res = await ec2ConfigApi.verifyConnection(savedProjectId);
+      setEc2VerifyResult({ ok: true, msg: `✓ Online · ${res.osInfo}${res.dockerInstalled ? ` · ${res.dockerVersion}` : ' · Docker will auto-install'}` });
+      onShowToast('success', 'SSH Connected', res.osInfo);
+    } catch (err: any) {
+      setEc2VerifyResult({ ok: false, msg: `✗ ${err.message || 'Could not reach EC2 host'}` });
+      onShowToast('error', 'SSH Failed', err.message || 'Could not reach EC2 host');
+    } finally {
+      setIsVerifyingEc2(false);
     }
   };
 
@@ -264,12 +373,13 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
       </div>
 
       {/* Stepper Navigation */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 z-10">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 z-10">
         {[
-          { step: 1, label: '1. Connect GitHub', desc: 'OAuth Authorization' },
-          { step: 2, label: '2. Repository', desc: 'Select Git Source' },
-          { step: 3, label: '3. Configure', desc: 'Build & Environment' },
-          { step: 4, label: '4. Deploy', desc: 'Review & Provision' },
+          { step: 1 as WizardStep, label: '1. GitHub', desc: 'OAuth Auth' },
+          { step: 2 as WizardStep, label: '2. Repository', desc: 'Git Source' },
+          { step: 3 as WizardStep, label: '3. Configure', desc: 'Dockerfile & Env' },
+          { step: 4 as WizardStep, label: '4. Create', desc: 'Review & Save' },
+          { step: 5 as WizardStep, label: '5. Target', desc: 'EC2 or EKS' },
         ].map((s) => {
           const isActive = currentStep === s.step;
           const isDone = currentStep > s.step;
@@ -278,20 +388,24 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
               key={s.step}
               type="button"
               onClick={() => {
-                if (isDone || (s.step === 2 && isGitHubConnected)) {
-                  setCurrentStep(s.step as WizardStep);
+                if (s.step === 5 && savedProjectId) {
+                  setCurrentStep(5);
+                } else if ((isDone && s.step < 5 && !savedProjectId) || (s.step === 2 && isGitHubConnected && !savedProjectId)) {
+                  setCurrentStep(s.step);
                 }
               }}
-              className={`p-3.5 rounded-2xl border text-left transition-all ${
+              className={`p-3 rounded-2xl border text-left transition-all ${
                 isActive
-                  ? 'bg-violet-600/15 border-violet-500/50 shadow-lg shadow-violet-500/10'
+                  ? s.step === 5
+                    ? 'bg-cyan-600/15 border-cyan-500/50 shadow-lg shadow-cyan-500/10'
+                    : 'bg-violet-600/15 border-violet-500/50 shadow-lg shadow-violet-500/10'
                   : isDone
                   ? 'bg-white/[0.04] border-white/10 hover:border-white/20'
                   : 'bg-white/[0.01] border-white/5 opacity-50 cursor-not-allowed'
               }`}
             >
               <div className="flex items-center justify-between mb-1">
-                <span className={`text-xs font-bold ${isActive ? 'text-violet-300' : isDone ? 'text-white' : 'text-gray-400'}`}>
+                <span className={`text-xs font-bold ${isActive ? (s.step === 5 ? 'text-cyan-300' : 'text-violet-300') : isDone ? 'text-white' : 'text-gray-400'}`}>
                   {s.label}
                 </span>
                 {isDone && <Check className="w-3.5 h-3.5 text-emerald-400" />}
@@ -641,7 +755,8 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
                     </span>
                   </div>
                 ) : (
-                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
                         <AlertTriangle className="w-5 h-5" />
@@ -656,19 +771,50 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
                           )}
                         </div>
                         <p className="text-[11px] text-amber-200/80 mt-0.5">
-                          {analysisResult.reason || 'The MVP deployment pipeline requires a Dockerfile to build and deploy containerized workloads.'}
+                          {analysisResult.reason || 'Repository must contain a Dockerfile to use the EC2 deployment engine.'}
                         </p>
                       </div>
                     </div>
                     <span className="text-[11px] font-semibold text-amber-400 bg-amber-500/15 px-2.5 py-1 rounded-lg border border-amber-500/30 shrink-0">
-                      Action Needed
+                      Dockerfile Required
                     </span>
                   </div>
+                </div>
                 )
               ) : null}
+
+              {/* Custom Dockerfile Path (Monorepo / Subdirectory Support) */}
+              {selectedRepo && (
+                <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-end gap-2.5">
+                  <div className="flex-1 space-y-1 text-left">
+                    <label className="text-[11px] font-mono uppercase tracking-wider text-[#A1A1B5]">
+                      Dockerfile Path (Optional for Monorepos)
+                    </label>
+                    <input
+                      type="text"
+                      value={dockerfilePath}
+                      onChange={(e) => setDockerfilePath(e.target.value)}
+                      placeholder="Dockerfile or ./backend/Dockerfile"
+                      className="w-full h-10 px-3 bg-[#0A0A12] border border-white/10 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-violet-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isAnalyzing}
+                    onClick={() => {
+                      const parts = selectedRepo.fullName.split('/');
+                      runRepositoryAnalysis(parts[0], parts[1], selectedBranch, dockerfilePath);
+                    }}
+                    className="h-10 px-4 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-semibold text-white transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                    <span>Verify Dockerfile</span>
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-1.5 text-left">
+            <div className="space-y-1.5 text-left md:col-span-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-[#A1A1B5]">
                 Environment Target
               </label>
@@ -681,30 +827,6 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
                 <option value="Staging">Staging</option>
                 <option value="Production">Production</option>
               </select>
-            </div>
-
-            <div className="space-y-1.5 text-left">
-              <label className="text-xs font-semibold uppercase tracking-wider text-[#A1A1B5]">
-                Build Command
-              </label>
-              <input
-                type="text"
-                value={buildCommand}
-                onChange={(e) => setBuildCommand(e.target.value)}
-                className="w-full h-11 px-3.5 bg-[#0A0A12] border border-white/10 rounded-xl text-white text-sm font-mono focus:outline-none focus:border-violet-500"
-              />
-            </div>
-
-            <div className="space-y-1.5 text-left md:col-span-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-[#A1A1B5]">
-                Output Directory
-              </label>
-              <input
-                type="text"
-                value={outputDirectory}
-                onChange={(e) => setOutputDirectory(e.target.value)}
-                className="w-full h-11 px-3.5 bg-[#0A0A12] border border-white/10 rounded-xl text-white text-sm font-mono focus:outline-none focus:border-violet-500"
-              />
             </div>
           </div>
 
@@ -759,19 +881,27 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
             >
               Back
             </button>
-            <button
-              type="button"
-              onClick={() => setCurrentStep(4)}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-semibold hover:brightness-110 flex items-center gap-2"
-            >
-              <span>Continue to Review</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-3">
+              {!isAnalyzing && analysisResult && !analysisResult.supported && (
+                <span className="text-[11px] text-amber-400 font-mono hidden sm:inline">
+                  Dockerfile required to continue
+                </span>
+              )}
+              <button
+                type="button"
+                disabled={isAnalyzing || !analysisResult?.supported}
+                onClick={() => setCurrentStep(4 as WizardStep)}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-semibold hover:brightness-110 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                <span>Continue to Review</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* STEP 4: Review & Deploy */}
+      {/* STEP 4: Review & Deploy → creates project, then goes to EC2 step if Dockerfile */}
       {currentStep === 4 && (
         <div className="rounded-3xl bg-[#13131F]/80 backdrop-blur-xl border border-white/10 p-6 sm:p-8 space-y-6 z-10 shadow-xl">
           <div className="flex items-center gap-3 pb-4 border-b border-white/5">
@@ -807,13 +937,13 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
           {/* Build Pipeline Plan */}
           <div className="p-4 rounded-xl bg-[#09090F] border border-white/5 font-mono text-xs space-y-2 text-[#A1A1B5]">
             <p className="text-white font-semibold text-[11px] uppercase tracking-wider font-sans">
-              Deployment Pipeline Blueprint:
+              EC2 Docker Deployment Blueprint:
             </p>
-            <p>1. Git checkout <span className="text-violet-300">{selectedRepo?.fullName}</span> ({selectedBranch})</p>
-            <p>2. Execute build command: <code className="text-sky-300">{buildCommand}</code></p>
-            <p>3. Archive artifact output: <code className="text-sky-300">{outputDirectory}</code></p>
-            <p>4. Inject {envVars.length} runtime environment variables</p>
-            <p>5. Provision Kubernetes Deployment &amp; ingress route</p>
+            <p>1. Connect to your AWS EC2 node over SSH &amp; bootstrap Docker Engine</p>
+            <p>2. Clone/pull <span className="text-violet-300">{selectedRepo?.fullName}</span> ({selectedBranch})</p>
+            <p>3. Inject {envVars.length} runtime environment variables into <code className="text-sky-300">.env</code> (chmod 0600)</p>
+            <p>4. Build container image from <code className="text-sky-300">{dockerfilePath || 'Dockerfile'}</code></p>
+            <p>5. Start container with <code className="text-emerald-300">--restart unless-stopped</code> &amp; run HTTP readiness probe</p>
           </div>
 
           <div className="flex items-center justify-between pt-4 border-t border-white/5">
@@ -833,16 +963,436 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
               {isDeploying ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                  <span>Provisioning Pipeline...</span>
+                  <span>Creating Project...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-white" />
-                  <span>Deploy Project</span>
+                  <span>Create Project</span>
                 </>
               )}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* STEP 5: Target Infrastructure (EC2 BYOS or Cluster Mode BYOC) */}
+      {currentStep === 5 && (
+        <div className="rounded-3xl bg-[#0D1117]/90 backdrop-blur-xl border border-cyan-500/20 p-6 sm:p-8 space-y-6 z-10 shadow-xl shadow-cyan-500/5">
+          {/* Header */}
+          <div className="flex items-center gap-3 pb-4 border-b border-cyan-500/15">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-300">
+              {targetMode === 'ec2' ? <Server className="w-5 h-5" /> : <Cpu className="w-5 h-5 text-violet-300" />}
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                {targetMode === 'ec2' ? 'EC2 Target Server' : 'AWS EKS Cluster Target'}
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/25">
+                  {targetMode === 'ec2' ? 'BYOS' : 'BYOC'}
+                </span>
+              </h2>
+              <p className="text-xs text-[#A1A1B5]">
+                {targetMode === 'ec2'
+                  ? 'Connect your AWS EC2 instance. The platform will SSH in and deploy your Dockerfile automatically.'
+                  : 'Connect your AWS account (IAM Role or Access Keys). Terraform provisions EKS and Kubernetes deploys your app.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Mode Selector */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setTargetMode('ec2')}
+              className={`p-3.5 rounded-2xl border text-left transition-all flex items-start gap-3 ${
+                targetMode === 'ec2'
+                  ? 'bg-cyan-500/10 border-cyan-500/50 text-white'
+                  : 'bg-black/30 border-white/10 text-slate-400 hover:border-white/20'
+              }`}
+            >
+              <Server className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold font-mono">Single Server — EC2 (BYOS)</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Docker + SSH direct deployment</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTargetMode('cluster')}
+              className={`p-3.5 rounded-2xl border text-left transition-all flex items-start gap-3 ${
+                targetMode === 'cluster'
+                  ? 'bg-violet-500/15 border-violet-500/50 text-white'
+                  : 'bg-black/30 border-white/10 text-slate-400 hover:border-white/20'
+              }`}
+            >
+              <Cpu className="w-5 h-5 text-violet-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold font-mono">Cluster Mode — EKS (BYOC)</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Terraform + ECR + Kubernetes on your AWS</p>
+              </div>
+            </button>
+          </div>
+
+          {/* Project created notice */}
+          {savedProjectId && (
+            <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-mono">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Project created successfully! Configure your target infrastructure below.</span>
+            </div>
+          )}
+
+          {targetMode === 'cluster' ? (
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setClusterAuthMode('IAM_ROLE')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-mono border ${
+                    clusterAuthMode === 'IAM_ROLE'
+                      ? 'bg-violet-500/20 border-violet-500/50 text-white'
+                      : 'bg-black/30 border-white/10 text-slate-400'
+                  }`}
+                >
+                  IAM Role ARN (Recommended)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClusterAuthMode('ACCESS_KEYS')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-mono border ${
+                    clusterAuthMode === 'ACCESS_KEYS'
+                      ? 'bg-violet-500/20 border-violet-500/50 text-white'
+                      : 'bg-black/30 border-white/10 text-slate-400'
+                  }`}
+                >
+                  AWS Access Keys
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {clusterAuthMode === 'IAM_ROLE' ? (
+                  <>
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">AWS IAM Role ARN *</label>
+                      <input
+                        type="text"
+                        value={clusterRoleArn}
+                        onChange={(e) => setClusterRoleArn(e.target.value)}
+                        placeholder="arn:aws:iam::123456789012:role/iiap-byoc-provisioner"
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono placeholder-white/20 focus:outline-none focus:border-violet-500/50"
+                      />
+                    </div>
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">External ID (Optional)</label>
+                      <input
+                        type="text"
+                        value={clusterExternalId}
+                        onChange={(e) => setClusterExternalId(e.target.value)}
+                        placeholder="iiap-external-id"
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono placeholder-white/20 focus:outline-none focus:border-violet-500/50"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">AWS Access Key ID *</label>
+                      <input
+                        type="text"
+                        value={clusterAccessKeyId}
+                        onChange={(e) => setClusterAccessKeyId(e.target.value)}
+                        placeholder="AKIA..."
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono placeholder-white/20 focus:outline-none focus:border-violet-500/50"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">AWS Secret Access Key *</label>
+                      <input
+                        type="password"
+                        value={clusterSecretKey}
+                        onChange={(e) => setClusterSecretKey(e.target.value)}
+                        placeholder="••••••••••••"
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono placeholder-white/20 focus:outline-none focus:border-violet-500/50"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">AWS Region</label>
+                  <input
+                    type="text"
+                    value={clusterRegion}
+                    onChange={(e) => setClusterRegion(e.target.value)}
+                    placeholder="us-east-1"
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">EKS Cluster Name</label>
+                  <input
+                    type="text"
+                    value={clusterName}
+                    onChange={(e) => setClusterName(e.target.value)}
+                    placeholder={`iiap-${projectName || 'app'}-eks`}
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">Worker Node Type</label>
+                  <input
+                    type="text"
+                    value={clusterInstanceType}
+                    onChange={(e) => setClusterInstanceType(e.target.value)}
+                    placeholder="t3.medium"
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">Desired Worker Nodes</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={clusterDesiredNodes}
+                    onChange={(e) => setClusterDesiredNodes(Number(e.target.value))}
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono"
+                  />
+                </div>
+              </div>
+
+              {clusterVerifyResult && (
+                <div className={`p-3 rounded-xl border text-xs font-mono ${clusterVerifyResult.ok ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300' : 'bg-rose-500/10 border-rose-500/25 text-rose-300'}`}>
+                  {clusterVerifyResult.msg}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => (savedProject && onProjectCreated ? onProjectCreated(savedProject) : onNavigate('projects'))}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-violet-300 hover:text-white border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 transition-colors"
+                >
+                  Open Project Dashboard →
+                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={isSavingCluster || !savedProjectId}
+                    onClick={async () => {
+                      if (!savedProjectId) return;
+                      setIsSavingCluster(true);
+                      try {
+                        await awsClusterConfigApi.saveConfig(savedProjectId, {
+                          authMode: clusterAuthMode,
+                          awsRegion: clusterRegion.trim() || 'us-east-1',
+                          roleArn: clusterAuthMode === 'IAM_ROLE' ? clusterRoleArn.trim() : undefined,
+                          externalId: clusterExternalId.trim() || undefined,
+                          accessKeyId: clusterAuthMode === 'ACCESS_KEYS' ? clusterAccessKeyId.trim() : undefined,
+                          secretAccessKey: clusterAuthMode === 'ACCESS_KEYS' ? clusterSecretKey.trim() : undefined,
+                          clusterName: clusterName.trim() || undefined,
+                          nodeInstanceType: clusterInstanceType.trim() || 't3.medium',
+                          desiredNodes: Number(clusterDesiredNodes) || 2,
+                        });
+                        onShowToast('success', 'BYOC Cluster Saved', 'AWS EKS cluster configuration encrypted and saved.');
+                      } catch (err: any) {
+                        onShowToast('error', 'Save Failed', err.message || 'Could not save AWS cluster config');
+                      } finally {
+                        setIsSavingCluster(false);
+                      }
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-violet-700/70 hover:bg-violet-700 border border-violet-500/40 text-white text-xs font-semibold flex items-center gap-2 disabled:opacity-40"
+                  >
+                    {isSavingCluster ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Cpu className="w-3.5 h-3.5" />}
+                    <span>{isSavingCluster ? 'Saving...' : 'Save Cluster Config'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isVerifyingCluster || !savedProjectId}
+                    onClick={async () => {
+                      if (!savedProjectId) return;
+                      setIsVerifyingCluster(true);
+                      setClusterVerifyResult(null);
+                      try {
+                        const res = await awsClusterConfigApi.verifyCredentials(savedProjectId);
+                        setClusterVerifyResult({
+                          ok: true,
+                          msg: `Verified! Cluster '${res.clusterName}' in ${res.awsRegion} (${res.authMode}) is ready for Terraform.`,
+                        });
+                        onShowToast('success', 'AWS Credentials Verified', `Ready to provision ${res.clusterName}`);
+                      } catch (err: any) {
+                        setClusterVerifyResult({ ok: false, msg: err.message || 'Verification failed' });
+                        onShowToast('error', 'Verification Failed', err.message || 'Check your AWS credentials');
+                      } finally {
+                        setIsVerifyingCluster(false);
+                      }
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-xs font-bold flex items-center gap-2 disabled:opacity-40"
+                  >
+                    {isVerifyingCluster ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                    <span>{isVerifyingCluster ? 'Verifying...' : 'Verify AWS Credentials'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+          {/* EC2 form grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Public IP */}
+            <div className="sm:col-span-2 space-y-1.5">
+              <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">EC2 Public IPv4 Address *</label>
+              <input
+                type="text"
+                value={ec2PublicIp}
+                onChange={(e) => setEc2PublicIp(e.target.value)}
+                placeholder="54.210.120.45"
+                className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono placeholder-white/20 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+              />
+            </div>
+
+            {/* SSH User */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">SSH Username</label>
+              <input
+                type="text"
+                value={ec2SshUser}
+                onChange={(e) => setEc2SshUser(e.target.value)}
+                placeholder="ubuntu"
+                className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono placeholder-white/20 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+              />
+            </div>
+
+            {/* SSH Port */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">SSH Port</label>
+              <input
+                type="number"
+                value={ec2SshPort}
+                onChange={(e) => setEc2SshPort(Number(e.target.value))}
+                className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+              />
+            </div>
+
+            {/* Host Port */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">Host Port (External)</label>
+              <input
+                type="number"
+                value={ec2HostPort}
+                onChange={(e) => setEc2HostPort(Number(e.target.value))}
+                placeholder="80"
+                className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono placeholder-white/20 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+              />
+            </div>
+
+            {/* Container Port */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">Container Port (Internal)</label>
+              <input
+                type="number"
+                value={ec2ContainerPort}
+                onChange={(e) => setEc2ContainerPort(Number(e.target.value))}
+                placeholder="3000"
+                className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono placeholder-white/20 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+              />
+            </div>
+
+            {/* AWS Region */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider">AWS Region</label>
+              <select
+                value={ec2AwsRegion}
+                onChange={(e) => setEc2AwsRegion(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+              >
+                {['us-east-1','us-east-2','us-west-1','us-west-2','eu-west-1','eu-central-1','ap-southeast-1','ap-northeast-1'].map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* SSH Private Key */}
+            <div className="sm:col-span-2 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-mono text-[#A1A1B5] uppercase tracking-wider flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-cyan-400" />
+                  SSH Private Key (.pem) *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setEc2ShowKey(!ec2ShowKey)}
+                  className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 transition-colors"
+                >
+                  {ec2ShowKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  <span>{ec2ShowKey ? 'Hide' : 'Show'}</span>
+                </button>
+              </div>
+              <textarea
+                value={ec2SshKey}
+                onChange={(e) => setEc2SshKey(e.target.value)}
+                rows={ec2ShowKey ? 8 : 3}
+                placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;b3BlbnNzaC1rZXktdjEAAAAA...&#10;-----END OPENSSH PRIVATE KEY-----"
+                className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-xs font-mono placeholder-white/20 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors resize-none"
+                style={{ filter: ec2ShowKey ? 'none' : 'blur(3px)' }}
+              />
+              <p className="text-[11px] text-slate-500 font-mono flex items-center gap-1">
+                <Shield className="w-3 h-3 text-cyan-500" />
+                Key is encrypted with AES-256-GCM before storage. Never leaves your infrastructure.
+              </p>
+            </div>
+          </div>
+
+          {/* Verify result banner */}
+          {ec2VerifyResult && (
+            <div className={`p-3 rounded-xl border font-mono text-xs flex items-center gap-2.5 ${
+              ec2VerifyResult.ok
+                ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+                : 'bg-rose-500/10 border-rose-500/25 text-rose-300'
+            }`}>
+              {ec2VerifyResult.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+              <span>{ec2VerifyResult.msg}</span>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-white/5">
+            <button
+              type="button"
+              onClick={() => (savedProject && onProjectCreated ? onProjectCreated(savedProject) : onNavigate('projects'))}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-violet-300 hover:text-white border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 transition-colors"
+            >
+              Open Project Dashboard →
+            </button>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSaveEc2Config}
+                disabled={isSavingEc2 || !ec2PublicIp.trim() || !ec2SshKey.trim()}
+                className="px-5 py-2.5 rounded-xl bg-cyan-700/60 hover:bg-cyan-700/80 border border-cyan-500/40 text-white text-xs font-semibold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                {isSavingEc2 ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Server className="w-3.5 h-3.5" />}
+                <span>{isSavingEc2 ? 'Saving...' : 'Save EC2 Config'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleVerifyEc2}
+                disabled={isVerifyingEc2 || !savedProjectId}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white text-xs font-bold shadow-[0_4px_20px_-4px_rgba(6,182,212,0.5)] hover:brightness-110 active:scale-[0.98] flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                {isVerifyingEc2 ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                <span>{isVerifyingEc2 ? 'Probing SSH...' : 'Test SSH Connection'}</span>
+              </button>
+            </div>
+          </div>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -3,6 +3,8 @@ const express = require('express');
 const authenticate = require('../../middleware/authenticate');
 const validateRequest = require('../../middleware/validateRequest');
 const projectsController = require('./projects.controller');
+const envVarsController = require('./envVars.controller');
+const runtimeController = require('../deployments/runtime.controller');
 const {
     createProjectSchema,
     projectIdParamSchema,
@@ -11,6 +13,8 @@ const {
     analyzeRepositorySchema,
     validateIdempotencyHeader,
     startSetupSchema,
+    ec2ConfigSchema,
+    awsClusterConfigSchema,
 } = require('./projects.validation');
 
 const router = express.Router();
@@ -249,6 +253,12 @@ router.get(
     '/:projectId',
     validateRequest(projectIdParamSchema, 'params'),
     projectsController.getProjectOverview
+);
+
+router.delete(
+    '/:projectId',
+    validateRequest(projectIdParamSchema, 'params'),
+    projectsController.deleteProject
 );
 
 /**
@@ -649,6 +659,168 @@ router.get(
     '/:projectId/setup-status',
     validateRequest(projectIdParamSchema, 'params'),
     projectsController.getSetupStatus
+);
+
+/**
+ * @openapi
+ * /api/projects/{projectId}/ec2-config:
+ *   post:
+ *     tags: [Projects]
+ *     summary: SAAS-02 — Save Encrypted EC2 Deployment Target
+ *     description: >
+ *       Stores the user's AWS EC2 connection details (Public IP, SSH user, port routing)
+ *       and encrypts the SSH private key at rest using AES-256-GCM. Private keys are
+ *       never returned in API responses.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [publicIp]
+ *             properties:
+ *               publicIp: { type: string, example: "54.210.120.45" }
+ *               sshUser: { type: string, default: "ubuntu" }
+ *               sshPort: { type: integer, default: 22 }
+ *               sshPrivateKey: { type: string, description: "PEM/OpenSSH private key" }
+ *               dockerfilePath: { type: string, default: "Dockerfile" }
+ *               hostPort: { type: integer, default: 80 }
+ *               containerPort: { type: integer, default: 3000 }
+ *     responses:
+ *       200:
+ *         description: EC2 target saved successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *   get:
+ *     tags: [Projects]
+ *     summary: SAAS-02 — Get Sanitized EC2 Deployment Target
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Sanitized EC2 target returned (keys strictly omitted)
+ */
+router.post(
+    '/:projectId/ec2-config',
+    validateRequest(projectIdParamSchema, 'params'),
+    validateRequest(ec2ConfigSchema),
+    projectsController.saveEc2Config
+);
+
+router.get(
+    '/:projectId/ec2-config',
+    validateRequest(projectIdParamSchema, 'params'),
+    projectsController.getEc2Config
+);
+
+/**
+ * @openapi
+ * /api/projects/{projectId}/ec2-verify:
+ *   post:
+ *     tags: [Projects]
+ *     summary: SAAS-03 — Pre-flight SSH Connectivity & Security Group Probe
+ *     description: >
+ *       Connects to the configured AWS EC2 host via SSH, verifies port 22 reachability,
+ *       authenticates with the encrypted SSH key, and inspects OS & Docker availability.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: EC2 host reachable and diagnostics returned
+ *       400:
+ *         description: Connection timeout (Security Group port blocked) or authentication failure
+ *       404:
+ *         description: EC2 target not configured for this project
+ */
+router.post(
+    '/:projectId/ec2-verify',
+    validateRequest(projectIdParamSchema, 'params'),
+    projectsController.verifyEc2Config
+);
+
+// ─── BYOC Cluster Mode: AWS EKS Target Routes ────────────────────────────────
+router.post(
+    '/:projectId/cluster-config',
+    validateRequest(projectIdParamSchema, 'params'),
+    validateRequest(awsClusterConfigSchema),
+    projectsController.saveClusterConfig
+);
+
+router.get(
+    '/:projectId/cluster-config',
+    validateRequest(projectIdParamSchema, 'params'),
+    projectsController.getClusterConfig
+);
+
+router.post(
+    '/:projectId/cluster-verify',
+    validateRequest(projectIdParamSchema, 'params'),
+    projectsController.verifyClusterConfig
+);
+
+// ─── Environment Variables Manager ───────────────────────────────────────────
+router.get(
+    '/:projectId/env-vars',
+    validateRequest(projectIdParamSchema, 'params'),
+    envVarsController.listEnvVars
+);
+
+router.post(
+    '/:projectId/env-vars',
+    validateRequest(projectIdParamSchema, 'params'),
+    envVarsController.saveEnvVar
+);
+
+router.post(
+    '/:projectId/env-vars/bulk',
+    validateRequest(projectIdParamSchema, 'params'),
+    envVarsController.saveEnvVarsBulk
+);
+
+router.delete(
+    '/:projectId/env-vars/:key',
+    validateRequest(projectIdParamSchema, 'params'),
+    envVarsController.deleteEnvVar
+);
+
+// ─── Runtime Container Controls (EC2 SSH) ────────────────────────────────────
+router.get(
+    '/:projectId/runtime/status',
+    validateRequest(projectIdParamSchema, 'params'),
+    runtimeController.getContainerStatus
+);
+
+router.get(
+    '/:projectId/runtime/logs',
+    validateRequest(projectIdParamSchema, 'params'),
+    runtimeController.getContainerLogs
+);
+
+router.post(
+    '/:projectId/runtime/restart',
+    validateRequest(projectIdParamSchema, 'params'),
+    runtimeController.restartContainer
 );
 
 module.exports = router;

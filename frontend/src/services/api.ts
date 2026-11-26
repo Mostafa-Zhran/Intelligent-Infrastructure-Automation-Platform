@@ -375,10 +375,160 @@ export const projectsApi = {
     });
     return res.data!;
   },
+
+  async delete(projectId: string): Promise<{ id: string; deleted: boolean }> {
+    const res = await projectsRequest<ApiResponse<{ id: string; deleted: boolean }>>(`/${projectId}`, {
+      method: 'DELETE',
+    });
+    return res.data!;
+  },
+};
+
+export interface Ec2TargetConfig {
+  id: string;
+  projectId: string;
+  publicIp: string;
+  sshUser: string;
+  sshPort: number;
+  authType: 'SSH_KEY';
+  dockerfilePath: string;
+  awsRegion: string;
+  hostPort: number;
+  containerPort: number;
+  healthStatus: 'UNVERIFIED' | 'ONLINE' | 'UNREACHABLE' | 'AUTH_FAILED';
+  dockerVersion: string | null;
+  lastVerifiedAt: string | null;
+  hasSshKey: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveEc2ConfigPayload {
+  publicIp: string;
+  sshUser?: string;
+  sshPort?: number;
+  sshPrivateKey?: string;
+  dockerfilePath?: string;
+  awsRegion?: string;
+  hostPort?: number;
+  containerPort?: number;
+}
+
+export interface Ec2VerifyResult {
+  reachable: boolean;
+  portOpen: boolean;
+  authenticated: boolean;
+  osInfo: string;
+  dockerInstalled: boolean;
+  dockerVersion: string | null;
+  canRunDockerWithoutSudo: boolean;
+  hasSudoAccess: boolean;
+}
+
+export const ec2ConfigApi = {
+  async saveConfig(projectId: string, payload: SaveEc2ConfigPayload): Promise<{ target: Ec2TargetConfig }> {
+    const res = await projectsRequest<ApiResponse<{ target: Ec2TargetConfig }>>(`/${projectId}/ec2-config`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return res.data!;
+  },
+
+  async getConfig(projectId: string): Promise<{ target: Ec2TargetConfig | null }> {
+    const res = await projectsRequest<ApiResponse<{ target: Ec2TargetConfig | null }>>(`/${projectId}/ec2-config`, {
+      method: 'GET',
+    });
+    return res.data!;
+  },
+
+  async verifyConnection(projectId: string): Promise<Ec2VerifyResult> {
+    const res = await projectsRequest<ApiResponse<Ec2VerifyResult>>(`/${projectId}/ec2-verify`, {
+      method: 'POST',
+    });
+    return res.data!;
+  },
+};
+
+export interface AwsClusterTargetConfig {
+  id: string;
+  projectId: string;
+  authMode: 'IAM_ROLE' | 'ACCESS_KEYS';
+  awsRegion: string;
+  roleArn: string | null;
+  externalId: string | null;
+  accessKeyId: string | null;
+  hasSecretKey: boolean;
+  clusterName: string;
+  nodeInstanceType: string;
+  desiredNodes: number;
+  kubernetesVersion: string;
+  clusterEndpoint: string | null;
+  status: 'UNVERIFIED' | 'PROVISIONING' | 'ONLINE' | 'FAILED';
+  lastVerifiedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveAwsClusterConfigPayload {
+  authMode: 'IAM_ROLE' | 'ACCESS_KEYS';
+  awsRegion?: string;
+  roleArn?: string;
+  externalId?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  clusterName?: string;
+  nodeInstanceType?: string;
+  desiredNodes?: number;
+  kubernetesVersion?: string;
+}
+
+export interface AwsClusterVerifyResult {
+  verified: boolean;
+  authMode: 'IAM_ROLE' | 'ACCESS_KEYS';
+  awsRegion: string;
+  clusterName: string;
+  target: AwsClusterTargetConfig;
+}
+
+export const awsClusterConfigApi = {
+  async saveConfig(
+    projectId: string,
+    payload: SaveAwsClusterConfigPayload
+  ): Promise<{ target: AwsClusterTargetConfig }> {
+    const res = await projectsRequest<ApiResponse<{ target: AwsClusterTargetConfig }>>(
+      `/${projectId}/cluster-config`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+    return res.data!;
+  },
+
+  async getConfig(projectId: string): Promise<{ target: AwsClusterTargetConfig | null }> {
+    const res = await projectsRequest<ApiResponse<{ target: AwsClusterTargetConfig | null }>>(
+      `/${projectId}/cluster-config`,
+      {
+        method: 'GET',
+      }
+    );
+    return res.data!;
+  },
+
+  async verifyCredentials(projectId: string): Promise<AwsClusterVerifyResult> {
+    const res = await projectsRequest<ApiResponse<AwsClusterVerifyResult>>(
+      `/${projectId}/cluster-verify`,
+      {
+        method: 'POST',
+      }
+    );
+    return res.data!;
+  },
 };
 
 export interface AnalyzeRepositoryResult {
   supported: boolean;
+  hasDockerfile?: boolean;
   repository: string;
   branch: string;
   dockerfilePath: string | null;
@@ -617,6 +767,81 @@ export const dashboardApi = {
       limit: number;
       deployments: DashboardRecentDeployment[];
     }>>(`/recent-deployments?limit=${limit}`, { method: 'GET' });
+    return res.data!;
+  },
+};
+
+export interface EnvVarEntry {
+  id: string;
+  key: string;
+  is_secret: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const envVarsApi = {
+  async list(projectId: string): Promise<{ vars: EnvVarEntry[] }> {
+    const res = await projectsRequest<ApiResponse<{ vars: EnvVarEntry[] }>>(
+      `/${projectId}/env-vars`,
+      { method: 'GET' }
+    );
+    return res.data!;
+  },
+
+  async save(
+    projectId: string,
+    payload: { key: string; value: string; isSecret?: boolean }
+  ): Promise<{ key: string; isSecret: boolean; saved: boolean }> {
+    const res = await projectsRequest<ApiResponse<{ key: string; isSecret: boolean; saved: boolean }>>(
+      `/${projectId}/env-vars`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+    return res.data!;
+  },
+
+  async remove(projectId: string, key: string): Promise<{ key: string; deleted: boolean }> {
+    const res = await projectsRequest<ApiResponse<{ key: string; deleted: boolean }>>(
+      `/${projectId}/env-vars/${encodeURIComponent(key)}`,
+      { method: 'DELETE' }
+    );
+    return res.data!;
+  },
+};
+
+export interface RuntimeStatus {
+  containerName: string;
+  running: boolean;
+  status: string;
+  image: string | null;
+  startedAt: string | null;
+  ports: string | null;
+}
+
+export const runtimeApi = {
+  async getStatus(projectId: string): Promise<RuntimeStatus> {
+    const res = await projectsRequest<ApiResponse<RuntimeStatus>>(
+      `/${projectId}/runtime/status`,
+      { method: 'GET' }
+    );
+    return res.data!;
+  },
+
+  async getLogs(projectId: string, tail = 200): Promise<{ containerName: string; lines: string[] }> {
+    const res = await projectsRequest<ApiResponse<{ containerName: string; lines: string[] }>>(
+      `/${projectId}/runtime/logs?tail=${tail}`,
+      { method: 'GET' }
+    );
+    return res.data!;
+  },
+
+  async restart(projectId: string): Promise<{ containerName: string; restarted: boolean }> {
+    const res = await projectsRequest<ApiResponse<{ containerName: string; restarted: boolean }>>(
+      `/${projectId}/runtime/restart`,
+      { method: 'POST' }
+    );
     return res.data!;
   },
 };

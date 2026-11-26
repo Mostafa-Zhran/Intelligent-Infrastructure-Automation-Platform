@@ -88,7 +88,14 @@ export const App: React.FC = () => {
   });
 
   // Selected project & deployment entity tracking for drill-down views
-  const [selectedProject, setSelectedProject] = useState<ProjectItem | undefined>(undefined);
+  const [selectedProject, setSelectedProject] = useState<ProjectItem | undefined>(() => {
+    try {
+      const cached = localStorage.getItem('iiap_selected_project');
+      return cached ? JSON.parse(cached) : undefined;
+    } catch {
+      return undefined;
+    }
+  });
   const [selectedDeployment, setSelectedDeployment] = useState<DeploymentRecord | undefined>(() => {
     try {
       const cached = localStorage.getItem('iiap_selected_deployment');
@@ -278,6 +285,14 @@ export const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleSelectProject = (project: any) => {
+    setSelectedProject(project);
+    try {
+      localStorage.setItem('iiap_selected_project', JSON.stringify(project));
+    } catch {}
+    handleNavigate('project-details');
+  };
+
   const handleSignInSuccess = (userData: { id?: string; name?: string; email: string; role?: string; status?: string }) => {
     const displayName = userData.name || userData.email.split('@')[0];
     const initials = displayName
@@ -453,10 +468,7 @@ export const App: React.FC = () => {
           <DashboardPage
             user={fallbackUser}
             onNavigate={handleNavigate}
-            onSelectProject={(project) => {
-              setSelectedProject(project);
-              handleNavigate('project-details');
-            }}
+            onSelectProject={handleSelectProject}
             onSelectDeployment={(dep) => {
               setSelectedDeployment(dep);
               try {
@@ -471,10 +483,7 @@ export const App: React.FC = () => {
         {currentPage === 'projects' && (
           <ProjectsPage
             onNavigate={handleNavigate}
-            onSelectProject={(project) => {
-              setSelectedProject(project);
-              handleNavigate('project-details');
-            }}
+            onSelectProject={handleSelectProject}
             onShowToast={showToast}
           />
         )}
@@ -482,6 +491,7 @@ export const App: React.FC = () => {
         {currentPage === 'new-project' && (
           <NewProjectPage
             onNavigate={handleNavigate}
+            onProjectCreated={handleSelectProject}
             onShowToast={showToast}
           />
         )}

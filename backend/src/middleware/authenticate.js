@@ -6,6 +6,11 @@ require('dotenv').config();
 const authenticate = asyncHandler(async (req, res, next) => {
     let accessToken = req.cookies?.accessToken;
 
+    // Allow token via query param for EventSource (SSE) connections that can't set headers
+    if (!accessToken && req.query?.token) {
+        accessToken = req.query.token;
+    }
+
     if (!accessToken && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
         accessToken = req.headers.authorization.split(' ')[1];
     }

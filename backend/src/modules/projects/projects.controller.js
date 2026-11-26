@@ -1,6 +1,8 @@
 // backend/src/modules/projects/projects.controller.js
 const asyncHandler = require('../../utils/asyncHandler');
 const projectsService = require('./projects.service');
+const ec2TargetService = require('./ec2Target.service');
+const awsClusterService = require('./awsCluster.service');
 
 const listProjects = asyncHandler(async (req, res) => {
     const projects = await projectsService.listProjects(req.user);
@@ -127,6 +129,101 @@ const getSetupStatus = asyncHandler(async (req, res) => {
     });
 });
 
+// ─── SAAS-02: EC2 Target Configuration Handlers ───────────────────────────────
+
+const saveEc2Config = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const target = await ec2TargetService.saveEc2Config(
+        projectId,
+        req.user,
+        req.body
+    );
+
+    res.status(200).json({
+        success: true,
+        message: 'EC2 target configuration encrypted and saved successfully',
+        data: { target },
+    });
+});
+
+const getEc2Config = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const target = await ec2TargetService.getEc2Config(projectId, req.user);
+
+    res.status(200).json({
+        success: true,
+        data: { target },
+    });
+});
+
+/**
+ * POST /api/projects/:projectId/ec2-verify
+ * SAAS-03 — Pre-flight SSH handshake and Docker availability diagnostic probe.
+ */
+const verifyEc2Config = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const diagnostics = await ec2TargetService.verifyEc2Connection(
+        projectId,
+        req.user
+    );
+
+    res.status(200).json({
+        success: true,
+        data: diagnostics,
+    });
+});
+
+// ─── BYOC Cluster Mode: AWS EKS Target Configuration Handlers ────────────────
+
+const saveClusterConfig = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const target = await awsClusterService.saveClusterConfig(
+        projectId,
+        req.user,
+        req.body
+    );
+
+    res.status(200).json({
+        success: true,
+        message: 'AWS BYOC cluster target saved and encrypted.',
+        data: { target },
+    });
+});
+
+const getClusterConfig = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const target = await awsClusterService.getClusterConfig(projectId, req.user);
+
+    res.status(200).json({
+        success: true,
+        data: { target },
+    });
+});
+
+const verifyClusterConfig = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const diagnostics = await awsClusterService.verifyClusterCredentials(
+        projectId,
+        req.user
+    );
+
+    res.status(200).json({
+        success: true,
+        data: diagnostics,
+    });
+});
+
+const deleteProject = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const result = await projectsService.deleteProject(projectId, req.user);
+
+    res.status(200).json({
+        success: true,
+        message: 'Project deleted successfully',
+        data: result,
+    });
+});
+
 module.exports = {
     listProjects,
     createProject,
@@ -137,4 +234,13 @@ module.exports = {
     // SETUP-05
     startSetup,
     getSetupStatus,
+    // SAAS-02 & SAAS-03
+    saveEc2Config,
+    getEc2Config,
+    verifyEc2Config,
+    // BYOC Cluster Mode
+    saveClusterConfig,
+    getClusterConfig,
+    verifyClusterConfig,
+    deleteProject,
 };

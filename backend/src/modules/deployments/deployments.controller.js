@@ -1,6 +1,8 @@
 // backend/src/modules/deployments/deployments.controller.js
 const asyncHandler = require('../../utils/asyncHandler');
 const deploymentsService = require('./deployments.service');
+const deploymentsRepository = require('./deployments.repository');
+const ec2Orchestrator = require('./ec2-deployment.orchestrator');
 
 /**
  * GET /api/deployments
@@ -63,10 +65,71 @@ const updateDeploymentStatus = asyncHandler(async (req, res) => {
     });
 });
 
+/**
+ * GET /api/deployments/:deploymentId/stream-logs
+ * SAAS-06 — Server-Sent Events (SSE) live log stream for active deployments.
+ */
+const streamDeploymentLogs = asyncHandler(async (req, res) => {
+    const { deploymentId } = req.params;
+    const deployment = await deploymentsService.verifyDeploymentAccess(deploymentId, req.user);
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+
+    const sendEvent = (event, data) => {
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    // Send persisted logs first
+    const existingLogs = await deploymentsRepository.getDeploymentLogs(deploymentId, { limit: 500 });
+    for (const log of existingLogs) {
+        sendEvent('log', {
+            id: log.id,
+            source: log.source,
+            level: log.level,
+            message: deploymentsService.redactSecrets(log.message),
+            loggedAt: log.logged_at,
+        });
+    }
+
+    const terminalStates = ['SUCCEEDED', 'FAILED', 'CANCELLED'];
+    if (terminalStates.includes(deployment.status)) {
+        sendEvent('done', { status: deployment.status });
+        res.end();
+        return;
+    }
+
+    const emitter = ec2Orchestrator.getEmitter(deploymentId);
+    if (!emitter) {
+        sendEvent('done', { status: deployment.status });
+        res.end();
+        return;
+    }
+
+    const onLog = (entry) => sendEvent('log', entry);
+    const onDone = (payload) => {
+        sendEvent('done', payload);
+        cleanup();
+        res.end();
+    };
+    const cleanup = () => {
+        emitter.off('log', onLog);
+        emitter.off('done', onDone);
+    };
+
+    emitter.on('log', onLog);
+    emitter.on('done', onDone);
+
+    req.on('close', cleanup);
+});
+
 module.exports = {
     listDeployments,
     getDeploymentById,
     getDeploymentLogs,
+    streamDeploymentLogs,
     updateDeploymentStatus,
 };
 

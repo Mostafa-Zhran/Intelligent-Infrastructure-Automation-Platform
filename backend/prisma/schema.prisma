@@ -415,6 +415,9 @@ model projects {
   github_repo_full_name    String?                    @db.VarChar(300)
   repository_branch        String?                    @db.VarChar(255)
   setup_status             project_setup_status       @default(PENDING)
+  ec2_deploy_target        ec2_deploy_targets?
+  aws_cluster_target       aws_cluster_targets?
+  project_env_vars         project_env_vars[]
   
   @@index([owner_user_id])
   // منع تكرار نفس المستودع لنفس البيئة على مستوى المنصة
@@ -476,6 +479,8 @@ model users {
   password_reset_tokens                                           password_reset_tokens[]
   github_connection                                               github_connections?
   github_oauth_states                                             github_oauth_states[]
+  ec2_deploy_targets                                              ec2_deploy_targets[]
+  aws_cluster_targets                                             aws_cluster_targets[]
 
 
   @@index([platform_role])
@@ -565,6 +570,114 @@ enum platform_role {
   USER
   ADMIN
 
+  @@schema("app")
+}
+
+enum ec2_auth_type {
+  SSH_KEY
+  AWS_IAM_CREDENTIALS
+
+  @@schema("app")
+}
+
+enum ec2_health_status {
+  UNVERIFIED
+  ONLINE
+  UNREACHABLE
+  AUTH_FAILED
+
+  @@schema("app")
+}
+
+model ec2_deploy_targets {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id         String            @unique @db.Uuid
+  user_id            String            @db.Uuid
+  public_ip          String
+  ssh_user           String            @default("ubuntu")
+  ssh_port           Int               @default(22)
+  auth_type          ec2_auth_type     @default(SSH_KEY)
+  encrypted_ssh_key  String            @db.Text
+  ssh_key_iv         String            @db.VarChar(64)
+  ssh_key_tag        String            @db.VarChar(64)
+  dockerfile_path    String            @default("Dockerfile")
+  aws_region         String?           @default("us-east-1")
+  encrypted_aws_key  String?           @db.Text
+  encrypted_aws_sec  String?           @db.Text
+  host_port          Int               @default(80)
+  container_port     Int               @default(3000)
+  health_status      ec2_health_status @default(UNVERIFIED)
+  last_verified_at   DateTime?         @db.Timestamptz(6)
+  docker_version     String?
+  created_at         DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+  projects           projects          @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users              users             @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([project_id], map: "ec2_deploy_targets_project_idx")
+  @@index([user_id], map: "ec2_deploy_targets_user_idx")
+  @@schema("app")
+}
+
+enum aws_cluster_auth_mode {
+  IAM_ROLE
+  ACCESS_KEYS
+
+  @@schema("app")
+}
+
+enum aws_cluster_status {
+  UNVERIFIED
+  PROVISIONING
+  ONLINE
+  FAILED
+
+  @@schema("app")
+}
+
+model aws_cluster_targets {
+  id                   String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id           String                @unique @db.Uuid
+  user_id              String                @db.Uuid
+  auth_mode            aws_cluster_auth_mode @default(IAM_ROLE)
+  aws_region           String                @default("us-east-1")
+  role_arn             String?
+  external_id          String?
+  access_key_id        String?
+  encrypted_secret_key String?               @db.Text
+  secret_key_iv        String?               @db.VarChar(64)
+  secret_key_tag       String?               @db.VarChar(64)
+  cluster_name         String
+  node_instance_type   String                @default("t3.medium")
+  desired_nodes        Int                   @default(2)
+  kubernetes_version   String                @default("1.30")
+  cluster_endpoint     String?
+  status               aws_cluster_status    @default(UNVERIFIED)
+  last_verified_at     DateTime?             @db.Timestamptz(6)
+  created_at           DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime              @default(now()) @updatedAt @db.Timestamptz(6)
+  projects             projects              @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                users                 @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([project_id], map: "aws_cluster_targets_project_idx")
+  @@index([user_id], map: "aws_cluster_targets_user_idx")
+  @@schema("app")
+}
+
+model project_env_vars {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id String   @db.Uuid
+  key        String   @db.VarChar(128)
+  ciphertext String   @db.Text
+  iv         String   @db.VarChar(64)
+  tag        String   @db.VarChar(64)
+  is_secret  Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  projects   projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([project_id, key], map: "project_env_vars_project_key_uq")
+  @@index([project_id], map: "project_env_vars_project_idx")
   @@schema("app")
 }
 

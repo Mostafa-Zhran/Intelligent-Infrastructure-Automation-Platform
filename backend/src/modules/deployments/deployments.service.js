@@ -367,7 +367,28 @@ async function updateDeploymentStatus(deploymentId, payload) {
     return { deployment: result.deployment, message: `Deployment status updated to ${status.toUpperCase()}` };
 }
 
+/**
+ * Verify a deployment exists and the user has permission to access it.
+ */
+async function verifyDeploymentAccess(deploymentId, user) {
+    const deployment = await deploymentsRepository.findDeploymentById(deploymentId);
+    if (!deployment) throw new ApiError(404, 'Deployment not found');
+
+    const project = deployment.projects;
+    const isAdmin = user.role === 'ADMIN';
+    const isOwner = project.owner_user_id === user.id;
+    const isMember = project.project_memberships?.some(
+        (m) => m.user_id === user.id && m.status === 'ACTIVE'
+    );
+    if (!isAdmin && !isOwner && !isMember) {
+        throw new ApiError(403, 'You do not have permission to view logs for this deployment');
+    }
+    return deployment;
+}
+
 module.exports = {
+    redactSecrets,
+    verifyDeploymentAccess,
     listDeployments,
     getDeploymentById,
     getDeploymentLogs,

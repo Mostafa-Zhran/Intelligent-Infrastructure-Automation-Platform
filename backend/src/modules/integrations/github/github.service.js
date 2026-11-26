@@ -546,9 +546,13 @@ async function analyzeRepository({
     throw new ApiError(400, 'Repository name is required');
   }
 
-  // Path traversal check
-  const cleanDockerfilePath = (dockerfilePath || 'Dockerfile').trim();
+  // Path traversal check & normalize leading './'
+  let cleanDockerfilePath = (dockerfilePath || 'Dockerfile').trim();
+  if (cleanDockerfilePath.startsWith('./')) {
+    cleanDockerfilePath = cleanDockerfilePath.slice(2);
+  }
   if (
+    !cleanDockerfilePath ||
     cleanDockerfilePath.startsWith('/') ||
     cleanDockerfilePath.includes('..') ||
     cleanDockerfilePath.includes('\\')
@@ -704,6 +708,24 @@ async function analyzeRepository({
       if (!detectedFiles.includes(found)) {
         detectedFiles.unshift(found);
       }
+    } else if (rootFiles.includes('.docker')) {
+      for (const candidate of ['.docker/Dockerfile', '.docker/dockerfile']) {
+        const dotDockerRes = await githubApiService.fetchRepositoryContents({
+          accessToken: ctx.accessToken,
+          owner: ctx.owner,
+          repo: repo.trim(),
+          path: candidate,
+          ref: targetBranch,
+        });
+        if (dotDockerRes.ok && !dotDockerRes.isDirectory && dotDockerRes.file) {
+          hasDockerfile = true;
+          resolvedDockerfilePath = candidate;
+          if (!detectedFiles.includes(candidate)) {
+            detectedFiles.unshift(candidate);
+          }
+          break;
+        }
+      }
     }
   } else if (!cleanDockerfilePath.includes('/')) {
     const found = rootFiles.find((f) => f.toLowerCase() === cleanDockerfilePath.toLowerCase());
@@ -733,6 +755,7 @@ async function analyzeRepository({
 
   return {
     supported,
+    hasDockerfile: supported,
     repository: `${owner}/${repo}`,
     branch: targetBranch,
     dockerfilePath: hasDockerfile ? resolvedDockerfilePath : null,
@@ -741,7 +764,7 @@ async function analyzeRepository({
     framework: detectedFramework,
     reason: supported
       ? null
-      : 'No Dockerfile detected. The MVP deployment pipeline requires a Dockerfile to build and deploy your application.',
+      : 'No Dockerfile detected. Repository must contain a Dockerfile to use the EC2 deployment engine.',
     analyzedAt: new Date().toISOString(),
   };
 }
