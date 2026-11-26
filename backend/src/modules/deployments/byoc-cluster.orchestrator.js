@@ -454,6 +454,7 @@ async function executeByocClusterDeployment({
         const appName = sanitizeK8sName(projectName);
         const namespace = appName;
         let resolvedImageUri = imageUri;
+        let effectiveContainerPort = containerPort;
 
         if (!resolvedImageUri && repoUrl) {
             await deploymentsRepository.updateDeploymentStatus(deploymentId, { status: 'BUILDING' });
@@ -472,13 +473,19 @@ async function executeByocClusterDeployment({
                 const msg = String(ecrErr?.message || '');
                 if (ecrErr?.code === 'ENOENT' || msg.includes('ENOENT') || msg.toLowerCase().includes('not found')) {
                     resolvedImageUri = process.env.BYOC_FALLBACK_IMAGE || 'nginx:alpine';
-                    onLog(`[ECR] Docker daemon is unavailable on this runner host (${msg}). Deploying fallback image '${resolvedImageUri}' to verify EKS & Kubernetes ingress.`);
+                    if (resolvedImageUri.startsWith('nginx')) {
+                        effectiveContainerPort = 80;
+                    }
+                    onLog(`[ECR] Docker daemon is unavailable on this runner host (${msg}). Deploying fallback image '${resolvedImageUri}' on port ${effectiveContainerPort}.`);
                 } else {
                     throw ecrErr;
                 }
             }
         } else if (!resolvedImageUri) {
             resolvedImageUri = process.env.BYOC_FALLBACK_IMAGE || 'nginx:alpine';
+            if (resolvedImageUri.startsWith('nginx')) {
+                effectiveContainerPort = 80;
+            }
         }
 
         // 3. Configure kubeconfig & apply isolated Kubernetes manifests
@@ -510,7 +517,7 @@ async function executeByocClusterDeployment({
             namespace,
             imageUri: resolvedImageUri,
             replicas,
-            containerPort,
+            containerPort: effectiveContainerPort,
             envVars: mergedEnvVars,
             outputDir: renderedManifestsDir,
         });
