@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+backend/node_modules
+frontend
+**/.env
+**/.env.*
+**/*.log
+.terraform
+**/.terraform
