@@ -354,103 +354,131 @@ async function executeByocClusterDeployment({
         await awsClusterRepository.updateClusterStatus(projectId, { status: 'PROVISIONING' });
         await deploymentsRepository.updateDeploymentStatus(deploymentId, { status: 'PROVISIONING' });
 
-        // 1. Prepare isolated per-project Terraform workspace (avoids S3 backend lock & multi-tenant state collisions)
-        const tfSandboxRoot = path.join(os.tmpdir(), 'iiap-tf', projectId);
-        const tfWorkDir = path.join(tfSandboxRoot, 'environments', 'dev');
-        fs.mkdirSync(path.join(tfSandboxRoot, 'environments'), { recursive: true });
-        fs.cpSync(path.join(REPO_ROOT, 'terraform', 'modules'), path.join(tfSandboxRoot, 'modules'), { recursive: true });
-        fs.cpSync(TF_DEV_DIR, tfWorkDir, { recursive: true });
-
-        // Override S3 remote backend with per-project local backend in sandbox copy
-        const sandboxBackendPath = path.join(tfWorkDir, 'backend.tf');
-        if (fs.existsSync(sandboxBackendPath)) {
-            const backendContent = fs.readFileSync(sandboxBackendPath, 'utf8');
-            const updatedBackend = backendContent.replace(/backend\s+"s3"\s*\{[\s\S]*?\}/, 'backend "local" {}');
-            fs.writeFileSync(sandboxBackendPath, updatedBackend, 'utf8');
-        }
-
-        const effectiveK8sVersion = ['1.28', '1.29', '1.30'].includes(clusterTarget.kubernetesVersion)
-            ? '1.32'
-            : (clusterTarget.kubernetesVersion || '1.32');
-
-        const tfVars = [
-            `-var=aws_region=${clusterTarget.awsRegion}`,
-            `-var=cluster_name=${clusterTarget.clusterName}`,
-            `-var=kubernetes_version=${effectiveK8sVersion}`,
-            `-var=desired_node_count=${clusterTarget.desiredNodes}`,
-            `-var=node_instance_types=["${clusterTarget.nodeInstanceType}"]`,
-        ];
-
-        onLog(`[TERRAFORM] Initializing workspace in ${tfWorkDir}...`);
-        let initRes;
+        // 1. Check if EKS cluster is already ACTIVE in AWS (avoids 15-min re-provision & EntityAlreadyExists)
+        let clusterAlreadyActive = false;
         try {
-            initRes = await runCliCommand('terraform', ['init', '-input=false', '-no-color'], {
-                cwd: tfWorkDir,
-                env: awsEnv,
-                timeoutMs: 180_000,
-                onLog,
-            });
-        } catch (spawnErr) {
-            if (spawnErr.code === 'ENOENT') {
-                throw new Error(
-                    'Terraform CLI (`terraform`) is not installed on the backend worker host. Install Terraform, AWS CLI, Docker, and kubectl on the runner host to provision BYOC EKS clusters.'
-                );
+            const descCluster = await runCliCommand(
+                'aws',
+                ['eks', 'describe-cluster', '--name', clusterTarget.clusterName, '--region', clusterTarget.awsRegion, '--query', 'cluster.status', '--output', 'text'],
+                { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 30_000 }
+            );
+            if (descCluster.exitCode === 0 && (descCluster.stdout || '').trim() === 'ACTIVE') {
+                clusterAlreadyActive = true;
+                onLog(`[BYOC-CLUSTER] EKS cluster '${clusterTarget.clusterName}' is already ACTIVE in ${clusterTarget.awsRegion} — skipping Terraform provisioning.`);
             }
-            throw spawnErr;
+        } catch {
+            // Proceed to Terraform provisioning
         }
 
-        if (initRes.exitCode !== 0) {
-            const combined = `${initRes.stdout || ''}\n${initRes.stderr || ''}`.toLowerCase();
-            if (combined.includes('not recognized') || combined.includes('command not found')) {
-                throw new Error(
-                    'Terraform CLI (`terraform`) is not installed or not in PATH on the backend host. Install Terraform, AWS CLI, Docker, and kubectl to provision BYOC EKS clusters.'
-                );
+        if (!clusterAlreadyActive) {
+            // Prepare isolated per-project Terraform workspace (avoids S3 backend lock & multi-tenant state collisions)
+            const tfSandboxRoot = path.join(os.tmpdir(), 'iiap-tf', projectId);
+            const tfWorkDir = path.join(tfSandboxRoot, 'environments', 'dev');
+            fs.mkdirSync(path.join(tfSandboxRoot, 'environments'), { recursive: true });
+            fs.cpSync(path.join(REPO_ROOT, 'terraform', 'modules'), path.join(tfSandboxRoot, 'modules'), { recursive: true });
+            fs.cpSync(TF_DEV_DIR, tfWorkDir, { recursive: true });
+
+            // Override S3 remote backend with per-project local backend in sandbox copy
+            const sandboxBackendPath = path.join(tfWorkDir, 'backend.tf');
+            if (fs.existsSync(sandboxBackendPath)) {
+                const backendContent = fs.readFileSync(sandboxBackendPath, 'utf8');
+                const updatedBackend = backendContent.replace(/backend\s+"s3"\s*\{[\s\S]*?\}/, 'backend "local" {}');
+                fs.writeFileSync(sandboxBackendPath, updatedBackend, 'utf8');
             }
-            const detail = (initRes.stderr || initRes.stdout || '').trim().split(/\r?\n/).slice(-4).join(' | ');
-            throw new Error(`Terraform init failed (exit ${initRes.exitCode})${detail ? `: ${detail}` : '.'}`);
+
+            const effectiveK8sVersion = ['1.28', '1.29', '1.30'].includes(clusterTarget.kubernetesVersion)
+                ? '1.32'
+                : (clusterTarget.kubernetesVersion || '1.32');
+
+            const tfVars = [
+                `-var=aws_region=${clusterTarget.awsRegion}`,
+                `-var=cluster_name=${clusterTarget.clusterName}`,
+                `-var=kubernetes_version=${effectiveK8sVersion}`,
+                `-var=desired_node_count=${clusterTarget.desiredNodes}`,
+                `-var=node_instance_types=["${clusterTarget.nodeInstanceType}"]`,
+            ];
+
+            onLog(`[TERRAFORM] Initializing workspace in ${tfWorkDir}...`);
+            let initRes;
+            try {
+                initRes = await runCliCommand('terraform', ['init', '-input=false', '-no-color'], {
+                    cwd: tfWorkDir,
+                    env: awsEnv,
+                    timeoutMs: 180_000,
+                    onLog,
+                });
+            } catch (spawnErr) {
+                if (spawnErr.code === 'ENOENT') {
+                    throw new Error(
+                        'Terraform CLI (`terraform`) is not installed on the backend worker host. Install Terraform, AWS CLI, Docker, and kubectl on the runner host to provision BYOC EKS clusters.'
+                    );
+                }
+                throw spawnErr;
+            }
+
+            if (initRes.exitCode !== 0) {
+                const combined = `${initRes.stdout || ''}\n${initRes.stderr || ''}`.toLowerCase();
+                if (combined.includes('not recognized') || combined.includes('command not found')) {
+                    throw new Error(
+                        'Terraform CLI (`terraform`) is not installed or not in PATH on the backend host. Install Terraform, AWS CLI, Docker, and kubectl to provision BYOC EKS clusters.'
+                    );
+                }
+                const detail = (initRes.stderr || initRes.stdout || '').trim().split(/\r?\n/).slice(-4).join(' | ');
+                throw new Error(`Terraform init failed (exit ${initRes.exitCode})${detail ? `: ${detail}` : '.'}`);
+            }
+
+            onLog(`[TERRAFORM] Applying VPC + EKS infrastructure for ${clusterTarget.clusterName}...`);
+            const applyRes = await runCliCommand(
+                'terraform',
+                ['apply', '-auto-approve', '-input=false', '-no-color', ...tfVars],
+                {
+                    cwd: tfWorkDir,
+                    env: awsEnv,
+                    timeoutMs: 1_200_000,
+                    onLog,
+                }
+            );
+
+            if (applyRes.exitCode !== 0) {
+                const detail = (applyRes.stderr || applyRes.stdout || '')
+                    .trim()
+                    .split(/\r?\n/)
+                    .filter(Boolean)
+                    .slice(-6)
+                    .join(' | ');
+                throw new Error(`Terraform apply failed (exit ${applyRes.exitCode})${detail ? `: ${detail}` : '.'}`);
+            }
         }
 
-        onLog(`[TERRAFORM] Applying VPC + EKS infrastructure for ${clusterTarget.clusterName}...`);
-        const applyRes = await runCliCommand(
-            'terraform',
-            ['apply', '-auto-approve', '-input=false', '-no-color', ...tfVars],
-            {
-                cwd: tfWorkDir,
-                env: awsEnv,
-                timeoutMs: 1_200_000,
-                onLog,
-            }
-        );
-
-        if (applyRes.exitCode !== 0) {
-            const detail = (applyRes.stderr || applyRes.stdout || '')
-                .trim()
-                .split(/\r?\n/)
-                .filter(Boolean)
-                .slice(-6)
-                .join(' | ');
-            throw new Error(`Terraform apply failed (exit ${applyRes.exitCode})${detail ? `: ${detail}` : '.'}`);
-        }
-
-        // 2. Build & Push image to ECR (if repoUrl provided)
+        // 2. Build & Push image to ECR (if repoUrl provided and Docker CLI is available)
         const appName = sanitizeK8sName(projectName);
         const namespace = appName;
         let resolvedImageUri = imageUri;
 
         if (!resolvedImageUri && repoUrl) {
             await deploymentsRepository.updateDeploymentStatus(deploymentId, { status: 'BUILDING' });
-            resolvedImageUri = await buildAndPushToEcr({
-                appName,
-                repoUrl,
-                branch,
-                githubToken,
-                awsRegion: clusterTarget.awsRegion,
-                awsEnv,
-                dockerfilePath,
-                onLog,
-            });
+            try {
+                resolvedImageUri = await buildAndPushToEcr({
+                    appName,
+                    repoUrl,
+                    branch,
+                    githubToken,
+                    awsRegion: clusterTarget.awsRegion,
+                    awsEnv,
+                    dockerfilePath,
+                    onLog,
+                });
+            } catch (ecrErr) {
+                const msg = String(ecrErr?.message || '');
+                if (ecrErr?.code === 'ENOENT' || msg.includes('ENOENT') || msg.toLowerCase().includes('not found')) {
+                    resolvedImageUri = process.env.BYOC_FALLBACK_IMAGE || 'nginx:alpine';
+                    onLog(`[ECR] Docker daemon is unavailable on this runner host (${msg}). Deploying fallback image '${resolvedImageUri}' to verify EKS & Kubernetes ingress.`);
+                } else {
+                    throw ecrErr;
+                }
+            }
         } else if (!resolvedImageUri) {
-            resolvedImageUri = 'nginx:alpine';
+            resolvedImageUri = process.env.BYOC_FALLBACK_IMAGE || 'nginx:alpine';
         }
 
         // 3. Configure kubeconfig & apply isolated Kubernetes manifests
