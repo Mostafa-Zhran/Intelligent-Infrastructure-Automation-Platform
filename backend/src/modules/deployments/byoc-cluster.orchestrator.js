@@ -1022,6 +1022,18 @@ async function executeByocClusterDeployment({
             throw new Error(`kubectl apply failed (exit ${kubectlRes.exitCode})${kErr ? `: ${kErr}` : '.'}`);
         }
 
+        // Force rollout restart so :latest ECR image updates always replace old Pods, and wait until ready
+        await runCliCommand(
+            'kubectl',
+            ['rollout', 'restart', `deployment/${appName}`, '-n', namespace],
+            { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 30_000, onLog }
+        );
+        await runCliCommand(
+            'kubectl',
+            ['rollout', 'status', `deployment/${appName}`, '-n', namespace, '--timeout=180s'],
+            { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 190_000, onLog }
+        );
+
         // Best-effort LoadBalancer URL lookup
         let serviceUrl = null;
         try {
