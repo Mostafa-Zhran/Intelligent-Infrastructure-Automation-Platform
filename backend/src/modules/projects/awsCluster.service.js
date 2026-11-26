@@ -90,7 +90,7 @@ async function saveClusterConfig(projectId, user, payload) {
         clusterName: payload.clusterName ? String(payload.clusterName).trim() : defaultClusterName,
         nodeInstanceType: payload.nodeInstanceType ? String(payload.nodeInstanceType).trim() : 't3.medium',
         desiredNodes: Number(payload.desiredNodes || 2),
-        kubernetesVersion: payload.kubernetesVersion ? String(payload.kubernetesVersion).trim() : '1.30',
+        kubernetesVersion: payload.kubernetesVersion ? String(payload.kubernetesVersion).trim() : '1.32',
     });
 
     return sanitizeClusterTarget(saved);

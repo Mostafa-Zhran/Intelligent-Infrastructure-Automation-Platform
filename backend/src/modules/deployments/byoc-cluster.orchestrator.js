@@ -369,10 +369,14 @@ async function executeByocClusterDeployment({
             fs.writeFileSync(sandboxBackendPath, updatedBackend, 'utf8');
         }
 
+        const effectiveK8sVersion = ['1.28', '1.29', '1.30'].includes(clusterTarget.kubernetesVersion)
+            ? '1.32'
+            : (clusterTarget.kubernetesVersion || '1.32');
+
         const tfVars = [
             `-var=aws_region=${clusterTarget.awsRegion}`,
             `-var=cluster_name=${clusterTarget.clusterName}`,
-            `-var=kubernetes_version=${clusterTarget.kubernetesVersion}`,
+            `-var=kubernetes_version=${effectiveK8sVersion}`,
             `-var=desired_node_count=${clusterTarget.desiredNodes}`,
             `-var=node_instance_types=["${clusterTarget.nodeInstanceType}"]`,
         ];

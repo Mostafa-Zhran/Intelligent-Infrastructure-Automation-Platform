@@ -650,7 +650,7 @@ model aws_cluster_targets {
   cluster_name         String
   node_instance_type   String                @default("t3.medium")
   desired_nodes        Int                   @default(2)
-  kubernetes_version   String                @default("1.30")
+  kubernetes_version   String                @default("1.32")
   cluster_endpoint     String?
   status               aws_cluster_status    @default(UNVERIFIED)
   last_verified_at     DateTime?             @db.Timestamptz(6)
