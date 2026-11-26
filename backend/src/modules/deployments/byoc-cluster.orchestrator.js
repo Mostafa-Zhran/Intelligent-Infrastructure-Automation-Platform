@@ -354,7 +354,21 @@ async function executeByocClusterDeployment({
         await awsClusterRepository.updateClusterStatus(projectId, { status: 'PROVISIONING' });
         await deploymentsRepository.updateDeploymentStatus(deploymentId, { status: 'PROVISIONING' });
 
-        // 1. Terraform Init & Apply
+        // 1. Prepare isolated per-project Terraform workspace (avoids S3 backend lock & multi-tenant state collisions)
+        const tfSandboxRoot = path.join(os.tmpdir(), 'iiap-tf', projectId);
+        const tfWorkDir = path.join(tfSandboxRoot, 'environments', 'dev');
+        fs.mkdirSync(path.join(tfSandboxRoot, 'environments'), { recursive: true });
+        fs.cpSync(path.join(REPO_ROOT, 'terraform', 'modules'), path.join(tfSandboxRoot, 'modules'), { recursive: true });
+        fs.cpSync(TF_DEV_DIR, tfWorkDir, { recursive: true });
+
+        // Override S3 remote backend with per-project local backend in sandbox copy
+        const sandboxBackendPath = path.join(tfWorkDir, 'backend.tf');
+        if (fs.existsSync(sandboxBackendPath)) {
+            const backendContent = fs.readFileSync(sandboxBackendPath, 'utf8');
+            const updatedBackend = backendContent.replace(/backend\s+"s3"\s*\{[\s\S]*?\}/, 'backend "local" {}');
+            fs.writeFileSync(sandboxBackendPath, updatedBackend, 'utf8');
+        }
+
         const tfVars = [
             `-var=aws_region=${clusterTarget.awsRegion}`,
             `-var=cluster_name=${clusterTarget.clusterName}`,
@@ -363,11 +377,11 @@ async function executeByocClusterDeployment({
             `-var=node_instance_types=["${clusterTarget.nodeInstanceType}"]`,
         ];
 
-        onLog(`[TERRAFORM] Initializing workspace in ${TF_DEV_DIR}...`);
+        onLog(`[TERRAFORM] Initializing workspace in ${tfWorkDir}...`);
         let initRes;
         try {
-            initRes = await runCliCommand('terraform', ['init', '-input=false', '-backend=false'], {
-                cwd: TF_DEV_DIR,
+            initRes = await runCliCommand('terraform', ['init', '-input=false', '-no-color'], {
+                cwd: tfWorkDir,
                 env: awsEnv,
                 timeoutMs: 180_000,
                 onLog,
@@ -395,9 +409,9 @@ async function executeByocClusterDeployment({
         onLog(`[TERRAFORM] Applying VPC + EKS infrastructure for ${clusterTarget.clusterName}...`);
         const applyRes = await runCliCommand(
             'terraform',
-            ['apply', '-auto-approve', '-input=false', ...tfVars],
+            ['apply', '-auto-approve', '-input=false', '-no-color', ...tfVars],
             {
-                cwd: TF_DEV_DIR,
+                cwd: tfWorkDir,
                 env: awsEnv,
                 timeoutMs: 1_200_000,
                 onLog,
