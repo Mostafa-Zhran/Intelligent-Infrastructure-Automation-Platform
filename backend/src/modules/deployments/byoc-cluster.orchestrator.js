@@ -307,7 +307,47 @@ async function executeByocClusterDeployment({
             clusterTarget.accessKeyId,
             githubToken,
         ].filter(Boolean);
-        const awsEnv = buildAwsEnv(clusterTarget);
+        let awsEnv = buildAwsEnv(clusterTarget);
+
+        // If IAM_ROLE mode is selected, assume the customer's role via AWS STS to get temporary credentials
+        if (clusterTarget.authMode === 'IAM_ROLE') {
+            if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+                throw new Error(
+                    'IAM_ROLE mode requires platform AWS credentials (AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY) on Railway to assume the role. Switch this project to AWS Access Keys mode in Cluster Topology.'
+                );
+            }
+            onLog(`[BYOC-CLUSTER] Assuming IAM Role ${clusterTarget.roleArn}...`);
+            const stsArgs = [
+                'sts', 'assume-role',
+                '--role-arn', clusterTarget.roleArn,
+                '--role-session-name', `iiap-${deploymentId.slice(0, 8)}`,
+                '--output', 'json',
+            ];
+            if (clusterTarget.externalId) {
+                stsArgs.push('--external-id', clusterTarget.externalId);
+            }
+            const assumeRes = await runCliCommand('aws', stsArgs, {
+                cwd: REPO_ROOT,
+                env: {
+                    AWS_REGION: clusterTarget.awsRegion || 'us-east-1',
+                    AWS_DEFAULT_REGION: clusterTarget.awsRegion || 'us-east-1',
+                },
+                timeoutMs: 30_000,
+            });
+            if (assumeRes.exitCode !== 0) {
+                const stsErr = (assumeRes.stderr || assumeRes.stdout || '').trim().split(/\r?\n/).slice(-3).join(' | ');
+                throw new Error(`AWS sts:AssumeRole failed: ${stsErr || 'Check role trust policy and permissions.'}`);
+            }
+            const creds = JSON.parse(assumeRes.stdout).Credentials;
+            awsEnv = {
+                AWS_REGION: clusterTarget.awsRegion || 'us-east-1',
+                AWS_DEFAULT_REGION: clusterTarget.awsRegion || 'us-east-1',
+                AWS_ACCESS_KEY_ID: creds.AccessKeyId,
+                AWS_SECRET_ACCESS_KEY: creds.SecretAccessKey,
+                AWS_SESSION_TOKEN: creds.SessionToken,
+            };
+            extraSecrets.push(creds.SecretAccessKey, creds.SessionToken);
+        }
 
         onLog(`[BYOC-CLUSTER] Target: cluster='${clusterTarget.clusterName}' region='${clusterTarget.awsRegion}' authMode='${clusterTarget.authMode}'`);
 
@@ -365,7 +405,13 @@ async function executeByocClusterDeployment({
         );
 
         if (applyRes.exitCode !== 0) {
-            throw new Error(`Terraform apply failed (exit ${applyRes.exitCode}).`);
+            const detail = (applyRes.stderr || applyRes.stdout || '')
+                .trim()
+                .split(/\r?\n/)
+                .filter(Boolean)
+                .slice(-6)
+                .join(' | ');
+            throw new Error(`Terraform apply failed (exit ${applyRes.exitCode})${detail ? `: ${detail}` : '.'}`);
         }
 
         // 2. Build & Push image to ECR (if repoUrl provided)
