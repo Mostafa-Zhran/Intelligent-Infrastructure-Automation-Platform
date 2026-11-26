@@ -516,6 +516,16 @@ async function executeByocClusterDeployment({
         });
 
         onLog(`[KUBERNETES] Applying manifests into isolated namespace '${namespace}'...`);
+        const nsApplyRes = await runCliCommand(
+            'kubectl',
+            ['apply', '-f', path.join(renderedManifestsDir, 'namespace.yaml')],
+            { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 60_000, onLog }
+        );
+        if (nsApplyRes.exitCode !== 0) {
+            const nsErr = (nsApplyRes.stderr || nsApplyRes.stdout || '').trim().split(/\r?\n/).slice(-4).join(' | ');
+            throw new Error(`kubectl apply namespace failed (exit ${nsApplyRes.exitCode})${nsErr ? `: ${nsErr}` : '.'}`);
+        }
+
         const kubectlRes = await runCliCommand(
             'kubectl',
             ['apply', '-f', renderedManifestsDir],
@@ -523,7 +533,8 @@ async function executeByocClusterDeployment({
         );
 
         if (kubectlRes.exitCode !== 0) {
-            throw new Error(`kubectl apply failed (exit ${kubectlRes.exitCode}).`);
+            const kErr = (kubectlRes.stderr || kubectlRes.stdout || '').trim().split(/\r?\n/).slice(-4).join(' | ');
+            throw new Error(`kubectl apply failed (exit ${kubectlRes.exitCode})${kErr ? `: ${kErr}` : '.'}`);
         }
 
         // Best-effort LoadBalancer URL lookup
