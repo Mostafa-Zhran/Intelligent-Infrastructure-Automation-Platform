@@ -521,6 +521,184 @@ async function buildAndPushToEcr({
 }
 
 /**
+ * Builds the project Docker image from GitHub inside the user's EKS cluster using Kaniko
+ * and pushes it directly to AWS ECR. Requires zero local Docker and zero CodeBuild quota.
+ */
+async function buildAndPushViaKaniko({
+    appName,
+    namespace,
+    clusterName,
+    registry,
+    imageUri,
+    repoUrl,
+    branch = 'main',
+    githubToken = null,
+    awsRegion = 'us-east-1',
+    awsEnv,
+    dockerfilePath = 'Dockerfile',
+    onLog = () => {},
+}) {
+    onLog(`[KANIKO] Preparing in-cluster Kaniko build on EKS '${clusterName}'...`);
+    const kubeRes = await runCliCommand(
+        'aws',
+        ['eks', 'update-kubeconfig', '--region', awsRegion, '--name', clusterName],
+        { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 60_000, onLog }
+    );
+    if (kubeRes.exitCode !== 0) {
+        throw new Error(`aws eks update-kubeconfig failed (exit ${kubeRes.exitCode}).`);
+    }
+
+    // Detect EXPOSE port from Dockerfile via shallow clone
+    let exposedPort = null;
+    const cleanDfPath = String(dockerfilePath || 'Dockerfile').replace(/^\.\//, '');
+    const probeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'iiap-kaniko-df-'));
+    try {
+        let effectiveUrl = repoUrl;
+        if (githubToken && repoUrl.startsWith('https://')) {
+            effectiveUrl = repoUrl.replace('https://', `https://${githubToken}@`);
+        }
+        const cloneRes = await runCliCommand(
+            'git',
+            ['clone', '--depth=1', '--branch', branch, effectiveUrl, probeDir],
+            { cwd: REPO_ROOT, timeoutMs: 90_000 }
+        );
+        if (cloneRes.exitCode === 0) {
+            const fullDfPath = path.join(probeDir, cleanDfPath);
+            if (fs.existsSync(fullDfPath)) {
+                exposedPort = detectExposedPort(fs.readFileSync(fullDfPath, 'utf8'));
+            }
+        }
+    } finally {
+        fs.rmSync(probeDir, { recursive: true, force: true });
+    }
+
+    // Ensure namespace exists
+    const nsYaml = `apiVersion: v1\nkind: Namespace\nmetadata:\n  name: ${namespace}\n`;
+    await runCliCommand('kubectl', ['apply', '-f', '-'], {
+        cwd: REPO_ROOT,
+        env: awsEnv,
+        stdin: nsYaml,
+        timeoutMs: 30_000,
+    });
+
+    // Refresh ECR auth secret inside namespace
+    const pwRes = await runCliCommand(
+        'aws',
+        ['ecr', 'get-login-password', '--region', awsRegion],
+        { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 30_000 }
+    );
+    if (pwRes.exitCode !== 0 || !pwRes.stdout.trim()) {
+        throw new Error('Failed to obtain ECR login password for Kaniko.');
+    }
+
+    await runCliCommand(
+        'kubectl',
+        ['delete', 'secret', 'iiap-ecr-auth', '-n', namespace, '--ignore-not-found'],
+        { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 20_000 }
+    );
+    const secRes = await runCliCommand(
+        'kubectl',
+        [
+            'create', 'secret', 'docker-registry', 'iiap-ecr-auth',
+            '-n', namespace,
+            `--docker-server=${registry}`,
+            '--docker-username=AWS',
+            `--docker-password=${pwRes.stdout.trim()}`,
+        ],
+        { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 30_000 }
+    );
+    if (secRes.exitCode !== 0) {
+        throw new Error('Failed to create ECR auth secret in Kubernetes.');
+    }
+
+    const jobName = `iiap-kaniko-${appName}`.slice(0, 63).replace(/-+$/, '');
+    await runCliCommand(
+        'kubectl',
+        ['delete', 'job', jobName, '-n', namespace, '--ignore-not-found'],
+        { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 30_000 }
+    );
+
+    // Kaniko git context: git://github.com/owner/repo.git#refs/heads/<branch>
+    const gitContext = `${repoUrl.replace(/^https?:\/\//, 'git://').replace(/\.git$/, '')}.git#refs/heads/${branch}`;
+    const envLines = githubToken
+        ? [
+              '          env:',
+              '            - name: GIT_USERNAME',
+              '              value: x-access-token',
+              '            - name: GIT_PASSWORD',
+              `              value: ${JSON.stringify(githubToken)}`,
+          ]
+        : [];
+
+    const jobYaml = [
+        'apiVersion: batch/v1',
+        'kind: Job',
+        'metadata:',
+        `  name: ${jobName}`,
+        `  namespace: ${namespace}`,
+        'spec:',
+        '  backoffLimit: 0',
+        '  ttlSecondsAfterFinished: 300',
+        '  template:',
+        '    spec:',
+        '      restartPolicy: Never',
+        '      containers:',
+        '        - name: kaniko',
+        '          image: gcr.io/kaniko-project/executor:latest',
+        '          args:',
+        `            - "--dockerfile=${cleanDfPath}"`,
+        `            - "--context=${gitContext}"`,
+        `            - "--destination=${imageUri}"`,
+        '            - "--cleanup"',
+        ...envLines,
+        '          volumeMounts:',
+        '            - name: ecr-auth',
+        '              mountPath: /kaniko/.docker',
+        '              readOnly: true',
+        '      volumes:',
+        '        - name: ecr-auth',
+        '          secret:',
+        '            secretName: iiap-ecr-auth',
+        '            items:',
+        '              - key: .dockerconfigjson',
+        '                path: config.json',
+        '',
+    ].join('\n');
+
+    onLog(`[KANIKO] Starting in-cluster build job '${jobName}' -> ${imageUri}...`);
+    const applyJobRes = await runCliCommand('kubectl', ['apply', '-f', '-'], {
+        cwd: REPO_ROOT,
+        env: awsEnv,
+        stdin: jobYaml,
+        timeoutMs: 30_000,
+        onLog,
+    });
+    if (applyJobRes.exitCode !== 0) {
+        throw new Error(`Failed to create Kaniko build job: ${applyJobRes.stderr || applyJobRes.stdout}`);
+    }
+
+    onLog('[KANIKO] Waiting for in-cluster Docker build & ECR push to complete (up to 10 min)...');
+    const waitRes = await runCliCommand(
+        'kubectl',
+        ['wait', '--for=condition=complete', `job/${jobName}`, '-n', namespace, '--timeout=600s'],
+        { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 610_000, onLog }
+    );
+
+    if (waitRes.exitCode !== 0) {
+        const logsRes = await runCliCommand(
+            'kubectl',
+            ['logs', `job/${jobName}`, '-n', namespace, '--tail=40'],
+            { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 20_000 }
+        );
+        const tail = (logsRes.stdout || logsRes.stderr || '').trim().split(/\r?\n/).slice(-6).join(' | ');
+        throw new Error(`In-cluster Kaniko build failed${tail ? `: ${tail}` : '.'}`);
+    }
+
+    onLog(`[KANIKO] Image built & pushed to ${imageUri} successfully!`);
+    return { imageUri, exposedPort };
+}
+
+/**
  * Execute BYOC Cluster Mode deployment:
  *  1. Transition deployment to PLANNING -> PROVISIONING
  *  2. Decrypt user's AWS credentials (IAM Role / Access Keys)
@@ -737,21 +915,46 @@ async function executeByocClusterDeployment({
                         awsEnv,
                         onLog,
                     });
-                    const cbOut = await buildAndPushViaCodeBuild({
-                        appName,
-                        accountId,
-                        registry,
-                        imageUri: ecrUri,
-                        repoUrl,
-                        branch,
-                        githubToken,
-                        awsRegion: clusterTarget.awsRegion,
-                        awsEnv,
-                        dockerfilePath,
-                        onLog,
-                    });
-                    resolvedImageUri = cbOut.imageUri;
-                    if (cbOut.exposedPort) effectiveContainerPort = cbOut.exposedPort;
+                    try {
+                        const cbOut = await buildAndPushViaCodeBuild({
+                            appName,
+                            accountId,
+                            registry,
+                            imageUri: ecrUri,
+                            repoUrl,
+                            branch,
+                            githubToken,
+                            awsRegion: clusterTarget.awsRegion,
+                            awsEnv,
+                            dockerfilePath,
+                            onLog,
+                        });
+                        resolvedImageUri = cbOut.imageUri;
+                        if (cbOut.exposedPort) effectiveContainerPort = cbOut.exposedPort;
+                    } catch (cbErr) {
+                        const cbMsg = String(cbErr?.message || '');
+                        if (cbMsg.includes('AccountLimitExceededException') || cbMsg.includes('0 builds in queue')) {
+                            onLog('[CODEBUILD] AWS CodeBuild account quota is 0 — switching to in-cluster Kaniko builder on EKS...');
+                            const kanikoOut = await buildAndPushViaKaniko({
+                                appName,
+                                namespace,
+                                clusterName: clusterTarget.clusterName,
+                                registry,
+                                imageUri: ecrUri,
+                                repoUrl,
+                                branch,
+                                githubToken,
+                                awsRegion: clusterTarget.awsRegion,
+                                awsEnv,
+                                dockerfilePath,
+                                onLog,
+                            });
+                            resolvedImageUri = kanikoOut.imageUri;
+                            if (kanikoOut.exposedPort) effectiveContainerPort = kanikoOut.exposedPort;
+                        } else {
+                            throw cbErr;
+                        }
+                    }
                 } else {
                     throw ecrErr;
                 }
