@@ -212,11 +212,16 @@ async function deleteClusterConfig(projectId, user) {
 }
 
 /**
- * Run `terraform destroy` to delete all AWS infrastructure provisioned for this project,
- * then optionally remove the DB config record.
- *
- * This is a long-running operation (up to 20 min). It runs synchronously on the request.
- * The caller should use a generous HTTP timeout or poll a status endpoint.
+ * Delete ALL AWS & Kubernetes infrastructure for a BYOC project using direct AWS CLI calls.
+ * Works without a local terraform.tfstate file — enumerates and deletes in order:
+ *   1. kubectl delete namespace (releases ELB gracefully)
+ *   2. EKS Managed Node Groups (terminates EC2 worker nodes) → EKS Control Plane
+ *   3. OIDC Identity Provider
+ *   4. ELBv1 & ELBv2 → NAT Gateways → Elastic IPs → ENIs → Internet Gateway
+ *      → Subnets → Route Tables → Security Groups → VPC
+ *   5. IAM Roles (cluster-role + node-role) & all attached/inline policies
+ *   6. ECR Repository (force-delete all images)
+ * Then removes the DB config record.
  */
 async function destroyClusterInfrastructure(projectId, user, { deleteConfig: shouldDeleteConfig = true } = {}) {
     if (!user || !user.id) {
@@ -230,103 +235,27 @@ async function destroyClusterInfrastructure(projectId, user, { deleteConfig: sho
         throw new ApiError(404, 'No AWS cluster configuration found for this project.');
     }
 
-    // Decrypt credentials for Terraform execution
-    let secretAccessKey = null;
-    if (target.encrypted_secret_key && target.secret_key_iv && target.secret_key_tag) {
-        const { decryptSecret } = require('../../utils/crypto.service');
-        secretAccessKey = decryptSecret({
-            ciphertext: target.encrypted_secret_key,
-            iv: target.secret_key_iv,
-            tag: target.secret_key_tag,
-        });
-    }
+    const { cleanupAllAwsResources } = require('./awsCleanup.service');
 
-    const awsEnv = {
-        AWS_REGION: target.aws_region || 'us-east-1',
-        AWS_DEFAULT_REGION: target.aws_region || 'us-east-1',
-    };
-    if (target.auth_mode === 'ACCESS_KEYS') {
-        if (target.access_key_id) awsEnv.AWS_ACCESS_KEY_ID = target.access_key_id;
-        if (secretAccessKey)      awsEnv.AWS_SECRET_ACCESS_KEY = secretAccessKey;
-    }
+    // Derive project name from cluster name (e.g. "iiap-myapp-eks" → "myapp")
+    const projectName = target.cluster_name
+        .replace(/^iiap-/, '')
+        .replace(/-eks$/, '');
 
-    // Build isolated Terraform sandbox (same approach as the orchestrator)
-    const os   = require('os');
-    const fs   = require('fs');
-    const path = require('path');
-    const { spawn } = require('child_process');
+    const logs = [];
+    await cleanupAllAwsResources({
+        projectName,
+        clusterTarget: target,
+        onLog: (msg) => logs.push(msg),
+    });
 
-    const REPO_ROOT   = path.resolve(__dirname, '../../../..');
-    const TF_DEV_DIR  = path.join(REPO_ROOT, 'terraform', 'environments', 'dev');
-    const tfSandboxRoot = path.join(os.tmpdir(), 'iiap-tf-destroy', projectId);
-    const tfWorkDir     = path.join(tfSandboxRoot, 'environments', 'dev');
-
-    fs.mkdirSync(path.join(tfSandboxRoot, 'environments'), { recursive: true });
-    fs.cpSync(path.join(REPO_ROOT, 'terraform', 'modules'), path.join(tfSandboxRoot, 'modules'), { recursive: true });
-    fs.cpSync(TF_DEV_DIR, tfWorkDir, { recursive: true });
-
-    // Switch to local backend
-    const backendPath = path.join(tfWorkDir, 'backend.tf');
-    if (fs.existsSync(backendPath)) {
-        const bc = fs.readFileSync(backendPath, 'utf8');
-        fs.writeFileSync(backendPath, bc.replace(/backend\s+"s3"\s*\{[\s\S]*?\}/, 'backend "local" {}'), 'utf8');
-    }
-
-    function runTf(args) {
-        return new Promise((resolve) => {
-            const child = spawn('terraform', args, {
-                cwd: tfWorkDir,
-                env: { ...process.env, ...awsEnv },
-                shell: process.platform === 'win32',
-            });
-            let out = '';
-            child.stdout.on('data', (c) => { out += c.toString(); });
-            child.stderr.on('data', (c) => { out += c.toString(); });
-            child.on('close', (code) => resolve({ exitCode: code, output: out }));
-            child.on('error', (err) => resolve({ exitCode: 1, output: err.message }));
-        });
-    }
-
-    const effectiveK8sVersion = ['1.28', '1.29', '1.30'].includes(target.kubernetes_version)
-        ? '1.32'
-        : (target.kubernetes_version || '1.32');
-
-    const tfVars = [
-        `-var=aws_region=${target.aws_region}`,
-        `-var=cluster_name=${target.cluster_name}`,
-        `-var=kubernetes_version=${effectiveK8sVersion}`,
-        `-var=desired_node_count=${target.desired_nodes}`,
-        `-var=node_instance_types=["${target.node_instance_type}"]`,
-    ];
-
-    // terraform init
-    const initRes = await runTf(['init', '-input=false', '-no-color']);
-    if (initRes.exitCode !== 0) {
-        fs.rmSync(tfSandboxRoot, { recursive: true, force: true });
-        throw new ApiError(500, `Terraform init failed during destroy: ${initRes.output.trim().split('\n').slice(-3).join(' | ')}`);
-    }
-
-    // terraform destroy
-    const destroyRes = await runTf(['destroy', '-auto-approve', '-input=false', '-no-color', ...tfVars]);
-    fs.rmSync(tfSandboxRoot, { recursive: true, force: true });
-
-    if (destroyRes.exitCode !== 0) {
-        // If destroy failed but resources don't exist, treat as success
-        const output = destroyRes.output.toLowerCase();
-        const alreadyGone = output.includes('no changes') || output.includes('destroy complete') || output.includes('resources: 0 destroyed');
-        if (!alreadyGone) {
-            throw new ApiError(500, `Terraform destroy failed: ${destroyRes.output.trim().split('\n').slice(-4).join(' | ')}`);
-        }
-    }
-
-    // Remove DB record if requested (default: yes)
+    // Remove DB record (default: yes)
     let deleted = false;
     if (shouldDeleteConfig) {
         await awsClusterRepository.updateClusterStatus(projectId, { status: 'FAILED', lastVerifiedAt: new Date() }).catch(() => {});
         const del = await awsClusterRepository.deleteByProjectId(projectId);
         deleted = del.count > 0;
     } else {
-        // Mark as unverified so user knows infra is gone
         await awsClusterRepository.updateClusterStatus(projectId, { status: 'UNVERIFIED', lastVerifiedAt: new Date() }).catch(() => {});
     }
 
@@ -336,6 +265,7 @@ async function destroyClusterInfrastructure(projectId, user, { deleteConfig: sho
         awsRegion: target.aws_region,
         infrastructureDestroyed: true,
         configDeleted: deleted,
+        logs,
     };
 }
 

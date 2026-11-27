@@ -152,14 +152,14 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
           setEc2Target(res.target);
           syncEc2Form(res.target);
         })
-        .catch(() => {});
+        .catch(() => { });
       awsClusterConfigApi
         .getConfig(projectId)
         .then((res) => {
           setClusterTarget(res.target);
           syncClusterForm(res.target);
         })
-        .catch(() => {});
+        .catch(() => { });
       loadEnvVars(projectId);
     } else {
       setIsLoading(false);
@@ -312,7 +312,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
       await projectsApi.delete(project.id);
       try {
         localStorage.removeItem('iiap_selected_project');
-      } catch {}
+      } catch { }
       setIsDeleteModalOpen(false);
       onShowToast?.('success', 'Project Deleted', `"${project.name}" and its configurations were removed.`);
       onNavigate('projects');
@@ -375,7 +375,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
       setClusterSecretKey('');
       onShowToast?.(
         'success',
-        '✅ AWS Infrastructure Destroyed',
+        'AWS Infrastructure Destroyed',
         `Cluster '${result.clusterName}' and all AWS resources deleted from ${result.awsRegion}.`
       );
     } catch (err: any) {
@@ -584,11 +584,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
                   <span className="font-mono text-xs text-white font-bold">#{latestDeployment.id.substring(0, 8)}</span>
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
-                    latestDeployment.status === 'SUCCEEDED' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${latestDeployment.status === 'SUCCEEDED' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
                     latestDeployment.status === 'FAILED' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
-                    'bg-sky-500/20 text-sky-400 border border-sky-500/30'
-                  }`}>
+                      'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                    }`}>
                     {latestDeployment.status}
                   </span>
                 </div>
@@ -626,13 +625,12 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
               </span>
               {ec2Target && (
                 <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    ec2Target.healthStatus === 'ONLINE'
-                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                      : ec2Target.healthStatus === 'UNVERIFIED'
-                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                        : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                  }`}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${ec2Target.healthStatus === 'ONLINE'
+                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                    : ec2Target.healthStatus === 'UNVERIFIED'
+                      ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                      : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                    }`}
                 >
                   {ec2Target.healthStatus}
                 </span>
@@ -719,11 +717,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('deployments')}
-              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-2 ${
-                activeTab === 'deployments'
-                  ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.25)] font-semibold'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-              }`}
+              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'deployments'
+                ? 'bg-violet-600/30 text-white border border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.25)] font-semibold'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                }`}
             >
               <Layers className="w-3.5 h-3.5 text-violet-400" />
               <span>Deployments</span>
@@ -735,11 +732,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('env')}
-              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-2 ${
-                activeTab === 'env'
-                  ? 'bg-amber-600/30 text-white border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.25)] font-semibold'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-              }`}
+              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'env'
+                ? 'bg-amber-600/30 text-white border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.25)] font-semibold'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                }`}
             >
               <KeyRound className="w-3.5 h-3.5 text-amber-400" />
               <span>Env Vars</span>
@@ -753,11 +749,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('settings')}
-              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-2 ${
-                activeTab === 'settings'
-                  ? 'bg-cyan-600/30 text-white border border-cyan-500/50 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-semibold'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-              }`}
+              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'settings'
+                ? 'bg-cyan-600/30 text-white border border-cyan-500/50 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-semibold'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                }`}
             >
               <Settings className="w-3.5 h-3.5 text-cyan-400" />
               <span>EC2 Settings</span>
@@ -766,11 +761,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('topology')}
-              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-2 ${
-                activeTab === 'topology'
-                  ? 'bg-emerald-600/30 text-white border border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.25)] font-semibold'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-              }`}
+              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'topology'
+                ? 'bg-emerald-600/30 text-white border border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.25)] font-semibold'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                }`}
             >
               <Cpu className="w-3.5 h-3.5 text-emerald-400" />
               <span>Cluster Topology</span>
@@ -779,11 +773,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('manifest')}
-              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-2 ${
-                activeTab === 'manifest'
-                  ? 'bg-sky-600/30 text-white border border-sky-500/50 shadow-[0_0_12px_rgba(14,165,233,0.25)] font-semibold'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-              }`}
+              className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-2 ${activeTab === 'manifest'
+                ? 'bg-sky-600/30 text-white border border-sky-500/50 shadow-[0_0_12px_rgba(14,165,233,0.25)] font-semibold'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                }`}
             >
               <FileCode className="w-3.5 h-3.5 text-sky-400" />
               <span>Manifest Spec</span>
@@ -830,11 +823,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
                           <span className="font-bold text-white group-hover:text-violet-300 transition-colors">
                             #{dep.id.substring(0, 8)}
                           </span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            dep.status === 'SUCCEEDED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' :
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${dep.status === 'SUCCEEDED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' :
                             dep.status === 'FAILED' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/25' :
-                            'bg-sky-500/15 text-sky-400 border border-sky-500/25'
-                          }`}>
+                              'bg-sky-500/15 text-sky-400 border border-sky-500/25'
+                            }`}>
                             {dep.status}
                           </span>
                           <span className="text-slate-500 text-[11px]">
@@ -889,7 +881,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
                 <span className="text-emerald-400 text-[11px]">SYNCHRONIZED</span>
               </div>
               <pre className="font-mono text-xs text-slate-300 leading-relaxed overflow-x-auto p-4 rounded-xl bg-black/40 border border-white/5">
-{`apiVersion: apps/v1
+                {`apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ${project.slug || project.name.toLowerCase()}
@@ -929,15 +921,14 @@ spec:
                   </h3>
                   {clusterTarget && (
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        clusterTarget.status === 'ONLINE'
-                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                          : clusterTarget.status === 'PROVISIONING'
-                            ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
-                            : clusterTarget.status === 'UNVERIFIED'
-                              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                              : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                      }`}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${clusterTarget.status === 'ONLINE'
+                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                        : clusterTarget.status === 'PROVISIONING'
+                          ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
+                          : clusterTarget.status === 'UNVERIFIED'
+                            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                            : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                        }`}
                     >
                       {clusterTarget.status}
                     </span>
@@ -983,22 +974,20 @@ spec:
                   <button
                     type="button"
                     onClick={() => setClusterAuthMode('IAM_ROLE')}
-                    className={`px-3 py-1.5 rounded-lg border ${
-                      clusterAuthMode === 'IAM_ROLE'
-                        ? 'bg-violet-500/20 border-violet-500/50 text-white'
-                        : 'bg-black/30 border-white/10 text-slate-400'
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg border ${clusterAuthMode === 'IAM_ROLE'
+                      ? 'bg-violet-500/20 border-violet-500/50 text-white'
+                      : 'bg-black/30 border-white/10 text-slate-400'
+                      }`}
                   >
                     IAM Role ARN (Recommended)
                   </button>
                   <button
                     type="button"
                     onClick={() => setClusterAuthMode('ACCESS_KEYS')}
-                    className={`px-3 py-1.5 rounded-lg border ${
-                      clusterAuthMode === 'ACCESS_KEYS'
-                        ? 'bg-violet-500/20 border-violet-500/50 text-white'
-                        : 'bg-black/30 border-white/10 text-slate-400'
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg border ${clusterAuthMode === 'ACCESS_KEYS'
+                      ? 'bg-violet-500/20 border-violet-500/50 text-white'
+                      : 'bg-black/30 border-white/10 text-slate-400'
+                      }`}
                   >
                     AWS Access Keys
                   </button>
@@ -1129,24 +1118,24 @@ spec:
                       <button
                         type="button"
                         disabled={isVerifyingCluster || isSavingCluster}
-                      onClick={async () => {
-                        if (!projectId) return;
-                        setIsVerifyingCluster(true);
-                        try {
-                          const res = await awsClusterConfigApi.verifyCredentials(projectId);
-                          setClusterTarget(res.target);
-                          onShowToast?.('success', 'AWS Credentials Verified', `Cluster '${res.clusterName}' ready in ${res.awsRegion}`);
-                        } catch (err: any) {
-                          onShowToast?.('error', 'Verification Failed', err.message || 'Check your AWS credentials');
-                        } finally {
-                          setIsVerifyingCluster(false);
-                        }
-                      }}
-                      className="h-10 px-4 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-semibold flex items-center gap-2 disabled:opacity-50"
-                    >
-                      <Zap className="w-4 h-4" />
-                      <span>{isVerifyingCluster ? 'Verifying...' : 'Verify AWS Credentials'}</span>
-                    </button>
+                        onClick={async () => {
+                          if (!projectId) return;
+                          setIsVerifyingCluster(true);
+                          try {
+                            const res = await awsClusterConfigApi.verifyCredentials(projectId);
+                            setClusterTarget(res.target);
+                            onShowToast?.('success', 'AWS Credentials Verified', `Cluster '${res.clusterName}' ready in ${res.awsRegion}`);
+                          } catch (err: any) {
+                            onShowToast?.('error', 'Verification Failed', err.message || 'Check your AWS credentials');
+                          } finally {
+                            setIsVerifyingCluster(false);
+                          }
+                        }}
+                        className="h-10 px-4 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-semibold flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <Zap className="w-4 h-4" />
+                        <span>{isVerifyingCluster ? 'Verifying...' : 'Verify AWS Credentials'}</span>
+                      </button>
                     </>
                   )}
 
@@ -1560,11 +1549,10 @@ spec:
                 </h3>
                 {runtimeStatus && (
                   <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      runtimeStatus.running
-                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                    }`}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${runtimeStatus.running
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                      }`}
                   >
                     {runtimeStatus.status.toUpperCase()}
                   </span>
@@ -1664,12 +1652,16 @@ spec:
             <div className="space-y-2 font-mono text-xs text-slate-300">
               <p>The following AWS resources will be <span className="text-orange-300 font-bold">permanently deleted</span>:</p>
               <ul className="list-disc list-inside space-y-0.5 text-slate-400 pl-2">
-                <li>EKS Cluster &amp; Managed Node Group (EC2 instances)</li>
-                <li>VPC, Subnets, NAT Gateway, Internet Gateway</li>
-                <li>IAM Roles &amp; Policy Attachments</li>
-                <li>OIDC Provider (IRSA)</li>
-                <li>AWS Load Balancer (ELB)</li>
-                <li>ECR Repository &amp; Docker images</li>
+                <li>Kubernetes Namespace, Deployments, Pods &amp; Secrets</li>
+                <li>AWS Load Balancer — ELBv1 &amp; ELBv2 (ALB/NLB)</li>
+                <li>EKS Managed Node Group (EC2 worker instances)</li>
+                <li>EKS Control Plane Cluster</li>
+                <li>OIDC Identity Provider (IRSA)</li>
+                <li>NAT Gateway + Elastic IP</li>
+                <li>Internet Gateway, Subnets, Route Tables, Security Groups</li>
+                <li>VPC</li>
+                <li>IAM Roles — cluster-role &amp; node-role (+ attached policies)</li>
+                <li>ECR Repository &amp; all Docker images</li>
               </ul>
               <p className="text-orange-200 bg-orange-500/10 border border-orange-500/20 rounded-lg px-3 py-2 mt-2">
                 ⚠️ This can take <strong>10–20 minutes</strong> and cannot be undone. The cluster config will also be removed from this project.
