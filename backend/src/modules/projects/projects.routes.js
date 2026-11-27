@@ -227,6 +227,11 @@ router.post(
     projectsController.manualAwsCleanup
 );
 
+router.get(
+    '/manual-cleanup/:jobId',
+    projectsController.getManualCleanupStatus
+);
+
 
 /**
  * @openapi

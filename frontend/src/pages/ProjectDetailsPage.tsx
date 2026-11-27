@@ -408,7 +408,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
     setIsRunningManualCleanup(true);
     setManualCleanupLogs(['Starting manual AWS cleanup...']);
     try {
-      const res = await awsClusterConfigApi.manualCleanup({
+      const startRes = await awsClusterConfigApi.manualCleanup({
         clusterName: manualCleanupClusterName.trim(),
         projectName: project?.name,
         awsRegion: clusterRegion || 'us-east-1',
@@ -418,12 +418,34 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
         accessKeyId: clusterAuthMode === 'ACCESS_KEYS' ? clusterAccessKeyId.trim() : undefined,
         secretAccessKey: clusterAuthMode === 'ACCESS_KEYS' ? clusterSecretKey.trim() : undefined,
       });
-      setManualCleanupLogs(res.logs || ['Cleanup completed.']);
-      onShowToast?.(
-        'success',
-        'Manual AWS Cleanup Complete',
-        `All resources for '${res.clusterName}' cleaned up in ${res.region}.`
-      );
+
+      setManualCleanupLogs(startRes.logs || ['Cleanup job started...']);
+      const jobId = startRes.jobId;
+
+      // Poll every 3 seconds until COMPLETED or FAILED (avoids HTTP proxy timeouts)
+      let done = false;
+      while (!done) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const statusRes = await awsClusterConfigApi.getManualCleanupStatus(jobId);
+        if (statusRes.logs?.length) {
+          setManualCleanupLogs(statusRes.logs);
+        }
+        if (statusRes.status === 'COMPLETED') {
+          done = true;
+          onShowToast?.(
+            'success',
+            'Manual AWS Cleanup Complete',
+            `All resources for '${statusRes.clusterName}' cleaned up in ${statusRes.awsRegion}.`
+          );
+        } else if (statusRes.status === 'FAILED') {
+          done = true;
+          onShowToast?.(
+            'error',
+            'Manual Cleanup Failed',
+            statusRes.error || 'Check the cleanup logs for details.'
+          );
+        }
+      }
     } catch (err: any) {
       setManualCleanupLogs((prev) => [...prev, `[ERROR] ${err.message || 'Manual cleanup failed'}`]);
       onShowToast?.('error', 'Manual Cleanup Failed', err.message || 'Check your AWS credentials and cluster name.');

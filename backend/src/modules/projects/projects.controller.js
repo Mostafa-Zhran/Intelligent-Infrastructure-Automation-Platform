@@ -1,9 +1,13 @@
 // backend/src/modules/projects/projects.controller.js
+const crypto = require('crypto');
 const asyncHandler = require('../../utils/asyncHandler');
 const projectsService = require('./projects.service');
 const ec2TargetService = require('./ec2Target.service');
 const awsClusterService = require('./awsCluster.service');
 const { cleanupAllAwsResources } = require('./awsCleanup.service');
+
+// In-memory job tracker for async manual AWS cleanup (avoids HTTP proxy timeouts)
+const manualCleanupJobs = new Map();
 
 const listProjects = asyncHandler(async (req, res) => {
     const projects = await projectsService.listProjects(req.user);
@@ -267,8 +271,8 @@ const destroyClusterInfrastructure = asyncHandler(async (req, res) => {
 
 /**
  * POST /api/projects/manual-cleanup
- * Destroys AWS resources by cluster name + inline credentials — no DB record required.
- * Use when the project's cluster config was already deleted but AWS resources still exist.
+ * Starts an async AWS cleanup job by cluster name + inline credentials — no DB record required.
+ * Returns 202 with { jobId } immediately so long-running EKS/VPC teardowns never hit HTTP proxy timeouts.
  */
 const manualAwsCleanup = asyncHandler(async (req, res) => {
     const {
@@ -282,10 +286,23 @@ const manualAwsCleanup = asyncHandler(async (req, res) => {
         secretAccessKey,
     } = req.body;
 
-    const logs = [];
-    const onLog = (msg) => logs.push(msg);
+    const jobId = crypto.randomUUID();
+    const job = {
+        jobId,
+        clusterName,
+        awsRegion,
+        status: 'RUNNING',
+        logs: [`[CLEANUP] Job ${jobId} started for cluster '${clusterName}' in ${awsRegion}...`],
+        result: null,
+        error: null,
+        startedAt: new Date().toISOString(),
+        finishedAt: null,
+    };
+    manualCleanupJobs.set(jobId, job);
 
-    // Build a lightweight clusterTarget object compatible with cleanupAllAwsResources (snake_case fields)
+    // Prune old completed jobs after 1 hour
+    setTimeout(() => manualCleanupJobs.delete(jobId), 60 * 60 * 1000).unref();
+
     const clusterTarget = {
         cluster_name: clusterName,
         auth_mode: authMode,
@@ -297,16 +314,56 @@ const manualAwsCleanup = asyncHandler(async (req, res) => {
         _plainCredentials: true,
     };
 
-    const result = await cleanupAllAwsResources({
+    cleanupAllAwsResources({
         projectName: projectName || clusterName.replace(/^iiap-/, '').replace(/-eks$/, ''),
         clusterTarget,
-        onLog,
-    });
+        onLog: (msg) => job.logs.push(msg),
+    })
+        .then((result) => {
+            job.status = 'COMPLETED';
+            job.result = result;
+            job.finishedAt = new Date().toISOString();
+        })
+        .catch((err) => {
+            job.status = 'FAILED';
+            job.error = err.message || 'Manual AWS cleanup failed';
+            job.logs.push(`[ERROR] ${job.error}`);
+            job.finishedAt = new Date().toISOString();
+        });
 
+    res.status(202).json({
+        success: true,
+        message: `Manual AWS cleanup started for cluster '${clusterName}'.`,
+        data: { jobId, status: job.status, logs: job.logs },
+    });
+});
+
+/**
+ * GET /api/projects/manual-cleanup/:jobId
+ * Returns the current status and live logs of a manual AWS cleanup job.
+ */
+const getManualCleanupStatus = asyncHandler(async (req, res) => {
+    const { jobId } = req.params;
+    const job = manualCleanupJobs.get(jobId);
+    if (!job) {
+        return res.status(404).json({
+            success: false,
+            message: 'Cleanup job not found or expired.',
+        });
+    }
     res.status(200).json({
         success: true,
-        message: `Manual AWS cleanup for cluster '${clusterName}' completed.`,
-        data: { ...result, logs },
+        data: {
+            jobId: job.jobId,
+            clusterName: job.clusterName,
+            awsRegion: job.awsRegion,
+            status: job.status,
+            logs: job.logs,
+            result: job.result,
+            error: job.error,
+            startedAt: job.startedAt,
+            finishedAt: job.finishedAt,
+        },
     });
 });
 
@@ -332,5 +389,6 @@ module.exports = {
     deleteClusterConfig,
     destroyClusterInfrastructure,
     manualAwsCleanup,
+    getManualCleanupStatus,
     deleteProject,
 };

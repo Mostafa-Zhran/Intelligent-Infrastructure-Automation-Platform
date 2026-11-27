@@ -565,13 +565,37 @@ export const awsClusterConfigApi = {
     externalId?: string;
     accessKeyId?: string;
     secretAccessKey?: string;
-  }): Promise<{ clusterName: string; region: string; vpcId: string | null; vpcDeleted: boolean; logs: string[] }> {
-    const res = await projectsRequest<ApiResponse<{ clusterName: string; region: string; vpcId: string | null; vpcDeleted: boolean; logs: string[] }>>(
+  }): Promise<{ jobId: string; status: 'RUNNING' | 'COMPLETED' | 'FAILED'; logs: string[] }> {
+    const res = await projectsRequest<ApiResponse<{ jobId: string; status: 'RUNNING' | 'COMPLETED' | 'FAILED'; logs: string[] }>>(
       '/manual-cleanup',
       {
         method: 'POST',
         body: JSON.stringify(payload),
       }
+    );
+    return res.data!;
+  },
+
+  async getManualCleanupStatus(jobId: string): Promise<{
+    jobId: string;
+    clusterName: string;
+    awsRegion: string;
+    status: 'RUNNING' | 'COMPLETED' | 'FAILED';
+    logs: string[];
+    result: { clusterName: string; region: string; vpcId: string | null; vpcDeleted: boolean } | null;
+    error: string | null;
+  }> {
+    const res = await projectsRequest<ApiResponse<{
+      jobId: string;
+      clusterName: string;
+      awsRegion: string;
+      status: 'RUNNING' | 'COMPLETED' | 'FAILED';
+      logs: string[];
+      result: { clusterName: string; region: string; vpcId: string | null; vpcDeleted: boolean } | null;
+      error: string | null;
+    }>>(
+      `/manual-cleanup/${jobId}`,
+      { method: 'GET' }
     );
     return res.data!;
   },
