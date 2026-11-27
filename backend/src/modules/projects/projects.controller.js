@@ -3,6 +3,7 @@ const asyncHandler = require('../../utils/asyncHandler');
 const projectsService = require('./projects.service');
 const ec2TargetService = require('./ec2Target.service');
 const awsClusterService = require('./awsCluster.service');
+const { cleanupAllAwsResources } = require('./awsCleanup.service');
 
 const listProjects = asyncHandler(async (req, res) => {
     const projects = await projectsService.listProjects(req.user);
@@ -264,6 +265,51 @@ const destroyClusterInfrastructure = asyncHandler(async (req, res) => {
     });
 });
 
+/**
+ * POST /api/projects/manual-cleanup
+ * Destroys AWS resources by cluster name + inline credentials — no DB record required.
+ * Use when the project's cluster config was already deleted but AWS resources still exist.
+ */
+const manualAwsCleanup = asyncHandler(async (req, res) => {
+    const {
+        clusterName,
+        projectName,
+        awsRegion = 'us-east-1',
+        authMode = 'ACCESS_KEYS',
+        roleArn,
+        externalId,
+        accessKeyId,
+        secretAccessKey,
+    } = req.body;
+
+    const logs = [];
+    const onLog = (msg) => logs.push(msg);
+
+    // Build a lightweight clusterTarget object compatible with cleanupAllAwsResources (snake_case fields)
+    const clusterTarget = {
+        cluster_name: clusterName,
+        auth_mode: authMode,
+        aws_region: awsRegion,
+        role_arn: roleArn || null,
+        external_id: externalId || null,
+        accessKeyId_plain: accessKeyId || null,
+        secretAccessKey_plain: secretAccessKey || null,
+        _plainCredentials: true,
+    };
+
+    const result = await cleanupAllAwsResources({
+        projectName: projectName || clusterName.replace(/^iiap-/, '').replace(/-eks$/, ''),
+        clusterTarget,
+        onLog,
+    });
+
+    res.status(200).json({
+        success: true,
+        message: `Manual AWS cleanup for cluster '${clusterName}' completed.`,
+        data: { ...result, logs },
+    });
+});
+
 module.exports = {
     listProjects,
     createProject,
@@ -285,5 +331,6 @@ module.exports = {
     deleteEc2Config,
     deleteClusterConfig,
     destroyClusterInfrastructure,
+    manualAwsCleanup,
     deleteProject,
 };

@@ -154,6 +154,29 @@ const awsClusterConfigSchema = Joi.object({
     kubernetesVersion: Joi.string().trim().max(16).default('1.30'),
 }).unknown(false);
 
+// ─── Manual AWS Cleanup (no DB record needed) ────────────────────────────────
+
+/**
+ * Request body for POST /api/projects/manual-cleanup
+ * Allows destroying AWS resources by cluster name + credentials directly,
+ * without needing a project DB record (useful when destroy ran before the fix).
+ */
+const manualCleanupSchema = Joi.object({
+    clusterName: Joi.string()
+        .trim()
+        .min(2)
+        .max(100)
+        .required()
+        .messages({ 'any.required': 'clusterName is required.' }),
+    projectName: Joi.string().trim().max(100).allow('', null).optional(),
+    awsRegion: Joi.string().trim().max(50).default('us-east-1'),
+    authMode: Joi.string().valid('IAM_ROLE', 'ACCESS_KEYS').default('ACCESS_KEYS'),
+    roleArn: Joi.string().trim().max(255).allow('', null).optional(),
+    externalId: Joi.string().trim().max(128).allow('', null).optional(),
+    accessKeyId: Joi.string().trim().max(64).allow('', null).optional(),
+    secretAccessKey: Joi.string().trim().max(256).allow('', null).optional(),
+}).unknown(false);
+
 // ─── SETUP-05: Setup Pipeline Validation ─────────────────────────────────────
 
 /**
@@ -177,4 +200,6 @@ module.exports = {
     ec2ConfigSchema,
     // BYOC Cluster Mode
     awsClusterConfigSchema,
+    // Manual cleanup (no DB record)
+    manualCleanupSchema,
 };

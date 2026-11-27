@@ -72,8 +72,15 @@ function parseJsonSafe(text, fallback = null) {
  * Resolve AWS credentials env from a stored aws_cluster_targets record.
  */
 async function resolveAwsEnv(target) {
-    const region = target.aws_region || 'us-east-1';
+    // Support plain-text credentials passed directly from manual-cleanup endpoint
+    const region = target.aws_region || target.awsRegion || 'us-east-1';
     const env = { AWS_REGION: region, AWS_DEFAULT_REGION: region };
+
+    if (target._plainCredentials && target.auth_mode !== 'IAM_ROLE') {
+        if (target.accessKeyId_plain)      env.AWS_ACCESS_KEY_ID     = target.accessKeyId_plain;
+        if (target.secretAccessKey_plain)  env.AWS_SECRET_ACCESS_KEY = target.secretAccessKey_plain;
+        return env;
+    }
 
     if (target.auth_mode === 'ACCESS_KEYS') {
         if (target.access_key_id) env.AWS_ACCESS_KEY_ID = target.access_key_id;

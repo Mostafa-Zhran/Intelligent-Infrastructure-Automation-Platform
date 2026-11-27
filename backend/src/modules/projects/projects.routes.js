@@ -15,6 +15,7 @@ const {
     startSetupSchema,
     ec2ConfigSchema,
     awsClusterConfigSchema,
+    manualCleanupSchema,
 } = require('./projects.validation');
 
 const router = express.Router();
@@ -177,6 +178,53 @@ router.post('/',
 router.post('/analyze-repository',
     validateRequest(analyzeRepositorySchema),
     projectsController.analyzeRepository
+);
+
+/**
+ * @openapi
+ * /api/projects/manual-cleanup:
+ *   post:
+ *     tags: [Projects]
+ *     summary: Manual AWS Cleanup — no DB record required
+ *     description: >
+ *       Destroys all IIAP AWS resources for a given cluster name using inline credentials.
+ *       Use when the project's cluster config was already removed from the database
+ *       but AWS resources (EKS, VPC, IAM, ECR…) still exist.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [clusterName]
+ *             properties:
+ *               clusterName:
+ *                 type: string
+ *                 example: iiap-autodevops-test-eks
+ *               awsRegion:
+ *                 type: string
+ *                 example: us-east-1
+ *               authMode:
+ *                 type: string
+ *                 enum: [ACCESS_KEYS, IAM_ROLE]
+ *               accessKeyId:
+ *                 type: string
+ *               secretAccessKey:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Cleanup completed; logs returned
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
+router.post(
+    '/manual-cleanup',
+    validateRequest(manualCleanupSchema),
+    projectsController.manualAwsCleanup
 );
 
 

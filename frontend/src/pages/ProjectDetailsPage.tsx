@@ -115,6 +115,12 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
   const [isDestroyModalOpen, setIsDestroyModalOpen] = useState<boolean>(false);
   const [isDestroyingInfra, setIsDestroyingInfra] = useState<boolean>(false);
 
+  // Manual AWS cleanup modal state (when cluster config was already removed)
+  const [isManualCleanupOpen, setIsManualCleanupOpen] = useState<boolean>(false);
+  const [manualCleanupClusterName, setManualCleanupClusterName] = useState<string>('');
+  const [manualCleanupLogs, setManualCleanupLogs] = useState<string[]>([]);
+  const [isRunningManualCleanup, setIsRunningManualCleanup] = useState<boolean>(false);
+
   const projectId = initialProject?.id;
 
   const syncEc2Form = (target: Ec2TargetConfig | null) => {
@@ -382,6 +388,47 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
       onShowToast?.('error', 'Destroy Failed', err.message || 'Terraform destroy failed — check AWS Console.');
     } finally {
       setIsDestroyingInfra(false);
+    }
+  };
+
+  const openManualCleanupModal = () => {
+    const defaultCluster =
+      clusterName.trim() ||
+      `iiap-${(project?.name || 'app').toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')}-eks`;
+    setManualCleanupClusterName(defaultCluster);
+    setManualCleanupLogs([]);
+    setIsManualCleanupOpen(true);
+  };
+
+  const handleManualCleanup = async () => {
+    if (!manualCleanupClusterName.trim()) {
+      onShowToast?.('error', 'Missing Cluster Name', 'Please enter the EKS cluster name to clean up.');
+      return;
+    }
+    setIsRunningManualCleanup(true);
+    setManualCleanupLogs(['Starting manual AWS cleanup...']);
+    try {
+      const res = await awsClusterConfigApi.manualCleanup({
+        clusterName: manualCleanupClusterName.trim(),
+        projectName: project?.name,
+        awsRegion: clusterRegion || 'us-east-1',
+        authMode: clusterAuthMode,
+        roleArn: clusterAuthMode === 'IAM_ROLE' ? clusterRoleArn.trim() : undefined,
+        externalId: clusterAuthMode === 'IAM_ROLE' ? clusterExternalId.trim() : undefined,
+        accessKeyId: clusterAuthMode === 'ACCESS_KEYS' ? clusterAccessKeyId.trim() : undefined,
+        secretAccessKey: clusterAuthMode === 'ACCESS_KEYS' ? clusterSecretKey.trim() : undefined,
+      });
+      setManualCleanupLogs(res.logs || ['Cleanup completed.']);
+      onShowToast?.(
+        'success',
+        'Manual AWS Cleanup Complete',
+        `All resources for '${res.clusterName}' cleaned up in ${res.region}.`
+      );
+    } catch (err: any) {
+      setManualCleanupLogs((prev) => [...prev, `[ERROR] ${err.message || 'Manual cleanup failed'}`]);
+      onShowToast?.('error', 'Manual Cleanup Failed', err.message || 'Check your AWS credentials and cluster name.');
+    } finally {
+      setIsRunningManualCleanup(false);
     }
   };
 
@@ -1088,6 +1135,18 @@ spec:
                 </div>
 
                 <div className="flex flex-wrap items-center justify-end gap-3 pt-3 border-t border-white/[0.06]">
+                  {!clusterTarget && (
+                    <button
+                      type="button"
+                      disabled={isSavingCluster || isRunningManualCleanup}
+                      onClick={openManualCleanupModal}
+                      className="h-10 px-4 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/40 text-orange-300 font-semibold flex items-center gap-2 disabled:opacity-50 mr-auto"
+                      title="Clean up leftover AWS resources (EKS, VPC, NAT, IAM, ECR) without a saved cluster config"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Manual AWS Cleanup</span>
+                    </button>
+                  )}
                   {clusterTarget && (
                     <>
                       {/* Remove Config only (keeps AWS resources) */}
@@ -1687,6 +1746,117 @@ spec:
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
                 <span>{isDestroyingInfra ? 'Destroying…' : 'Yes, Destroy Everything'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Manual AWS Cleanup Modal (no DB cluster config needed) ──────── */}
+      {isManualCleanupOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-xl rounded-2xl bg-[#090A14] border border-orange-500/40 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-white/[0.08]">
+              <div className="w-9 h-9 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white font-mono">Manual AWS Cleanup</h3>
+                <p className="text-[11px] text-slate-400">
+                  Deletes leftover EKS, Load Balancers, NAT GW, EIP, VPC, IAM Roles &amp; ECR directly via AWS CLI.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 font-mono text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-400 uppercase font-bold block">EKS Cluster Name *</label>
+                  <input
+                    type="text"
+                    value={manualCleanupClusterName}
+                    onChange={(e) => setManualCleanupClusterName(e.target.value)}
+                    placeholder="iiap-autodevops-test-eks"
+                    className="w-full h-9 px-3 rounded-lg bg-black/50 border border-white/10 text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-400 uppercase font-bold block">AWS Region</label>
+                  <input
+                    type="text"
+                    value={clusterRegion}
+                    onChange={(e) => setClusterRegion(e.target.value)}
+                    placeholder="us-east-1"
+                    className="w-full h-9 px-3 rounded-lg bg-black/50 border border-white/10 text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              </div>
+
+              {clusterAuthMode === 'ACCESS_KEYS' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-400 uppercase font-bold block">AWS Access Key ID *</label>
+                    <input
+                      type="text"
+                      autoComplete="off"
+                      value={clusterAccessKeyId}
+                      onChange={(e) => setClusterAccessKeyId(e.target.value)}
+                      placeholder="AKIA..."
+                      className="w-full h-9 px-3 rounded-lg bg-black/50 border border-white/10 text-white focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-400 uppercase font-bold block">AWS Secret Access Key *</label>
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      value={clusterSecretKey}
+                      onChange={(e) => setClusterSecretKey(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full h-9 px-3 rounded-lg bg-black/50 border border-white/10 text-white focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-400 uppercase font-bold block">AWS IAM Role ARN *</label>
+                  <input
+                    type="text"
+                    value={clusterRoleArn}
+                    onChange={(e) => setClusterRoleArn(e.target.value)}
+                    placeholder="arn:aws:iam::123456789012:role/..."
+                    className="w-full h-9 px-3 rounded-lg bg-black/50 border border-white/10 text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              )}
+
+              {manualCleanupLogs.length > 0 && (
+                <div className="max-h-48 overflow-y-auto rounded-lg bg-black/70 border border-white/10 p-3 text-[11px] text-slate-300 space-y-1">
+                  {manualCleanupLogs.map((line, i) => (
+                    <div key={i} className={line.startsWith('[ERROR]') ? 'text-rose-400' : 'text-slate-300'}>
+                      {line}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsManualCleanupOpen(false)}
+                disabled={isRunningManualCleanup}
+                className="px-4 py-2 rounded-xl text-xs font-mono text-slate-400 hover:text-white disabled:opacity-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleManualCleanup}
+                disabled={isRunningManualCleanup}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-orange-600 hover:bg-orange-500 text-white flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isRunningManualCleanup ? 'Cleaning up AWS…' : 'Run AWS Cleanup'}</span>
               </button>
             </div>
           </div>

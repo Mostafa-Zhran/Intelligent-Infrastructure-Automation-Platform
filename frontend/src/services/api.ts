@@ -555,6 +555,26 @@ export const awsClusterConfigApi = {
     );
     return res.data!;
   },
+
+  async manualCleanup(payload: {
+    clusterName: string;
+    projectName?: string;
+    awsRegion: string;
+    authMode: 'IAM_ROLE' | 'ACCESS_KEYS';
+    roleArn?: string;
+    externalId?: string;
+    accessKeyId?: string;
+    secretAccessKey?: string;
+  }): Promise<{ clusterName: string; region: string; vpcId: string | null; vpcDeleted: boolean; logs: string[] }> {
+    const res = await projectsRequest<ApiResponse<{ clusterName: string; region: string; vpcId: string | null; vpcDeleted: boolean; logs: string[] }>>(
+      '/manual-cleanup',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+    return res.data!;
+  },
 };
 
 export interface AnalyzeRepositoryResult {
