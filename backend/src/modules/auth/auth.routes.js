@@ -125,6 +125,24 @@ router.post(
 
 /**
  * @openapi
+ * /api/v1/auth/refresh:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Refresh access token using refresh token
+ *     description: Rotates the refresh token (from httpOnly cookie or request body) and issues a new access token.
+ *     responses:
+ *       200:
+ *         description: New access and refresh tokens issued
+ *       401:
+ *         description: Missing, invalid, or expired refresh token
+ */
+router.post(
+    '/refresh',
+    authController.refreshToken
+);
+
+/**
+ * @openapi
  * /api/v1/auth/forgot-password:
  *   post:
  *     tags: [Auth]

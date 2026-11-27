@@ -18,6 +18,7 @@ export interface ApiResponse<T = any> {
 }
 
 const TOKEN_STORAGE_KEY = 'iiap_access_token';
+const REFRESH_TOKEN_STORAGE_KEY = 'iiap_refresh_token';
 
 // In local dev, use relative path so Vite proxy forwards requests with zero CORS issues.
 // In production, use configured remote Backend_API.
@@ -33,7 +34,57 @@ const BACKEND_URL = import.meta.env.DEV
 
 const API_BASE = `${BACKEND_URL}/api/v1/auth`;
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+// Single-flight refresh lock so concurrent 401 responses share one /refresh call
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    try {
+      const storedRefresh = typeof window !== 'undefined' ? localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY) : null;
+      const response = await fetch(`${API_BASE}/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(storedRefresh ? { refreshToken: storedRefresh } : {}),
+      });
+
+      if (!response.ok) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(TOKEN_STORAGE_KEY);
+          localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+          window.dispatchEvent(new Event('iiap:auth-expired'));
+        }
+        return null;
+      }
+
+      const data = await response.json().catch(() => ({}));
+      const newAccessToken: string | undefined = data?.data?.accessToken;
+      const newRefreshToken: string | undefined = data?.data?.refreshToken;
+
+      if (typeof window !== 'undefined') {
+        if (newAccessToken) localStorage.setItem(TOKEN_STORAGE_KEY, newAccessToken);
+        if (newRefreshToken) localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, newRefreshToken);
+      }
+
+      return newAccessToken || null;
+    } catch {
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
+async function requestWithBase<T>(
+  baseUrl: string,
+  endpoint: string,
+  options: RequestInit = {},
+  allowRefresh = true
+): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -41,11 +92,25 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...(options.headers as Record<string, string>),
   };
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  let response = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
     headers,
     credentials: 'include',
   });
+
+  if (response.status === 401 && allowRefresh) {
+    const refreshedToken = await refreshAccessToken();
+    if (refreshedToken) {
+      response = await fetch(`${baseUrl}${endpoint}`, {
+        ...options,
+        headers: {
+          ...headers,
+          Authorization: `Bearer ${refreshedToken}`,
+        },
+        credentials: 'include',
+      });
+    }
+  }
 
   const data = await response.json().catch(() => ({}));
 
@@ -55,6 +120,13 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 
   return data as T;
+}
+
+const AUTH_NO_REFRESH_PATHS = ['/signin', '/signup', '/signout', '/refresh', '/forgot-password', '/reset-password'];
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const allowRefresh = !AUTH_NO_REFRESH_PATHS.some((p) => endpoint.startsWith(p));
+  return requestWithBase<T>(API_BASE, endpoint, options, allowRefresh);
 }
 
 export const authApi = {
@@ -77,25 +149,32 @@ export const authApi = {
   async signIn(body: {
     email: string;
     password: string;
-  }): Promise<{ user: ApiUser; accessToken?: string }> {
-    const res = await request<ApiResponse<{ user: ApiUser; accessToken?: string }>>('/signin', {
+  }): Promise<{ user: ApiUser; accessToken?: string; refreshToken?: string }> {
+    const res = await request<ApiResponse<{ user: ApiUser; accessToken?: string; refreshToken?: string }>>('/signin', {
       method: 'POST',
       body: JSON.stringify(body),
     });
     if (res.data?.accessToken) {
       localStorage.setItem(TOKEN_STORAGE_KEY, res.data.accessToken);
     }
+    if (res.data?.refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, res.data.refreshToken);
+    }
     return res.data!;
   },
 
   async signOut(): Promise<{ message?: string }> {
+    let storedRefresh: string | null = null;
     try {
+      storedRefresh = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
       localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
     } catch {
       // ignore
     }
     return request<ApiResponse>('/signout', {
       method: 'POST',
+      body: JSON.stringify(storedRefresh ? { refreshToken: storedRefresh } : {}),
     });
   },
 
@@ -204,27 +283,7 @@ export interface GitHubBranchOption {
 const GITHUB_API_BASE = `${BACKEND_URL}/api/v1/integrations/github`;
 
 async function githubRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers as Record<string, string>),
-  };
-
-  const response = await fetch(`${GITHUB_API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    const errorMsg = data.message || data.error || `Request failed with status ${response.status}`;
-    throw new Error(errorMsg);
-  }
-
-  return data as T;
+  return requestWithBase<T>(GITHUB_API_BASE, endpoint, options);
 }
 
 export const githubApi = {
@@ -297,27 +356,7 @@ export interface CreateProjectPayload {
 const PROJECTS_API_BASE = `${BACKEND_URL}/api/projects`;
 
 async function projectsRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers as Record<string, string>),
-  };
-
-  const response = await fetch(`${PROJECTS_API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    const errorMsg = data.message || data.error || `Request failed with status ${response.status}`;
-    throw new Error(errorMsg);
-  }
-
-  return data as T;
+  return requestWithBase<T>(PROJECTS_API_BASE, endpoint, options);
 }
 
 export const projectsApi = {
@@ -654,27 +693,7 @@ export interface ApiDeployment {
 const DEPLOYMENTS_API_BASE = `${BACKEND_URL}/api/deployments`;
 
 async function deploymentsRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers as Record<string, string>),
-  };
-
-  const response = await fetch(`${DEPLOYMENTS_API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    const errorMsg = data.message || data.error || `Request failed with status ${response.status}`;
-    throw new Error(errorMsg);
-  }
-
-  return data as T;
+  return requestWithBase<T>(DEPLOYMENTS_API_BASE, endpoint, options);
 }
 
 export const deploymentsApi = {
@@ -803,27 +822,7 @@ export interface DashboardSummaryData {
 const DASHBOARD_API_BASE = `${BACKEND_URL}/api/dashboard`;
 
 async function dashboardRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null;
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers as Record<string, string>),
-  };
-
-  const response = await fetch(`${DASHBOARD_API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    const errorMsg = data.message || data.error || `Request failed with status ${response.status}`;
-    throw new Error(errorMsg);
-  }
-
-  return data as T;
+  return requestWithBase<T>(DASHBOARD_API_BASE, endpoint, options);
 }
 
 export const dashboardApi = {

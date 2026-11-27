@@ -9,6 +9,7 @@ const {
 } = require('./token.service');
 const {
     createSession,
+    rotateSession,
     revokeSessionByToken,
     revokeAllUserSessions,
 } = require('./session.service');
@@ -80,6 +81,28 @@ async function signIn({ email, password, metadata = {} }) {
 
 async function signOut({ refreshToken }) {
     await revokeSessionByToken(refreshToken);
+}
+
+async function refreshSession({ refreshToken, metadata = {} }) {
+    const { user, refreshToken: newRefreshToken } = await rotateSession(
+        refreshToken,
+        metadata
+    );
+
+    const accessToken = generateAccessToken(user);
+
+    return {
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            avatar_url: user.avatar_url || null,
+            platform_role: user.platform_role,
+            status: user.status,
+        },
+        accessToken,
+        refreshToken: newRefreshToken,
+    };
 }
 
 async function forgotPassword({ email }) {
@@ -218,6 +241,7 @@ module.exports = {
     signUp,
     signIn,
     signOut,
+    refreshSession,
     forgotPassword,
     resetUserPassword,
     getProfile,

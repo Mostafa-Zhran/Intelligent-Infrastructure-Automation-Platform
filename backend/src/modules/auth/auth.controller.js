@@ -60,13 +60,14 @@ const signIn = asyncHandler(async (req, res) => {
         data: {
             user: result.user,
             accessToken: result.accessToken,
+            refreshToken: result.refreshToken,
         },
     });
 });
 
 const signOut = asyncHandler(async (req, res) => {
     await authService.signOut({
-        refreshToken: req.cookies.refreshToken,
+        refreshToken: req.cookies?.refreshToken || req.body?.refreshToken,
     });
 
     res.clearCookie('accessToken', clearAccessCookieOptions);
@@ -75,6 +76,29 @@ const signOut = asyncHandler(async (req, res) => {
     res.status(200).json({
         success: true,
         message: 'Signed out successfully',
+    });
+});
+
+const refreshToken = asyncHandler(async (req, res) => {
+    const token = req.cookies?.refreshToken || req.body?.refreshToken;
+    const result = await authService.refreshSession({
+        refreshToken: token,
+        metadata: {
+            userAgent: req.get('user-agent'),
+            ipAddress: req.ip,
+        },
+    });
+
+    res.cookie('accessToken', result.accessToken, accessCookieOptions);
+    res.cookie('refreshToken', result.refreshToken, refreshCookieOptions);
+
+    res.status(200).json({
+        success: true,
+        data: {
+            user: result.user,
+            accessToken: result.accessToken,
+            refreshToken: result.refreshToken,
+        },
     });
 });
 
@@ -147,6 +171,7 @@ module.exports = {
     signUp,
     signIn,
     signOut,
+    refreshToken,
     forgotPassword,
     resetPassword,
     changePassword,
