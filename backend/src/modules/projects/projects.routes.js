@@ -791,6 +791,12 @@ router.post(
     projectsController.verifyClusterConfig
 );
 
+router.post(
+    '/:projectId/cluster-destroy',
+    validateRequest(projectIdParamSchema, 'params'),
+    projectsController.destroyClusterInfrastructure
+);
+
 // ─── Environment Variables Manager ───────────────────────────────────────────
 router.get(
     '/:projectId/env-vars',

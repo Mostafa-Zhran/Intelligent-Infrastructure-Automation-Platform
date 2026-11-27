@@ -793,7 +793,9 @@ async function executeByocClusterDeployment({
         await awsClusterRepository.updateClusterStatus(projectId, { status: 'PROVISIONING' });
         await deploymentsRepository.updateDeploymentStatus(deploymentId, { status: 'PROVISIONING' });
 
-        // 1. Check if EKS cluster is already ACTIVE in AWS (avoids 15-min re-provision & EntityAlreadyExists)
+        // 1. Check if EKS cluster or its IAM resources already exist in AWS.
+        //    Skips Terraform entirely to avoid EntityAlreadyExists errors on IAM Roles / VPC resources
+        //    that were left behind by a previous partial or failed provisioning run.
         let clusterAlreadyActive = false;
         try {
             const descCluster = await runCliCommand(
@@ -801,12 +803,33 @@ async function executeByocClusterDeployment({
                 ['eks', 'describe-cluster', '--name', clusterTarget.clusterName, '--region', clusterTarget.awsRegion, '--query', 'cluster.status', '--output', 'text'],
                 { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 30_000 }
             );
-            if (descCluster.exitCode === 0 && (descCluster.stdout || '').trim() === 'ACTIVE') {
+            const clusterStatus = (descCluster.stdout || '').trim();
+            // Skip Terraform for any non-terminal cluster state — resources already exist in AWS
+            if (descCluster.exitCode === 0 && ['ACTIVE', 'CREATING', 'UPDATING', 'PENDING'].includes(clusterStatus)) {
                 clusterAlreadyActive = true;
-                onLog(`[BYOC-CLUSTER] EKS cluster '${clusterTarget.clusterName}' is already ACTIVE in ${clusterTarget.awsRegion} — skipping Terraform provisioning.`);
+                onLog(`[BYOC-CLUSTER] EKS cluster '${clusterTarget.clusterName}' already exists (status: ${clusterStatus}) — skipping Terraform provisioning.`);
             }
         } catch {
             // Proceed to Terraform provisioning
+        }
+
+        // Secondary guard: if IAM node role already exists (left from a failed/partial run),
+        // Terraform would fail with EntityAlreadyExists — detect and skip provisioning.
+        if (!clusterAlreadyActive) {
+            try {
+                const nodeRoleName = `${clusterTarget.clusterName}-node-role`;
+                const roleRes = await runCliCommand(
+                    'aws',
+                    ['iam', 'get-role', '--role-name', nodeRoleName, '--query', 'Role.RoleName', '--output', 'text'],
+                    { cwd: REPO_ROOT, env: awsEnv, timeoutMs: 20_000 }
+                );
+                if (roleRes.exitCode === 0 && (roleRes.stdout || '').trim() === nodeRoleName) {
+                    clusterAlreadyActive = true;
+                    onLog(`[BYOC-CLUSTER] IAM node role '${nodeRoleName}' already exists in AWS — skipping Terraform to avoid EntityAlreadyExists conflict. Infrastructure will be reused.`);
+                }
+            } catch {
+                // Role doesn't exist — proceed with Terraform normally
+            }
         }
 
         if (!clusterAlreadyActive) {

@@ -541,6 +541,20 @@ export const awsClusterConfigApi = {
     );
     return res.data!;
   },
+
+  async destroyInfrastructure(
+    projectId: string,
+    deleteConfig = true
+  ): Promise<{ projectId: string; clusterName: string; awsRegion: string; infrastructureDestroyed: boolean; configDeleted: boolean }> {
+    const res = await projectsRequest<ApiResponse<{ projectId: string; clusterName: string; awsRegion: string; infrastructureDestroyed: boolean; configDeleted: boolean }>>(
+      `/${projectId}/cluster-destroy`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ deleteConfig }),
+      }
+    );
+    return res.data!;
+  },
 };
 
 export interface AnalyzeRepositoryResult {

@@ -111,6 +111,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
   const [isDeletingEc2, setIsDeletingEc2] = useState<boolean>(false);
   const [isDeletingCluster, setIsDeletingCluster] = useState<boolean>(false);
 
+  // Destroy AWS infrastructure confirmation state
+  const [isDestroyModalOpen, setIsDestroyModalOpen] = useState<boolean>(false);
+  const [isDestroyingInfra, setIsDestroyingInfra] = useState<boolean>(false);
+
   const projectId = initialProject?.id;
 
   const syncEc2Form = (target: Ec2TargetConfig | null) => {
@@ -350,6 +354,34 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
       onShowToast?.('error', 'Remove Failed', err.message || 'Could not remove cluster target');
     } finally {
       setIsDeletingCluster(false);
+    }
+  };
+
+  /**
+   * Runs `terraform destroy` on the backend to delete ALL AWS resources
+   * (VPC, EKS, IAM Roles, Node Groups, etc.), then removes the DB config.
+   * This can take up to 20 minutes.
+   */
+  const handleDestroyInfrastructure = async () => {
+    if (!projectId) return;
+    setIsDestroyingInfra(true);
+    setIsDestroyModalOpen(false);
+    try {
+      const result = await awsClusterConfigApi.destroyInfrastructure(projectId, true);
+      setClusterTarget(null);
+      setClusterRoleArn('');
+      setClusterExternalId('');
+      setClusterAccessKeyId('');
+      setClusterSecretKey('');
+      onShowToast?.(
+        'success',
+        '✅ AWS Infrastructure Destroyed',
+        `Cluster '${result.clusterName}' and all AWS resources deleted from ${result.awsRegion}.`
+      );
+    } catch (err: any) {
+      onShowToast?.('error', 'Destroy Failed', err.message || 'Terraform destroy failed — check AWS Console.');
+    } finally {
+      setIsDestroyingInfra(false);
     }
   };
 
@@ -1069,14 +1101,29 @@ spec:
                 <div className="flex flex-wrap items-center justify-end gap-3 pt-3 border-t border-white/[0.06]">
                   {clusterTarget && (
                     <>
+                      {/* Remove Config only (keeps AWS resources) */}
                       <button
                         type="button"
-                        disabled={isDeletingCluster || isSavingCluster || isVerifyingCluster}
+                        disabled={isDeletingCluster || isSavingCluster || isVerifyingCluster || isDestroyingInfra}
                         onClick={handleDeleteClusterConfig}
                         className="h-10 px-4 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-semibold flex items-center gap-2 disabled:opacity-50 mr-auto"
                       >
                         <Trash2 className="w-4 h-4" />
                         <span>{isDeletingCluster ? 'Removing...' : 'Remove Cluster Config'}</span>
+                      </button>
+
+                      {/* Destroy AWS infrastructure + config */}
+                      <button
+                        type="button"
+                        disabled={isDeletingCluster || isSavingCluster || isVerifyingCluster || isDestroyingInfra}
+                        onClick={() => setIsDestroyModalOpen(true)}
+                        className="h-10 px-4 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/40 text-orange-300 font-semibold flex items-center gap-2 disabled:opacity-50"
+                        title="Runs terraform destroy — deletes ALL AWS resources (VPC, EKS, IAM Roles, etc.)"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                        <span>{isDestroyingInfra ? 'Destroying AWS…' : 'Destroy AWS Infrastructure'}</span>
                       </button>
 
                       <button
@@ -1595,6 +1642,59 @@ spec:
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{isDeletingProject ? 'Deleting...' : 'Delete Permanently'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Destroy AWS Infrastructure Confirmation Modal ──────── */}
+      {isDestroyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-lg rounded-2xl bg-[#090A14] border border-orange-500/40 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-white/[0.08]">
+              <div className="w-9 h-9 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white font-mono">Destroy AWS Infrastructure</h3>
+                <p className="text-[11px] text-slate-400">This runs <code className="text-orange-300">terraform destroy</code> and deletes all AWS resources.</p>
+              </div>
+            </div>
+
+            <div className="space-y-2 font-mono text-xs text-slate-300">
+              <p>The following AWS resources will be <span className="text-orange-300 font-bold">permanently deleted</span>:</p>
+              <ul className="list-disc list-inside space-y-0.5 text-slate-400 pl-2">
+                <li>EKS Cluster &amp; Managed Node Group (EC2 instances)</li>
+                <li>VPC, Subnets, NAT Gateway, Internet Gateway</li>
+                <li>IAM Roles &amp; Policy Attachments</li>
+                <li>OIDC Provider (IRSA)</li>
+                <li>AWS Load Balancer (ELB)</li>
+                <li>ECR Repository &amp; Docker images</li>
+              </ul>
+              <p className="text-orange-200 bg-orange-500/10 border border-orange-500/20 rounded-lg px-3 py-2 mt-2">
+                ⚠️ This can take <strong>10–20 minutes</strong> and cannot be undone. The cluster config will also be removed from this project.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDestroyModalOpen(false)}
+                disabled={isDestroyingInfra}
+                className="px-4 py-2 rounded-xl text-xs font-mono text-slate-400 hover:text-white disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDestroyInfrastructure}
+                disabled={isDestroyingInfra}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-orange-600 hover:bg-orange-500 text-white flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                <span>{isDestroyingInfra ? 'Destroying…' : 'Yes, Destroy Everything'}</span>
               </button>
             </div>
           </div>

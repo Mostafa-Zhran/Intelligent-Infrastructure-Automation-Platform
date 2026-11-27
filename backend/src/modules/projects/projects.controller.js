@@ -246,6 +246,24 @@ const deleteClusterConfig = asyncHandler(async (req, res) => {
     });
 });
 
+/**
+ * POST /:projectId/cluster-destroy
+ * Runs `terraform destroy` to delete all AWS infrastructure for this project,
+ * then removes the cluster config from the database.
+ * Long-running (up to 20 min) — client should use a generous timeout.
+ */
+const destroyClusterInfrastructure = asyncHandler(async (req, res) => {
+    const { projectId } = req.params;
+    const deleteConfig = req.body?.deleteConfig !== false; // default true
+    const result = await awsClusterService.destroyClusterInfrastructure(projectId, req.user, { deleteConfig });
+
+    res.status(200).json({
+        success: true,
+        message: `AWS infrastructure for cluster '${result.clusterName}' destroyed successfully.`,
+        data: result,
+    });
+});
+
 module.exports = {
     listProjects,
     createProject,
@@ -266,5 +284,6 @@ module.exports = {
     verifyClusterConfig,
     deleteEc2Config,
     deleteClusterConfig,
+    destroyClusterInfrastructure,
     deleteProject,
 };
