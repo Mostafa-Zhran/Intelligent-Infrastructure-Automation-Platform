@@ -1102,6 +1102,7 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
                         value={clusterAccessKeyId}
                         onChange={(e) => setClusterAccessKeyId(e.target.value)}
                         placeholder="AKIA..."
+                        autoComplete="off"
                         className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono placeholder-white/20 focus:outline-none focus:border-violet-500/50"
                       />
                     </div>
@@ -1112,6 +1113,7 @@ export const NewProjectPage: React.FC<NewProjectPageProps> = ({
                         value={clusterSecretKey}
                         onChange={(e) => setClusterSecretKey(e.target.value)}
                         placeholder="••••••••••••"
+                        autoComplete="new-password"
                         className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm font-mono placeholder-white/20 focus:outline-none focus:border-violet-500/50"
                       />
                     </div>

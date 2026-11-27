@@ -1005,6 +1005,7 @@ spec:
                           value={clusterAccessKeyId}
                           onChange={(e) => setClusterAccessKeyId(e.target.value)}
                           placeholder={clusterTarget?.accessKeyId || 'AKIA...'}
+                          autoComplete="off"
                           className="w-full h-10 px-3 rounded-xl bg-black/50 border border-white/10 text-white focus:outline-none focus:border-violet-500"
                         />
                       </div>
@@ -1017,6 +1018,7 @@ spec:
                           value={clusterSecretKey}
                           onChange={(e) => setClusterSecretKey(e.target.value)}
                           placeholder={clusterTarget?.hasSecretKey ? '•••••••• (stored)' : 'Secret Access Key'}
+                          autoComplete="new-password"
                           className="w-full h-10 px-3 rounded-xl bg-black/50 border border-white/10 text-white focus:outline-none focus:border-violet-500"
                         />
                       </div>
@@ -1153,7 +1155,7 @@ spec:
                 </div>
               </div>
 
-              <form onSubmit={handleSaveEnvVar} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+              <form onSubmit={handleSaveEnvVar} autoComplete="off" className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                 <div className="sm:col-span-4 space-y-1">
                   <label className="text-[11px] uppercase tracking-wider text-slate-400 block">
                     Key
@@ -1163,6 +1165,7 @@ spec:
                     value={newEnvKey}
                     onChange={(e) => setNewEnvKey(e.target.value.toUpperCase())}
                     placeholder="DATABASE_URL"
+                    autoComplete="off"
                     className="w-full h-10 px-3 rounded-xl bg-black/50 border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500"
                   />
                 </div>
@@ -1171,10 +1174,11 @@ spec:
                     Value
                   </label>
                   <input
-                    type={newEnvSecret ? 'password' : 'text'}
+                    type="password"
                     value={newEnvValue}
                     onChange={(e) => setNewEnvValue(e.target.value)}
                     placeholder="••••••••••••"
+                    autoComplete="new-password"
                     className="w-full h-10 px-3 rounded-xl bg-black/50 border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-amber-500"
                   />
                 </div>
