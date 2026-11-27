@@ -3,7 +3,7 @@
 > **Enterprise-grade, end-to-end autonomous DevOps platform.** Connect GitHub repositories, analyze software stacks, provision secure cloud infrastructure with Terraform & Ansible, and execute automated zero-downtime Kubernetes rollouts with real-time live telemetry.
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat-square)](#)
-[![Unit Tests](https://img.shields.io/badge/tests-156%2F156%20passing-emerald.svg?style=flat-square)](#-automated-testing-suite)
+[![Unit Tests](https://img.shields.io/badge/tests-116%2F116%20passing-emerald.svg?style=flat-square)](#-automated-testing-suite)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg?style=flat-square&logo=typescript)](#)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB.svg?style=flat-square&logo=react)](#)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933.svg?style=flat-square&logo=node.js)](#)
@@ -102,14 +102,29 @@ Every project deployment submitted through the platform is processed through a s
 - **Repository Introspection:** Real-time fetching of organizations, repositories, branches, and commits.
 - **Smart Tech Stack Detection:** Analyzes repo trees to detect frameworks (Node.js, Python, Docker, Go, Static HTML/React).
 
+### ☁️ Dual Deployment Modes (BYOS & BYOC)
+- **EC2 (BYOS — Bring Your Own Server):**
+  - Encrypted SSH private key storage (AES-256-GCM) with pre-flight SSH & Docker host verification (`ec2-verify`).
+  - Automated remote Docker build & container deployment with custom host/container port mappings.
+  - **Runtime Container Controls:** Live container status inspection, log streaming, and one-click container restart (`runtime/status`, `runtime/logs`, `runtime/restart`).
+- **AWS EKS Cluster (BYOC — Bring Your Own Cloud):**
+  - Flexible AWS authentication via **IAM Role ARN** (STS `AssumeRole` + External ID) or **AWS Access Keys** (encrypted at rest).
+  - Automated **Terraform** provisioning of VPC, Subnets, Internet Gateway, NAT Gateway, EKS Control Plane, Managed Node Groups, OIDC Provider (IRSA), and IAM Roles.
+  - In-cluster **Kaniko** Docker builds pushed directly to **AWS ECR**, with automatic `EXPOSE` port detection from `Dockerfile`.
+  - Automated Kubernetes `Deployment` + `LoadBalancer` Service rollout with readiness checks and fast-fail pod log diagnostics.
+  - **Full AWS Teardown & Manual Cleanup:** Ordered AWS CLI cleanup (`awsCleanup.service.js`) that deletes Namespace, ELBv1/v2, EKS Node Groups & Cluster, OIDC, NAT Gateway, Elastic IP, ENIs, IGW, Subnets, Route Tables, Security Groups, VPC, IAM Roles, and ECR — works even without `terraform.tfstate` via async background jobs and live log polling.
+
+### 🔐 Environment Variables Manager
+- Per-project **AES-256-GCM encrypted** environment variables (`GET/POST/DELETE /api/projects/:projectId/env-vars` + bulk import) injected into EC2 containers and Kubernetes Secrets.
+
 ### 🚀 Workload & Deployment Studio
 - **Multi-Environment Support:** Segregated workspaces for `development`, `staging`, and `production`.
-- **Project Workbench:** Unified split workbench with live topology preview, environment variable management, and deployment history.
+- **Project Workbench:** Unified split workbench with live topology preview, environment variable management, deployment history, and target config management.
 - **Live Logs Studio:** Real-time log streaming terminal with auto-scroll, search filters, and automatic secret redaction.
 - **Luminous Ingress Banner:** Prominent high-contrast ingress routing preview with active service endpoints and port mappings.
 
 ### 🔐 Enterprise Authentication & Profile Management
-- **Stateless JWT Sessions:** Dual-token authentication (short-lived access token + 7-day refresh token in HTTP-only cookies).
+- **Auto-Refreshing JWT Sessions & Refresh Token Rotation:** Dual-token authentication (15-min access token + 7-day refresh token stored in `refresh_sessions` with family-based reuse detection). The frontend automatically refreshes expired access tokens on `401` via a single-flight lock (`POST /api/v1/auth/refresh`) without interrupting active work.
 - **Password Recovery:** Time-limited (15 min TTL) cryptographically secure password reset flow with email notification.
 - **Profile Image & Avatar Upload:**
   - Dedicated `POST /api/v1/auth/profile/avatar` endpoint with base64 data URI and URL support.
@@ -171,8 +186,8 @@ Intelligent-Infrastructure-Automation-Platform/
 │       │   ├── 📂 layout/                       # Header, Footer navigation
 │       │   ├── 📂 3d/                           # Three.js Infrastructure scene
 │       │   └── 📂 ui/                           # Button, GlassCard, Input primitives
-│       ├── 📂 pages/                            # Landing, Dashboard, Projects, Deployments, Profile
-│       ├── 📂 services/                         # Type-safe API client layer
+│       ├── 📂 pages/                            # Landing, Dashboard, Projects, NewProject, ProjectDetails, Deployments, Profile
+│       ├── 📂 services/                         # Type-safe API client with 401 auto-refresh
 │       └── 📂 types/                            # Core TypeScript interfaces
 │
 ├── 📂 backend/                                  # Node.js + Express 5 REST API
@@ -188,27 +203,21 @@ Intelligent-Infrastructure-Automation-Platform/
 │   │   ├── 📂 db/                               # Prisma client connection singleton
 │   │   ├── 📂 middleware/                       # JWT auth, Joi validation, error handlers
 │   │   ├── 📂 modules/                          # Domain-driven architecture
-│   │   │   ├── 📂 auth/                         # Authentication, passwords, avatars
+│   │   │   ├── 📂 auth/                         # Auth, refresh token rotation, passwords, avatars
 │   │   │   ├── 📂 dashboard/                    # Telemetry aggregation & metrics
-│   │   │   ├── 📂 deployments/                  # Pipeline execution & status tracking
+│   │   │   ├── 📂 deployments/                  # Pipeline orchestration, Kaniko/EKS & EC2 runtime controls
 │   │   │   ├── 📂 integrations/github/          # GitHub OAuth & repository sync
-│   │   │   └── 📂 projects/                     # Workload services & specs
-│   │   └── 📂 utils/                            # Email, encryption, and logger utilities
-│   └── 📂 tests/unit/                           # 156 comprehensive unit test suites
+│   │   │   └── 📂 projects/                     # Projects, EC2/EKS targets, Env Vars & AWS cleanup
+│   │   └── 📂 utils/                            # Email, AES-256-GCM encryption & logger utilities
+│   └── 📂 tests/unit/                           # 116 comprehensive unit tests (34 suites)
 │
 ├── 📂 terraform/                                # Infrastructure as Code Modules
 │   ├── 📂 environments/dev/                     # Root dev environment composition
 │   └── 📂 modules/                              # VPC, EKS, and IAM security modules
 │
-├── 📂 ansible/                                  # Server Provisioning & Hardening
-│   ├── 📄 ansible.cfg                           # Hardened Ansible configuration
-│   ├── 📂 inventory/                            # Dynamic environment hosts
-│   ├── 📂 playbooks/site.yml                    # Pipeline execution playbook
-│   └── 📂 roles/common/                         # SSH & OS baseline hardening
-│
-└── 📂 k8s/                                      # Kubernetes Base Manifests
+└── 📂 manifests/                                # Kubernetes Base Manifests
     ├── 📄 deployment.yaml                       # Least-privilege container pods
-    ├── 📄 service.yaml                          # ClusterIP service definitions
+    ├── 📄 service.yaml                          # ClusterIP / LoadBalancer service definitions
     ├── 📄 ingress.yaml                          # HTTP/HTTPS routing specifications
     └── 📄 serviceaccount.yaml                   # Token mounting disabled by default
 ```
@@ -229,6 +238,7 @@ The platform includes full interactive OpenAPI 3.0 documentation.
 | **Auth** | `POST` | `/api/v1/auth/signup` | ❌ | Create new user account |
 | **Auth** | `POST` | `/api/v1/auth/signin` | ❌ | Authenticate & issue JWT cookie/token |
 | **Auth** | `POST` | `/api/v1/auth/signout` | ❌ | Invalidate session & clear cookies |
+| **Auth** | `POST` | `/api/v1/auth/refresh` | ❌ | Rotate refresh token & issue new access token |
 | **Auth** | `POST` | `/api/v1/auth/forgot-password` | ❌ | Dispatch 15-min password reset link |
 | **Auth** | `POST` | `/api/v1/auth/reset-password` | ❌ | Reset password with verification token |
 | **Auth** | `GET` | `/api/v1/auth/profile` | ✅ | Fetch authenticated user details |
@@ -245,6 +255,16 @@ The platform includes full interactive OpenAPI 3.0 documentation.
 | **Projects**| `GET` | `/api/projects` | ✅ | List user workload projects |
 | **Projects**| `POST`| `/api/projects` | ✅ | Create new project workspace |
 | **Projects**| `GET` | `/api/projects/:id` | ✅ | Get workload configuration & status |
+| **Projects**| `DELETE` | `/api/projects/:id` | ✅ | Delete project workspace |
+| **Projects**| `POST/GET/DELETE` | `/api/projects/:id/ec2-config` | ✅ | Manage EC2 (BYOS) target configuration |
+| **Projects**| `POST` | `/api/projects/:id/ec2-verify` | ✅ | Pre-flight SSH & Docker probe |
+| **Projects**| `POST/GET/DELETE` | `/api/projects/:id/cluster-config` | ✅ | Manage AWS EKS (BYOC) target configuration |
+| **Projects**| `POST` | `/api/projects/:id/cluster-verify` | ✅ | Verify AWS STS / IAM credentials |
+| **Projects**| `POST` | `/api/projects/:id/cluster-destroy` | ✅ | Full ordered AWS EKS/VPC/IAM/ECR teardown |
+| **Projects**| `POST` | `/api/projects/manual-cleanup` | ✅ | Start async AWS cleanup job (no DB config needed) |
+| **Projects**| `GET` | `/api/projects/manual-cleanup/:jobId` | ✅ | Poll manual cleanup status & live logs |
+| **Env Vars**| `GET/POST/DELETE` | `/api/projects/:id/env-vars` | ✅ | Manage encrypted project environment variables |
+| **Runtime** | `GET/POST` | `/api/projects/:id/runtime/{status,logs,restart}` | ✅ | Live EC2 container controls |
 | **Deploy** | `GET` | `/api/deployments` | ✅ | List paginated deployment runs |
 | **Deploy** | `POST`| `/api/deployments` | ✅ | Dispatch deployment pipeline run |
 | **Deploy** | `GET` | `/api/deployments/:id` | ✅ | Get pipeline stages, events & status |
@@ -351,7 +371,7 @@ npm run dev
 
 ## 🧪 Automated Testing Suite
 
-The repository contains **156 automated unit tests** built with the native Node.js test runner covering infrastructure security, pipeline integrity, and backend APIs:
+The repository contains **116 automated unit tests across 34 suites** built with the native Node.js test runner covering infrastructure security, pipeline integrity, and backend APIs:
 
 ```bash
 cd backend
