@@ -29,3 +29,11 @@ Thumbs.db
 .agents/
 .claude/
 .windsurf/
+
+# Internal docs & roadmaps (local only)
+docs/
+**/docs/
+RoadMap/
+**/RoadMap/
+roadmap/
+**/roadmap/
